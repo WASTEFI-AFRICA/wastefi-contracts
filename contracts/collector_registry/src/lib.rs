@@ -129,7 +129,7 @@ impl CollectorRegistry {
         write_collector(&env, &collector, &collector_data);
         
         // Emit event
-        common::CollectorEvents::status_updated(&env, &collector, &status);
+        common::CollectorEvents::status_updated(&env, &collector, status);
         
         // Bump storage
         common::bump_instance(&env);
