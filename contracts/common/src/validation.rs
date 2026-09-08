@@ -1,6 +1,6 @@
-use soroban_sdk::String;
 use crate::errors::WasteFiError;
 use crate::types::*;
+use soroban_sdk::String;
 
 /// Input validation utilities
 /// Validate string is not empty
@@ -53,7 +53,7 @@ pub fn validate_material_type(_material_type: &MaterialType) -> Result<(), Waste
 pub fn validate_weight_bounds(weight_grams: u64) -> Result<(), WasteFiError> {
     const MIN_WEIGHT: u64 = 10; // 10 grams minimum
     const MAX_WEIGHT: u64 = 1_000_000_000; // 1 million kg maximum
-    
+
     if !(MIN_WEIGHT..=MAX_WEIGHT).contains(&weight_grams) {
         return Err(WasteFiError::InvalidWeight);
     }
@@ -64,7 +64,7 @@ pub fn validate_weight_bounds(weight_grams: u64) -> Result<(), WasteFiError> {
 pub fn validate_price(price_per_kg: i128) -> Result<(), WasteFiError> {
     const MIN_PRICE: i128 = 1; // At least 1 stroop
     const MAX_PRICE: i128 = 100_000_000_000; // 10,000 XLM max
-    
+
     if !(MIN_PRICE..=MAX_PRICE).contains(&price_per_kg) {
         return Err(WasteFiError::InvalidPrice);
     }
@@ -74,7 +74,7 @@ pub fn validate_price(price_per_kg: i128) -> Result<(), WasteFiError> {
 /// Validate reputation score
 pub fn validate_reputation_bounds(score: u32) -> Result<(), WasteFiError> {
     const MAX_SCORE: u32 = 1000;
-    
+
     if score > MAX_SCORE {
         return Err(WasteFiError::InvalidReputationScore);
     }
@@ -101,7 +101,7 @@ pub fn validate_status_transition(
         (CollectorStatus::Suspended, CollectorStatus::Active) => Ok(()),
         (CollectorStatus::Active, CollectorStatus::Banned) => Ok(()),
         (CollectorStatus::Suspended, CollectorStatus::Banned) => Ok(()),
-        
+
         // Invalid transitions
         (CollectorStatus::Banned, _) => Err(WasteFiError::CollectorBanned),
         (current_status, new_status) if current_status == new_status => {
@@ -122,7 +122,7 @@ pub fn validate_verification_transition(
         (VerificationStatus::Pending, VerificationStatus::Verified) => Ok(()),
         (VerificationStatus::Pending, VerificationStatus::Rejected) => Ok(()),
         (VerificationStatus::Rejected, VerificationStatus::Pending) => Ok(()),
-        
+
         // Invalid transitions
         (current_status, new_status) if current_status == new_status => {
             Err(WasteFiError::InvalidVerificationStatus)
@@ -162,7 +162,7 @@ mod tests {
         let env = Env::default();
         let short = String::from_str(&env, "ab");
         let valid = String::from_str(&env, "valid name");
-        
+
         assert!(validate_string_length(&valid, 3, 50).is_ok());
         assert!(validate_string_length(&short, 3, 50).is_err());
     }
@@ -191,16 +191,14 @@ mod tests {
     #[test]
     fn test_status_transitions() {
         // Valid transition
-        assert!(validate_status_transition(
-            &CollectorStatus::Pending,
-            &CollectorStatus::Active
-        ).is_ok());
-        
+        assert!(
+            validate_status_transition(&CollectorStatus::Pending, &CollectorStatus::Active).is_ok()
+        );
+
         // Invalid transition
-        assert!(validate_status_transition(
-            &CollectorStatus::Banned,
-            &CollectorStatus::Active
-        ).is_err());
+        assert!(
+            validate_status_transition(&CollectorStatus::Banned, &CollectorStatus::Active).is_err()
+        );
     }
 
     #[test]

@@ -143,7 +143,7 @@ pub struct Payment {
 pub struct CarbonCredit {
     pub transaction_id: u64,
     pub material_type: MaterialType,
-    pub weight: u64, // in grams
+    pub weight: u64,    // in grams
     pub co2_saved: u64, // in grams of CO2
     pub credit_amount: i128,
     pub issued_at: u64,

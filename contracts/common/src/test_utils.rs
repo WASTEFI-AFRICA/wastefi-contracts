@@ -1,6 +1,6 @@
 #![cfg(test)]
-use soroban_sdk::{Address, Env, String};
 use crate::types::*;
+use soroban_sdk::{Address, Env, String};
 
 /// Test utilities for WasteFi contracts
 
@@ -55,7 +55,7 @@ pub fn create_test_waste_record(env: &Env) -> WasteRecord {
         collector: generate_address(env, 1),
         collection_point: generate_address(env, 2),
         material_type: MaterialType::Plastic,
-        weight: 5000, // 5kg in grams
+        weight: 5000,            // 5kg in grams
         price_per_kg: 1_0000000, // 1 XLM per kg
         total_amount: 5_0000000, // 5 XLM total
         status: TransactionStatus::Completed,
@@ -104,7 +104,7 @@ pub fn create_test_carbon_credit(env: &Env) -> CarbonCredit {
     CarbonCredit {
         transaction_id: 1,
         material_type: MaterialType::Plastic,
-        weight: 5000, // 5kg
+        weight: 5000,     // 5kg
         co2_saved: 12000, // 12kg CO2
         credit_amount: 12_0000000,
         issued_at: env.ledger().timestamp(),

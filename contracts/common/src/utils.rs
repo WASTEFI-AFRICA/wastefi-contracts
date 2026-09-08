@@ -1,6 +1,6 @@
-use soroban_sdk::{Address, Env};
 use crate::errors::WasteFiError;
 use crate::storage::StorageKey;
+use soroban_sdk::{Address, Env};
 
 /// Utility functions for WasteFi contracts
 /// Check if contract is initialized
@@ -29,7 +29,7 @@ pub fn require_admin(env: &Env, caller: &Address) -> Result<(), WasteFiError> {
         .instance()
         .get(&StorageKey::Admin)
         .ok_or(WasteFiError::NotInitialized)?;
-    
+
     if caller != &admin {
         return Err(WasteFiError::NotAdmin);
     }
@@ -112,7 +112,7 @@ pub fn bump_instance(env: &Env) {
     const DAY_IN_LEDGERS: u32 = 17280; // approximately
     const INSTANCE_LIFETIME_THRESHOLD: u32 = 30 * DAY_IN_LEDGERS; // 30 days
     const INSTANCE_BUMP_AMOUNT: u32 = 90 * DAY_IN_LEDGERS; // 90 days
-    
+
     env.storage()
         .instance()
         .extend_ttl(INSTANCE_LIFETIME_THRESHOLD, INSTANCE_BUMP_AMOUNT);
@@ -123,7 +123,7 @@ pub fn bump_temporary(env: &Env, key: &StorageKey) {
     const DAY_IN_LEDGERS: u32 = 17280;
     const TEMP_LIFETIME_THRESHOLD: u32 = 7 * DAY_IN_LEDGERS; // 7 days
     const TEMP_BUMP_AMOUNT: u32 = 30 * DAY_IN_LEDGERS; // 30 days
-    
+
     env.storage()
         .temporary()
         .extend_ttl(key, TEMP_LIFETIME_THRESHOLD, TEMP_BUMP_AMOUNT);
@@ -134,10 +134,12 @@ pub fn bump_persistent(env: &Env, key: &StorageKey) {
     const DAY_IN_LEDGERS: u32 = 17280;
     const PERSISTENT_LIFETIME_THRESHOLD: u32 = 120 * DAY_IN_LEDGERS; // 120 days
     const PERSISTENT_BUMP_AMOUNT: u32 = 365 * DAY_IN_LEDGERS; // 365 days
-    
-    env.storage()
-        .persistent()
-        .extend_ttl(key, PERSISTENT_LIFETIME_THRESHOLD, PERSISTENT_BUMP_AMOUNT);
+
+    env.storage().persistent().extend_ttl(
+        key,
+        PERSISTENT_LIFETIME_THRESHOLD,
+        PERSISTENT_BUMP_AMOUNT,
+    );
 }
 
 #[cfg(test)]

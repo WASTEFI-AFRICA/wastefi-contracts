@@ -1,5 +1,5 @@
-use soroban_sdk::{Address, Env, String, symbol_short};
 use crate::types::*;
+use soroban_sdk::{symbol_short, Address, Env, String};
 
 /// Event emission utilities for off-chain indexing
 /// Token events
@@ -7,24 +7,17 @@ pub struct TokenEvents;
 
 impl TokenEvents {
     pub fn mint(env: &Env, to: Address, amount: i128) {
-        env.events().publish(
-            (symbol_short!("mint"),),
-            (to, amount)
-        );
+        env.events().publish((symbol_short!("mint"),), (to, amount));
     }
 
     pub fn burn(env: &Env, from: Address, amount: i128) {
-        env.events().publish(
-            (symbol_short!("burn"),),
-            (from, amount)
-        );
+        env.events()
+            .publish((symbol_short!("burn"),), (from, amount));
     }
 
     pub fn transfer(env: &Env, from: Address, to: Address, amount: i128) {
-        env.events().publish(
-            (symbol_short!("transfer"),),
-            (from, to, amount)
-        );
+        env.events()
+            .publish((symbol_short!("transfer"),), (from, to, amount));
     }
 }
 
@@ -33,17 +26,13 @@ pub struct CollectorEvents;
 
 impl CollectorEvents {
     pub fn registered(env: &Env, collector: Address, name: String) {
-        env.events().publish(
-            (symbol_short!("reg"),),
-            (collector, name)
-        );
+        env.events()
+            .publish((symbol_short!("reg"),), (collector, name));
     }
 
     pub fn status_updated(env: &Env, collector: Address, status: CollectorStatus) {
-        env.events().publish(
-            (symbol_short!("status"),),
-            (collector, status)
-        );
+        env.events()
+            .publish((symbol_short!("status"),), (collector, status));
     }
 }
 
@@ -52,17 +41,12 @@ pub struct CollectionPointEvents;
 
 impl CollectionPointEvents {
     pub fn registered(env: &Env, point_id: u64, owner: Address) {
-        env.events().publish(
-            (symbol_short!("pt_reg"),),
-            (point_id, owner)
-        );
+        env.events()
+            .publish((symbol_short!("pt_reg"),), (point_id, owner));
     }
 
     pub fn verified(env: &Env, point_id: u64) {
-        env.events().publish(
-            (symbol_short!("pt_ver"),),
-            point_id
-        );
+        env.events().publish((symbol_short!("pt_ver"),), point_id);
     }
 }
 
@@ -79,22 +63,18 @@ impl TransactionEvents {
     ) {
         env.events().publish(
             (symbol_short!("tx_rec"),),
-            (transaction_id, collector, material_type, weight)
+            (transaction_id, collector, material_type, weight),
         );
     }
 
     pub fn verified(env: &Env, transaction_id: u64) {
-        env.events().publish(
-            (symbol_short!("tx_ver"),),
-            transaction_id
-        );
+        env.events()
+            .publish((symbol_short!("tx_ver"),), transaction_id);
     }
 
     pub fn status_changed(env: &Env, transaction_id: u64, status: TransactionStatus) {
-        env.events().publish(
-            (symbol_short!("tx_stat"),),
-            (transaction_id, status)
-        );
+        env.events()
+            .publish((symbol_short!("tx_stat"),), (transaction_id, status));
     }
 }
 
@@ -103,24 +83,18 @@ pub struct PaymentEvents;
 
 impl PaymentEvents {
     pub fn created(env: &Env, payment_id: u64, recipient: Address, amount: i128) {
-        env.events().publish(
-            (symbol_short!("pay_new"),),
-            (payment_id, recipient, amount)
-        );
+        env.events()
+            .publish((symbol_short!("pay_new"),), (payment_id, recipient, amount));
     }
 
     pub fn processed(env: &Env, payment_id: u64) {
-        env.events().publish(
-            (symbol_short!("pay_proc"),),
-            payment_id
-        );
+        env.events()
+            .publish((symbol_short!("pay_proc"),), payment_id);
     }
 
     pub fn failed(env: &Env, payment_id: u64) {
-        env.events().publish(
-            (symbol_short!("pay_fail"),),
-            payment_id
-        );
+        env.events()
+            .publish((symbol_short!("pay_fail"),), payment_id);
     }
 }
 
@@ -131,7 +105,7 @@ impl ReputationEvents {
     pub fn score_updated(env: &Env, collector: Address, old_score: u32, new_score: u32) {
         env.events().publish(
             (symbol_short!("rep_upd"),),
-            (collector, old_score, new_score)
+            (collector, old_score, new_score),
         );
     }
 }
@@ -141,10 +115,8 @@ pub struct PricingEvents;
 
 impl PricingEvents {
     pub fn price_updated(env: &Env, material_type: MaterialType, price: i128) {
-        env.events().publish(
-            (symbol_short!("prc_upd"),),
-            (material_type, price)
-        );
+        env.events()
+            .publish((symbol_short!("prc_upd"),), (material_type, price));
     }
 }
 
@@ -153,24 +125,16 @@ pub struct AdminEvents;
 
 impl AdminEvents {
     pub fn admin_changed(env: &Env, old_admin: Address, new_admin: Address) {
-        env.events().publish(
-            (symbol_short!("adm_chg"),),
-            (old_admin, new_admin)
-        );
+        env.events()
+            .publish((symbol_short!("adm_chg"),), (old_admin, new_admin));
     }
 
     pub fn paused(env: &Env) {
-        env.events().publish(
-            (symbol_short!("paused"),),
-            ()
-        );
+        env.events().publish((symbol_short!("paused"),), ());
     }
 
     pub fn unpaused(env: &Env) {
-        env.events().publish(
-            (symbol_short!("unpaused"),),
-            ()
-        );
+        env.events().publish((symbol_short!("unpaused"),), ());
     }
 }
 
@@ -183,11 +147,11 @@ mod tests {
     fn test_emit_token_events() {
         let env = Env::default();
         let addr = Address::generate(&env);
-        
+
         TokenEvents::mint(&env, addr.clone(), 1000);
         TokenEvents::burn(&env, addr.clone(), 500);
         TokenEvents::transfer(&env, addr.clone(), Address::generate(&env), 250);
-        
+
         // Events emitted successfully (no panic)
     }
 
@@ -196,7 +160,7 @@ mod tests {
         let env = Env::default();
         let addr = Address::generate(&env);
         let name = String::from_str(&env, "Test");
-        
+
         CollectorEvents::registered(&env, addr.clone(), name.clone());
         CollectorEvents::status_updated(&env, addr, CollectorStatus::Active);
     }
@@ -205,7 +169,7 @@ mod tests {
     fn test_emit_transaction_events() {
         let env = Env::default();
         let addr = Address::generate(&env);
-        
+
         TransactionEvents::recorded(&env, 1, addr, MaterialType::Plastic, 5000);
         TransactionEvents::verified(&env, 1);
         TransactionEvents::status_changed(&env, 1, TransactionStatus::Completed);

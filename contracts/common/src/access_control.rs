@@ -1,6 +1,6 @@
-use soroban_sdk::{Address, Env};
 use crate::errors::WasteFiError;
 use crate::storage::StorageKey;
+use soroban_sdk::{Address, Env};
 
 /// Access control utilities for role-based permissions
 /// Admin role management
@@ -40,7 +40,11 @@ impl AccessControl {
     }
 
     /// Transfer admin role
-    pub fn transfer_admin(env: &Env, current_admin: &Address, new_admin: Address) -> Result<(), WasteFiError> {
+    pub fn transfer_admin(
+        env: &Env,
+        current_admin: &Address,
+        new_admin: Address,
+    ) -> Result<(), WasteFiError> {
         Self::require_admin(env, current_admin)?;
         Self::set_admin(env, new_admin);
         Ok(())
@@ -98,7 +102,9 @@ pub struct Initializable;
 impl Initializable {
     /// Mark contract as initialized
     pub fn mark_initialized(env: &Env) {
-        env.storage().instance().set(&StorageKey::Initialized, &true);
+        env.storage()
+            .instance()
+            .set(&StorageKey::Initialized, &true);
     }
 
     /// Check if contract is initialized
@@ -135,10 +141,10 @@ mod tests {
     fn test_admin_management() {
         let env = Env::default();
         let admin = Address::generate(&env);
-        
+
         AccessControl::set_admin(&env, admin.clone());
         assert!(AccessControl::is_admin(&env, &admin));
-        
+
         let non_admin = Address::generate(&env);
         assert!(!AccessControl::is_admin(&env, &non_admin));
     }
@@ -146,12 +152,12 @@ mod tests {
     #[test]
     fn test_pausable() {
         let env = Env::default();
-        
+
         assert!(!Pausable::is_paused(&env));
-        
+
         Pausable::pause(&env);
         assert!(Pausable::is_paused(&env));
-        
+
         Pausable::unpause(&env);
         assert!(!Pausable::is_paused(&env));
     }
@@ -159,9 +165,9 @@ mod tests {
     #[test]
     fn test_initializable() {
         let env = Env::default();
-        
+
         assert!(!Initializable::is_initialized(&env));
-        
+
         Initializable::mark_initialized(&env);
         assert!(Initializable::is_initialized(&env));
     }

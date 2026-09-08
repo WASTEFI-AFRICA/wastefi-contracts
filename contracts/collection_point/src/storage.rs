@@ -1,5 +1,5 @@
-use soroban_sdk::{Address, Env};
 use common::CollectionPoint;
+use soroban_sdk::{Address, Env};
 
 /// Storage keys
 const POINT_COUNT: &str = "PointCount";
@@ -8,7 +8,7 @@ const POINT_COUNT: &str = "PointCount";
 pub fn write_point(env: &Env, point_id: u64, point: &CollectionPoint) {
     let key = ("Point", point_id);
     env.storage().persistent().set(&key, point);
-    
+
     // Bump storage TTL
     let storage_key = common::StorageKey::CollectionPoint(point_id);
     common::bump_persistent(env, &storage_key);
@@ -30,7 +30,7 @@ pub fn has_point(env: &Env, point_id: u64) -> bool {
 pub fn write_point_by_owner(env: &Env, owner: &Address, point_id: u64) {
     let key = ("PointOwner", owner);
     env.storage().persistent().set(&key, &point_id);
-    
+
     // Bump storage TTL
     let storage_key = common::StorageKey::CollectionPointByOwner(owner.clone());
     common::bump_persistent(env, &storage_key);
@@ -49,8 +49,5 @@ pub fn write_point_count(env: &Env, count: u64) {
 
 /// Read collection point count
 pub fn read_point_count(env: &Env) -> u64 {
-    env.storage()
-        .instance()
-        .get(&POINT_COUNT)
-        .unwrap_or(0)
+    env.storage().instance().get(&POINT_COUNT).unwrap_or(0)
 }
