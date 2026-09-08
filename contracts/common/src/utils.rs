@@ -38,7 +38,7 @@ pub fn require_admin(env: &Env, caller: &Address) -> Result<(), WasteFiError> {
 }
 
 /// Check if address is authorized
-pub fn require_auth(env: &Env, address: &Address) {
+pub fn require_auth(_env: &Env, address: &Address) {
     address.require_auth();
 }
 

@@ -85,7 +85,7 @@ impl WasteToken {
         write_total_supply(&env, new_total_supply);
         
         // Emit event
-        common::TokenEvents::mint(&env, to, amount);
+        common::TokenEvents::mint(&env, &to, &amount);
         
         // Bump storage
         common::bump_instance(&env);
@@ -128,7 +128,7 @@ impl WasteToken {
         write_total_supply(&env, new_total_supply);
         
         // Emit event
-        common::TokenEvents::burn(&env, from, amount);
+        common::TokenEvents::burn(&env, &from, &amount);
         
         // Bump storage
         common::bump_instance(&env);
@@ -167,7 +167,7 @@ impl WasteToken {
         write_balance(&env, &to, to_balance.saturating_add(amount));
         
         // Emit event
-        common::TokenEvents::transfer(&env, from, to, amount);
+        common::TokenEvents::transfer(&env, &from, &to, &amount);
         
         // Bump storage
         common::bump_instance(&env);

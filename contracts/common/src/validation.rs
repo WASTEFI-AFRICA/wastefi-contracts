@@ -45,7 +45,7 @@ pub fn validate_location(location: &String) -> Result<(), WasteFiError> {
 }
 
 /// Validate material type is valid
-pub fn validate_material_type(material_type: &MaterialType) -> Result<(), WasteFiError> {
+pub fn validate_material_type(_material_type: &MaterialType) -> Result<(), WasteFiError> {
     // All enum variants are valid
     Ok(())
 }
