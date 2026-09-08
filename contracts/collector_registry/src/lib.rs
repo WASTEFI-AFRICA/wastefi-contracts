@@ -80,7 +80,7 @@ impl CollectorRegistry {
         write_collector_count(&env, count + 1);
         
         // Emit event
-        common::CollectorEvents::registered(&env, &collector, &name);
+        common::CollectorEvents::registered(&env, collector.clone(), name.clone());
         
         // Bump storage
         common::bump_instance(&env);
@@ -129,7 +129,7 @@ impl CollectorRegistry {
         write_collector(&env, &collector, &collector_data);
         
         // Emit event
-        common::CollectorEvents::status_updated(&env, &collector, status);
+        common::CollectorEvents::status_updated(&env, collector.clone(), status.clone());
         
         // Bump storage
         common::bump_instance(&env);

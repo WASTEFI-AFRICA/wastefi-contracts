@@ -91,7 +91,7 @@ impl CollectionPoint {
         write_point_count(&env, point_id);
         
         // Emit event
-        common::CollectionPointEvents::registered(&env, point_id, &owner);
+        common::CollectionPointEvents::registered(&env, point_id, owner.clone());
         
         // Bump storage
         common::bump_instance(&env);
