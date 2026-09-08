@@ -3,7 +3,6 @@ use crate::errors::WasteFiError;
 use crate::storage::StorageKey;
 
 /// Access control utilities for role-based permissions
-
 /// Admin role management
 pub struct AccessControl;
 

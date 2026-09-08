@@ -2,7 +2,6 @@ use soroban_sdk::{Address, Env, String, symbol_short};
 use crate::types::*;
 
 /// Event emission utilities for off-chain indexing
-
 /// Token events
 pub struct TokenEvents;
 

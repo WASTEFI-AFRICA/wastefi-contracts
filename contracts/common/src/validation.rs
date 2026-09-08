@@ -3,10 +3,9 @@ use crate::errors::WasteFiError;
 use crate::types::*;
 
 /// Input validation utilities
-
 /// Validate string is not empty
 pub fn validate_non_empty_string(s: &String) -> Result<(), WasteFiError> {
-    if s.len() == 0 {
+    if s.is_empty() {
         return Err(WasteFiError::InvalidInput);
     }
     Ok(())
@@ -55,7 +54,7 @@ pub fn validate_weight_bounds(weight_grams: u64) -> Result<(), WasteFiError> {
     const MIN_WEIGHT: u64 = 10; // 10 grams minimum
     const MAX_WEIGHT: u64 = 1_000_000_000; // 1 million kg maximum
     
-    if weight_grams < MIN_WEIGHT || weight_grams > MAX_WEIGHT {
+    if !(MIN_WEIGHT..=MAX_WEIGHT).contains(&weight_grams) {
         return Err(WasteFiError::InvalidWeight);
     }
     Ok(())
@@ -66,7 +65,7 @@ pub fn validate_price(price_per_kg: i128) -> Result<(), WasteFiError> {
     const MIN_PRICE: i128 = 1; // At least 1 stroop
     const MAX_PRICE: i128 = 100_000_000_000; // 10,000 XLM max
     
-    if price_per_kg < MIN_PRICE || price_per_kg > MAX_PRICE {
+    if !(MIN_PRICE..=MAX_PRICE).contains(&price_per_kg) {
         return Err(WasteFiError::InvalidPrice);
     }
     Ok(())

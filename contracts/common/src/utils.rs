@@ -3,7 +3,6 @@ use crate::errors::WasteFiError;
 use crate::storage::StorageKey;
 
 /// Utility functions for WasteFi contracts
-
 /// Check if contract is initialized
 pub fn require_initialized(env: &Env) -> Result<(), WasteFiError> {
     if !env.storage().instance().has(&StorageKey::Initialized) {
