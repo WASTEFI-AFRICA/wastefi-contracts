@@ -87,13 +87,7 @@ impl WasteTransaction {
         add_collector_transaction(&env, &collector, transaction_id);
 
         // Emit event
-        common::TransactionEvents::recorded(
-            &env,
-            transaction_id,
-            collector,
-            material_type,
-            weight,
-        );
+        common::TransactionEvents::recorded(&env, transaction_id, collector, material_type, weight);
 
         // Bump storage
         common::bump_instance(&env);
@@ -173,7 +167,11 @@ impl WasteTransaction {
     ///
     /// # Returns
     /// Vector of transaction records
-    pub fn get_collector_transactions(env: Env, collector: Address, limit: u32) -> Vec<WasteRecord> {
+    pub fn get_collector_transactions(
+        env: Env,
+        collector: Address,
+        limit: u32,
+    ) -> Vec<WasteRecord> {
         let max_limit = if limit == 0 || limit > 50 { 50 } else { limit };
         read_collector_transactions(&env, &collector, max_limit)
     }

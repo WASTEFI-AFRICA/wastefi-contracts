@@ -44,7 +44,11 @@ pub fn add_collector_transaction(env: &Env, collector: &Address, transaction_id:
     let key = ("CollectorTxs", collector);
 
     // Get existing transactions or create new list
-    let mut transactions: Vec<u64> = env.storage().persistent().get(&key).unwrap_or(Vec::new(env));
+    let mut transactions: Vec<u64> = env
+        .storage()
+        .persistent()
+        .get(&key)
+        .unwrap_or(Vec::new(env));
 
     // Add new transaction
     transactions.push_back(transaction_id);
@@ -58,14 +62,14 @@ pub fn add_collector_transaction(env: &Env, collector: &Address, transaction_id:
 }
 
 /// Read collector transactions
-pub fn read_collector_transactions(
-    env: &Env,
-    collector: &Address,
-    limit: u32,
-) -> Vec<WasteRecord> {
+pub fn read_collector_transactions(env: &Env, collector: &Address, limit: u32) -> Vec<WasteRecord> {
     let key = ("CollectorTxs", collector);
 
-    let transaction_ids: Vec<u64> = env.storage().persistent().get(&key).unwrap_or(Vec::new(env));
+    let transaction_ids: Vec<u64> = env
+        .storage()
+        .persistent()
+        .get(&key)
+        .unwrap_or(Vec::new(env));
 
     let mut records = Vec::new(env);
 
