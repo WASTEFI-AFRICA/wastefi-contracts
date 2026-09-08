@@ -148,13 +148,20 @@ Reputation → Update collector score
 
 ## Roadmap
 
-- [x] Phase 1: Project Setup (Commits 1-5)
+- [x] Phase 1: Project Setup (Commits 1-5) ✅
   - [x] Commit 1: Initial project setup
   - [x] Commit 2: Core contract structure and interfaces
   - [x] Commit 3: Testing framework and CI/CD
   - [x] Commit 4: Development scripts and documentation
-  - [ ] Commit 5: Error handling and utilities
+  - [x] Commit 5: Error handling and utilities
 - [ ] Phase 2: Core Contracts (Commits 6-12)
+  - [ ] Commit 6: WasteToken contract
+  - [ ] Commit 7: Collector registry contract
+  - [ ] Commit 8: Collection point contract
+  - [ ] Commit 9: Waste transaction contract
+  - [ ] Commit 10: Payment distribution contract
+  - [ ] Commit 11: Reputation contract
+  - [ ] Commit 12: Material pricing contract
 - [ ] Phase 3: Advanced Features (Commits 13-18)
 - [ ] Phase 4: Security & Optimization (Commits 19-23)
 - [ ] Phase 5: Testing & Deployment (Commits 24-25)
