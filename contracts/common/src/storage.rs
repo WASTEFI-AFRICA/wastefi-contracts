@@ -32,7 +32,7 @@ pub enum StorageKey {
     Reputation(Address),
     
     // Material pricing keys
-    MaterialPrice(u8), // MaterialType as u8
+    MaterialPrice(u32), // Changed from u8 to u32
     
     // Token keys
     TokenName,
@@ -48,7 +48,7 @@ pub enum StorageKey {
     
     // RecycleGraph passport keys
     MaterialPassport(String),
-    PassportsByMaterial(u8, u64),
+    PassportsByMaterial(u32, u64), // Changed from u8 to u32
 }
 
 /// Data bucket identifiers for better storage organization
