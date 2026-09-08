@@ -61,9 +61,19 @@ Run all tests:
 cargo test
 ```
 
-Run tests with coverage:
+Run tests for a specific contract:
+```bash
+cargo test -p waste_token
+```
+
+Run tests with output:
 ```bash
 cargo test -- --nocapture
+```
+
+Run integration tests:
+```bash
+cargo test --test integration_test
 ```
 
 ## Deployment
@@ -141,7 +151,7 @@ Reputation → Update collector score
 - [x] Phase 1: Project Setup (Commits 1-5)
   - [x] Commit 1: Initial project setup
   - [x] Commit 2: Core contract structure and interfaces
-  - [ ] Commit 3: Testing framework and CI/CD
+  - [x] Commit 3: Testing framework and CI/CD
   - [ ] Commit 4: Development scripts and documentation
   - [ ] Commit 5: Error handling and utilities
 - [ ] Phase 2: Core Contracts (Commits 6-12)

@@ -1,6 +1,9 @@
 #![no_std]
 use soroban_sdk::{contract, contractimpl};
 
+#[cfg(test)]
+mod test;
+
 #[contract]
 pub struct Reputation;
 

@@ -1,0 +1,69 @@
+name: Deploy to Stellar Testnet
+
+on:
+  workflow_dispatch:
+    inputs:
+      contract:
+        description: 'Contract to deploy (or "all" for all contracts)'
+        required: true
+        type: choice
+        options:
+          - all
+          - waste_token
+          - collector_registry
+          - collection_point
+          - waste_transaction
+          - payment_distribution
+          - reputation
+          - material_pricing
+
+env:
+  RUST_VERSION: stable
+  SOROBAN_RPC_URL: https://soroban-testnet.stellar.org:443
+  SOROBAN_NETWORK_PASSPHRASE: "Test SDF Network ; September 2015"
+
+jobs:
+  deploy:
+    name: Deploy Contracts
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+          targets: wasm32-unknown-unknown
+      
+      - name: Install Soroban CLI
+        run: cargo install --locked soroban-cli
+      
+      - name: Build contracts
+        run: cargo build --target wasm32-unknown-unknown --release
+      
+      - name: Configure Soroban
+        run: |
+          soroban network add testnet \
+            --rpc-url ${{ env.SOROBAN_RPC_URL }} \
+            --network-passphrase "${{ env.SOROBAN_NETWORK_PASSPHRASE }}"
+      
+      - name: Deploy contracts
+        env:
+          DEPLOYER_SECRET: ${{ secrets.DEPLOYER_SECRET }}
+        run: |
+          if [ "${{ github.event.inputs.contract }}" = "all" ]; then
+            echo "Deploying all contracts..."
+            for contract in waste_token collector_registry collection_point waste_transaction payment_distribution reputation material_pricing; do
+              echo "Deploying $contract..."
+              soroban contract deploy \
+                --wasm target/wasm32-unknown-unknown/release/${contract}.wasm \
+                --source deployer \
+                --network testnet || true
+            done
+          else
+            echo "Deploying ${{ github.event.inputs.contract }}..."
+            soroban contract deploy \
+              --wasm target/wasm32-unknown-unknown/release/${{ github.event.inputs.contract }}.wasm \
+              --source deployer \
+              --network testnet
+          fi
