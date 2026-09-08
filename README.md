@@ -11,6 +11,7 @@ WasteFi is a mobile-first waste banking platform built on Stellar blockchain. Th
 ```
 wastefi-contracts/
 ├── contracts/
+│   ├── common/               # Shared types, errors, and interfaces
 │   ├── waste_token/          # Reward tokenomics
 │   ├── collector_registry/   # Collector identity management
 │   ├── collection_point/     # Collection point verification
@@ -137,11 +138,16 @@ Reputation → Update collector score
 
 ## Roadmap
 
-- [x] Phase 1: Project Setup
-- [ ] Phase 2: Core Contracts
-- [ ] Phase 3: Advanced Features
-- [ ] Phase 4: Security & Optimization
-- [ ] Phase 5: Testing & Deployment
+- [x] Phase 1: Project Setup (Commits 1-5)
+  - [x] Commit 1: Initial project setup
+  - [x] Commit 2: Core contract structure and interfaces
+  - [ ] Commit 3: Testing framework and CI/CD
+  - [ ] Commit 4: Development scripts and documentation
+  - [ ] Commit 5: Error handling and utilities
+- [ ] Phase 2: Core Contracts (Commits 6-12)
+- [ ] Phase 3: Advanced Features (Commits 13-18)
+- [ ] Phase 4: Security & Optimization (Commits 19-23)
+- [ ] Phase 5: Testing & Deployment (Commits 24-25)
 
 ## License
 

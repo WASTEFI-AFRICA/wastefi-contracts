@@ -1,6 +1,7 @@
 [workspace]
 resolver = "2"
 members = [
+    "contracts/common",
     "contracts/waste_token",
     "contracts/collector_registry",
     "contracts/collection_point",

@@ -1,15 +1,14 @@
 [package]
-name = "material_pricing"
+name = "common"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 
 [lib]
-crate-type = ["cdylib"]
+crate-type = ["lib"]
 
 [dependencies]
 soroban-sdk.workspace = true
-common = { path = "../common" }
 
 [dev-dependencies]
 soroban-sdk = { workspace = true, features = ["testutils"] }
