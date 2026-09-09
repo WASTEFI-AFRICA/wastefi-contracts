@@ -8,6 +8,7 @@ pub enum StorageKey {
     Admin,
     Initialized,
     Paused,
+    EmergencyLevel,
 
     // Collector registry keys
     Collector(Address),

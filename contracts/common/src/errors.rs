@@ -62,6 +62,13 @@ pub enum WasteFiError {
     NotAuthorizedOperator = 902,
     ContractPaused = 903,
 
+    // Emergency and security errors (950-999)
+    EmergencyActive = 950,
+    EmergencyShutdown = 951,
+    CircuitBreakerTripped = 952,
+    OperationThrottled = 953,
+    EmergencyWithdrawalNotEnabled = 954,
+
     // RecycleGraph errors (1000-1099)
     InvalidPassportId = 1000,
     PassportNotFound = 1001,

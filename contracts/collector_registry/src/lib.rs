@@ -355,6 +355,57 @@ impl CollectorRegistry {
         common::Pausable::get_pause_history(&env, limit)
     }
 
+    /// Trigger emergency (admin only)
+    ///
+    /// # Arguments
+    /// * `level` - Emergency level (0=Normal, 1=Warning, 2=Critical, 3=Shutdown)
+    /// * `reason` - Reason for emergency
+    pub fn trigger_emergency(env: Env, level: u32, reason: soroban_sdk::String) {
+        let admin = common::AccessControl::get_admin(&env).expect("Admin not found");
+
+        let emergency_level = match level {
+            0 => common::EmergencyLevel::Normal,
+            1 => common::EmergencyLevel::Warning,
+            2 => common::EmergencyLevel::Critical,
+            3 => common::EmergencyLevel::Shutdown,
+            _ => panic!("Invalid emergency level"),
+        };
+
+        common::Emergency::trigger(&env, &admin, emergency_level, reason)
+            .expect("Failed to trigger emergency");
+
+        common::bump_instance(&env);
+    }
+
+    /// Resolve emergency (admin only)
+    pub fn resolve_emergency(env: Env) {
+        let admin = common::AccessControl::get_admin(&env).expect("Admin not found");
+        common::Emergency::resolve(&env, &admin).expect("Failed to resolve emergency");
+        common::bump_instance(&env);
+    }
+
+    /// Get current emergency level
+    ///
+    /// # Returns
+    /// Emergency level (0=Normal, 1=Warning, 2=Critical, 3=Shutdown)
+    pub fn get_emergency_level(env: Env) -> u32 {
+        common::Emergency::get_level(&env) as u32
+    }
+
+    /// Get emergency event history
+    ///
+    /// # Arguments
+    /// * `limit` - Maximum number of events to return
+    ///
+    /// # Returns
+    /// Vector of (level, reason, triggered_by, timestamp, resolved) tuples
+    pub fn get_emergency_history(
+        env: Env,
+        limit: u32,
+    ) -> soroban_sdk::Vec<(u32, soroban_sdk::String, Address, u64, bool)> {
+        common::Emergency::get_event_history(&env, limit)
+    }
+
     /// Batch register multiple collectors (admin only)
     ///
     /// # Arguments

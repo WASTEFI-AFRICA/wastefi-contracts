@@ -2,6 +2,7 @@
 
 pub mod access_control;
 pub mod contract_registry;
+pub mod emergency;
 pub mod errors;
 pub mod events;
 pub mod interfaces;
@@ -15,6 +16,7 @@ pub mod test_utils;
 
 pub use access_control::*;
 pub use contract_registry::*;
+pub use emergency::*;
 pub use errors::*;
 pub use events::*;
 pub use interfaces::*;
