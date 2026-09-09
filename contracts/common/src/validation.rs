@@ -103,7 +103,7 @@ pub fn validate_status_transition(
         (CollectorStatus::Suspended, CollectorStatus::Banned) => Ok(()),
 
         // Invalid transitions
-        (CollectorStatus::Banned, _) => Err(WasteFiError::CollectorBanned),
+        (CollectorStatus::Banned, _) => Err(WasteFiError::CollectorSuspended),
         (current_status, new_status) if current_status == new_status => {
             Err(WasteFiError::InvalidCollectorStatus)
         }
@@ -125,9 +125,9 @@ pub fn validate_verification_transition(
 
         // Invalid transitions
         (current_status, new_status) if current_status == new_status => {
-            Err(WasteFiError::InvalidVerificationStatus)
+            Err(WasteFiError::InvalidInput)
         }
-        _ => Err(WasteFiError::InvalidVerificationStatus),
+        _ => Err(WasteFiError::InvalidInput),
     }
 }
 
@@ -135,8 +135,8 @@ pub fn validate_verification_transition(
 pub fn validate_transaction_processable(status: &TransactionStatus) -> Result<(), WasteFiError> {
     match status {
         TransactionStatus::Pending => Ok(()),
-        TransactionStatus::Completed => Err(WasteFiError::TransactionAlreadyCompleted),
-        TransactionStatus::Cancelled => Err(WasteFiError::TransactionCancelled),
+        TransactionStatus::Completed => Err(WasteFiError::InvalidTransactionStatus),
+        TransactionStatus::Cancelled => Err(WasteFiError::InvalidTransactionStatus),
         TransactionStatus::Disputed => Err(WasteFiError::InvalidTransactionStatus),
     }
 }
@@ -148,7 +148,7 @@ pub fn validate_payment_processable(status: &PaymentStatus) -> Result<(), WasteF
         PaymentStatus::Processing => Ok(()),
         PaymentStatus::Completed => Err(WasteFiError::PaymentAlreadyProcessed),
         PaymentStatus::Failed => Err(WasteFiError::PaymentFailed),
-        PaymentStatus::Refunded => Err(WasteFiError::InvalidPaymentStatus),
+        PaymentStatus::Refunded => Err(WasteFiError::PaymentFailed),
     }
 }
 

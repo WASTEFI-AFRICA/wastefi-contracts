@@ -1,6 +1,7 @@
 #![no_std]
 
 pub mod access_control;
+pub mod anti_fraud;
 pub mod contract_registry;
 pub mod emergency;
 pub mod errors;
@@ -15,6 +16,7 @@ pub mod validation;
 pub mod test_utils;
 
 pub use access_control::*;
+pub use anti_fraud::*;
 pub use contract_registry::*;
 pub use emergency::*;
 pub use errors::*;

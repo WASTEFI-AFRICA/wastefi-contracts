@@ -100,9 +100,48 @@ impl WasteTransaction {
         common::Initializable::require_initialized(&env).expect("Not initialized");
         common::Pausable::require_not_paused(&env).expect("Contract paused");
 
+        // Fraud detection checks
+        // 1. Check if collector is flagged for critical risk
+        common::FraudDetection::require_not_critical(&env, &collector)
+            .expect("Collector flagged for fraud");
+
+        // 2. Check rate limit: max 20 transactions per hour
+        common::RateLimit::check_per_hour(
+            &env,
+            soroban_sdk::String::from_str(&env, "record_collection"),
+            &collector,
+            20,
+        )
+        .expect("Rate limit exceeded");
+
+        // 3. Check for duplicate transaction (within 5 minutes)
+        common::DuplicateDetection::require_not_duplicate(
+            &env,
+            &collector,
+            weight,
+            material_type.clone() as u32,
+            300, // 5 minutes tolerance
+        )
+        .expect("Duplicate transaction detected");
+
         // Validate inputs
         common::validation::validate_weight_bounds(weight).expect("Invalid weight");
         common::validation::validate_price(price_per_kg).expect("Invalid price");
+
+        // Record for fraud detection
+        common::RateLimit::record(
+            &env,
+            soroban_sdk::String::from_str(&env, "record_collection"),
+            &collector,
+        );
+        common::DuplicateDetection::record_transaction(
+            &env,
+            &collector,
+            weight,
+            material_type.clone() as u32,
+        );
+        common::FraudDetection::record_transaction(&env, &collector);
+        common::FraudDetection::record_weight(&env, &collector, weight);
 
         // Calculate total amount: (weight in grams / 1000) * price_per_kg
         let weight_kg = (weight as i128) / 1000;
@@ -243,12 +282,18 @@ impl WasteTransaction {
         // Get transaction
         let mut record = read_transaction(&env, transaction_id).expect("Transaction not found");
 
+        // Record acceptance for fraud detection
+        common::FraudDetection::record_rejection(&env, &record.collector, false);
+
         // Update verification status
         record.verified = true;
         record.status = TransactionStatus::Completed;
 
         // Save updated record
         write_transaction(&env, transaction_id, &record);
+
+        // Update risk score after verification
+        common::FraudDetection::update_risk_score(&env, &record.collector);
 
         // Trigger reputation update if configured
         if let Some(_reputation_contract) = env
@@ -283,11 +328,24 @@ impl WasteTransaction {
         // Get transaction
         let mut record = read_transaction(&env, transaction_id).expect("Transaction not found");
 
+        // Record rejection if status is Disputed (rejected)
+        if matches!(status, TransactionStatus::Disputed) {
+            common::FraudDetection::record_rejection(&env, &record.collector, true);
+        }
+
         // Update status
-        record.status = status;
+        record.status = status.clone();
 
         // Save updated record
         write_transaction(&env, transaction_id, &record);
+
+        // Update risk score if disputed or cancelled
+        if matches!(
+            status,
+            TransactionStatus::Disputed | TransactionStatus::Cancelled
+        ) {
+            common::FraudDetection::update_risk_score(&env, &record.collector);
+        }
 
         // Bump storage
         common::bump_instance(&env);
@@ -702,5 +760,103 @@ impl WasteTransaction {
         }
 
         results
+    }
+
+    /// Get collector risk score
+    ///
+    /// # Arguments
+    /// * `collector` - Collector address
+    ///
+    /// # Returns
+    /// Risk score (0-1000)
+    pub fn get_risk_score(env: Env, collector: Address) -> u32 {
+        common::FraudDetection::calculate_risk_score(&env, &collector)
+    }
+
+    /// Get collector risk level
+    ///
+    /// # Arguments
+    /// * `collector` - Collector address
+    ///
+    /// # Returns
+    /// Risk level (0=Low, 1=Medium, 2=High, 3=Critical)
+    pub fn get_risk_level(env: Env, collector: Address) -> u32 {
+        common::FraudDetection::get_risk_level(&env, &collector) as u32
+    }
+
+    /// Check if collector is flagged for fraud
+    ///
+    /// # Arguments
+    /// * `collector` - Collector address
+    ///
+    /// # Returns
+    /// True if flagged
+    pub fn is_flagged(env: Env, collector: Address) -> bool {
+        common::FraudDetection::is_flagged(&env, &collector)
+    }
+
+    /// Flag collector for manual review (admin only)
+    ///
+    /// # Arguments
+    /// * `collector` - Collector address
+    /// * `reason` - Reason for flagging
+    pub fn flag_for_review(env: Env, collector: Address, reason: soroban_sdk::String) {
+        let admin = common::AccessControl::get_admin(&env).expect("Admin not found");
+        common::AccessControl::require_admin(&env, &admin).expect("Not admin");
+
+        common::FraudDetection::flag_for_review(&env, &collector, reason);
+        common::bump_instance(&env);
+    }
+
+    /// Clear fraud flag (admin only)
+    ///
+    /// # Arguments
+    /// * `collector` - Collector address
+    pub fn clear_fraud_flag(env: Env, collector: Address) {
+        let admin = common::AccessControl::get_admin(&env).expect("Admin not found");
+        common::AccessControl::require_admin(&env, &admin).expect("Not admin");
+
+        common::FraudDetection::clear_flag(&env, &collector);
+        common::bump_instance(&env);
+    }
+
+    /// Get fraud flag details
+    ///
+    /// # Arguments
+    /// * `collector` - Collector address
+    ///
+    /// # Returns
+    /// Option<(reason, timestamp)>
+    pub fn get_fraud_flag_details(
+        env: Env,
+        collector: Address,
+    ) -> Option<(soroban_sdk::String, u64)> {
+        common::FraudDetection::get_flag_details(&env, &collector)
+    }
+
+    /// Check rate limit quota for collector
+    ///
+    /// # Arguments
+    /// * `collector` - Collector address
+    ///
+    /// # Returns
+    /// Remaining quota for the hour
+    pub fn get_rate_limit_quota(env: Env, collector: Address) -> u32 {
+        common::RateLimit::get_remaining_quota(
+            &env,
+            soroban_sdk::String::from_str(&env, "record_collection"),
+            &collector,
+            20, // max 20 per hour
+            3600,
+        )
+    }
+
+    /// Update collector risk score (should be called after transaction verification)
+    ///
+    /// # Arguments
+    /// * `collector` - Collector address
+    pub fn update_risk_score(env: Env, collector: Address) {
+        common::FraudDetection::update_risk_score(&env, &collector);
+        common::bump_instance(&env);
     }
 }
