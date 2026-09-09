@@ -522,3 +522,120 @@ soroban contract invoke --id $WASTE_TOKEN -- balance \
 ```
 
 For more examples, see [DEVELOPMENT.md](DEVELOPMENT.md).
+
+---
+
+## Events
+
+All contracts emit events for significant state changes. Events enable off-chain indexing, monitoring, and real-time updates.
+
+### Event Structure
+
+Each event contains:
+- **Topics**: Short identifiers (symbols) for event type
+- **Data**: Event-specific data payload
+- **Metadata**: Ledger sequence, transaction hash, timestamp
+
+### Token Events
+
+**Emitted by**: `WasteToken`
+
+| Event | Symbol | Data Fields |
+|-------|--------|-------------|
+| Mint | `mint` | to: Address, amount: i128 |
+| Burn | `burn` | from: Address, amount: i128 |
+| Transfer | `transfer` | from: Address, to: Address, amount: i128 |
+
+### Collector Events
+
+**Emitted by**: `CollectorRegistry`
+
+| Event | Symbol | Data Fields |
+|-------|--------|-------------|
+| Registered | `reg` | collector: Address, name: String |
+| StatusUpdated | `status` | collector: Address, status: CollectorStatus |
+
+### Collection Point Events
+
+**Emitted by**: `CollectionPoint`
+
+| Event | Symbol | Data Fields |
+|-------|--------|-------------|
+| Registered | `pt_reg` | point_id: u64, owner: Address |
+| Verified | `pt_ver` | point_id: u64 |
+
+### Transaction Events
+
+**Emitted by**: `WasteTransaction`
+
+| Event | Symbol | Data Fields |
+|-------|--------|-------------|
+| Recorded | `tx_rec` | tx_id: u64, collector: Address, material: MaterialType, weight: u64 |
+| Verified | `tx_ver` | tx_id: u64 |
+| StatusChanged | `tx_stat` | tx_id: u64, status: TransactionStatus |
+
+### Payment Events
+
+**Emitted by**: `PaymentDistribution`
+
+| Event | Symbol | Data Fields |
+|-------|--------|-------------|
+| Created | `pay_new` | payment_id: u64, recipient: Address, amount: i128 |
+| Processed | `pay_proc` | payment_id: u64 |
+| Failed | `pay_fail` | payment_id: u64 |
+
+### Reputation Events
+
+**Emitted by**: `Reputation`
+
+| Event | Symbol | Data Fields |
+|-------|--------|-------------|
+| ScoreUpdated | `rep_upd` | collector: Address, old_score: u32, new_score: u32 |
+
+### Pricing Events
+
+**Emitted by**: `MaterialPricing`
+
+| Event | Symbol | Data Fields |
+|-------|--------|-------------|
+| PriceUpdated | `prc_upd` | material_type: MaterialType, price: i128 |
+
+### Admin Events
+
+**Emitted by**: All contracts
+
+| Event | Symbol | Data Fields |
+|-------|--------|-------------|
+| AdminChanged | `adm_chg` | old_admin: Address, new_admin: Address |
+| Paused | `paused` | (none) |
+| Unpaused | `unpaused` | (none) |
+
+### Event Indexing
+
+For detailed information on indexing events for dashboards, notifications, and analytics, see:
+- [Event Indexing Guide](./EVENT_INDEXING.md)
+- [Event Indexer Reference Implementation](../tools/event-indexer/)
+
+### Example: Subscribing to Events
+
+```typescript
+import { SorobanRpc } from '@stellar/stellar-sdk';
+
+const server = new SorobanRpc.Server('https://soroban-testnet.stellar.org');
+
+// Get events from a contract
+const events = await server.getEvents({
+  startLedger: 100000,
+  filters: [{
+    contractIds: ['CA7Q...'], // WasteToken contract
+    topics: [['mint']]
+  }]
+});
+
+// Process events
+for (const event of events.events) {
+  console.log('Mint event:', event.value);
+}
+```
+
+For complete event handling examples, see the [Event Indexing documentation](./EVENT_INDEXING.md).
