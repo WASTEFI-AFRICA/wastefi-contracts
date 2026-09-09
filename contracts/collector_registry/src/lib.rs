@@ -272,6 +272,89 @@ impl CollectorRegistry {
         common::AccessControl::get_admin(&env).expect("Admin not found")
     }
 
+    /// Add operator (admin only)
+    ///
+    /// # Arguments
+    /// * `operator` - Address to grant operator role
+    pub fn add_operator(env: Env, operator: Address) {
+        let admin = common::AccessControl::get_admin(&env).expect("Admin not found");
+        common::AccessControl::require_admin(&env, &admin).expect("Not admin");
+
+        common::AccessControl::add_operator(&env, operator.clone());
+
+        // Log action
+        common::AccessControl::log_admin_action(
+            &env,
+            &admin,
+            soroban_sdk::String::from_str(&env, "add_operator"),
+            Some(operator.to_string()),
+        );
+
+        common::bump_instance(&env);
+    }
+
+    /// Remove operator (admin only)
+    ///
+    /// # Arguments
+    /// * `operator` - Address to revoke operator role
+    pub fn remove_operator(env: Env, operator: Address) {
+        let admin = common::AccessControl::get_admin(&env).expect("Admin not found");
+        common::AccessControl::require_admin(&env, &admin).expect("Not admin");
+
+        common::AccessControl::remove_operator(&env, &operator);
+
+        // Log action
+        common::AccessControl::log_admin_action(
+            &env,
+            &admin,
+            soroban_sdk::String::from_str(&env, "remove_operator"),
+            Some(operator.to_string()),
+        );
+
+        common::bump_instance(&env);
+    }
+
+    /// Check if address is operator
+    ///
+    /// # Arguments
+    /// * `address` - Address to check
+    ///
+    /// # Returns
+    /// True if address has operator role
+    pub fn is_operator(env: Env, address: Address) -> bool {
+        common::AccessControl::is_operator(&env, &address)
+    }
+
+    /// Get recent admin actions (audit log)
+    ///
+    /// # Arguments
+    /// * `limit` - Maximum number of actions to return (max 50)
+    ///
+    /// # Returns
+    /// Vector of (admin_address, action, timestamp, target) tuples
+    pub fn get_admin_actions(
+        env: Env,
+        limit: u32,
+    ) -> soroban_sdk::Vec<(
+        Address,
+        soroban_sdk::String,
+        u64,
+        Option<soroban_sdk::String>,
+    )> {
+        common::AccessControl::get_admin_actions(&env, limit)
+    }
+
+    /// Get pause history
+    ///
+    /// # Arguments
+    /// * `limit` - Maximum number of events to return
+    ///
+    /// # Returns
+    /// Vector of (action, timestamp) tuples
+    pub fn get_pause_history(env: Env, limit: u32) -> soroban_sdk::Vec<(soroban_sdk::String, u64)> {
+        common::Pausable::get_pause_history(&env, limit)
+    }
+
     /// Batch register multiple collectors (admin only)
     ///
     /// # Arguments
