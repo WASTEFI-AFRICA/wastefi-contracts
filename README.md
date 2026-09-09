@@ -154,15 +154,21 @@ Reputation → Update collector score
   - [x] Commit 3: Testing framework and CI/CD
   - [x] Commit 4: Development scripts and documentation
   - [x] Commit 5: Error handling and utilities
-- [ ] Phase 2: Core Contracts (Commits 6-12)
-  - [ ] Commit 6: WasteToken contract
-  - [ ] Commit 7: Collector registry contract
-  - [ ] Commit 8: Collection point contract
-  - [ ] Commit 9: Waste transaction contract
-  - [ ] Commit 10: Payment distribution contract
-  - [ ] Commit 11: Reputation contract
-  - [ ] Commit 12: Material pricing contract
+- [x] Phase 2: Core Contracts (Commits 6-12) ✅
+  - [x] Commit 6: WasteToken contract
+  - [x] Commit 7: Collector registry contract
+  - [x] Commit 8: Collection point contract
+  - [x] Commit 9: Waste transaction contract
+  - [x] Commit 10: Payment distribution contract
+  - [x] Commit 11: Reputation contract
+  - [x] Commit 12: Material pricing contract
 - [ ] Phase 3: Advanced Features (Commits 13-18)
+  - [ ] Commit 13: Integration testing suite
+  - [ ] Commit 14: Cross-contract interactions
+  - [ ] Commit 15: Batch operations and optimizations
+  - [ ] Commit 16: Advanced query functions
+  - [ ] Commit 17: Event indexing utilities
+  - [ ] Commit 18: Admin management improvements
 - [ ] Phase 4: Security & Optimization (Commits 19-23)
 - [ ] Phase 5: Testing & Deployment (Commits 24-25)
 

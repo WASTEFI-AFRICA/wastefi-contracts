@@ -19,6 +19,26 @@ rust-version = "1.79.0"
 [workspace.dependencies]
 soroban-sdk = { version = "21.7.7", default-features = false, features = ["alloc"] }
 
+# Package section for integration tests
+[package]
+name = "wastefi-contracts"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.79.0"
+
+[dependencies]
+
+[dev-dependencies]
+soroban-sdk = { version = "21.7.7", features = ["testutils"] }
+common = { path = "contracts/common" }
+waste_token = { path = "contracts/waste_token" }
+collector_registry = { path = "contracts/collector_registry" }
+collection_point = { path = "contracts/collection_point" }
+waste_transaction = { path = "contracts/waste_transaction" }
+payment_distribution = { path = "contracts/payment_distribution" }
+reputation = { path = "contracts/reputation" }
+material_pricing = { path = "contracts/material_pricing" }
+
 [profile.release]
 opt-level = "z"
 overflow-checks = true
