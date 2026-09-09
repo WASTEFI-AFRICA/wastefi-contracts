@@ -17,7 +17,7 @@ edition = "2021"
 rust-version = "1.79.0"
 
 [workspace.dependencies]
-soroban-sdk = { version = "21.7.7", default-features = false, features = ["alloc"] }
+soroban-sdk = { version = "27.0.6", default-features = false, features = ["alloc"] }
 
 # Package section for integration tests
 [package]
