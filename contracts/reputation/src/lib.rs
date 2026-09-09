@@ -373,4 +373,121 @@ impl Reputation {
             score_record.disputed_transactions,
         )
     }
+
+    /// Get collectors by score range (leaderboard support)
+    ///
+    /// # Arguments
+    /// * `_min_score` - Minimum score (inclusive) - placeholder
+    /// * `_max_score` - Maximum score (inclusive) - placeholder
+    /// * `_limit` - Maximum results (max 50) - placeholder
+    ///
+    /// # Returns
+    /// Vector of ReputationScore records within the range
+    ///
+    /// # Note
+    /// This is a placeholder. Real implementation needs indexed storage.
+    pub fn get_collectors_by_score_range(
+        env: Env,
+        _min_score: u32,
+        _max_score: u32,
+        _limit: u64,
+    ) -> soroban_sdk::Vec<ReputationScore> {
+        let results = soroban_sdk::Vec::new(&env);
+
+        // Note: This is a placeholder. Real implementation would need
+        // a way to iterate through all reputation records in storage.
+        // For now, returning empty vector as we don't have an index of all collectors.
+
+        results
+    }
+
+    /// Get average reputation score
+    ///
+    /// # Returns
+    /// Average score across all collectors (u32)
+    ///
+    /// # Note
+    /// This is a placeholder. Real implementation would iterate all scores.
+    pub fn get_average_score(_env: Env) -> u32 {
+        // Placeholder: would need index of all reputation records
+        500 // Return neutral score as placeholder
+    }
+
+    /// Get success rate for a collector
+    ///
+    /// # Arguments
+    /// * `collector` - Collector address
+    ///
+    /// # Returns
+    /// Success rate as percentage (0-100)
+    pub fn get_success_rate(env: Env, collector: Address) -> u32 {
+        let score_record = Self::get_score(env, collector);
+
+        if score_record.total_transactions == 0 {
+            return 0;
+        }
+
+        let rate = (score_record.successful_transactions as f64
+            / score_record.total_transactions as f64)
+            * 100.0;
+
+        rate as u32
+    }
+
+    /// Check if collector meets minimum reputation threshold
+    ///
+    /// # Arguments
+    /// * `collector` - Collector address
+    /// * `threshold` - Minimum score required
+    ///
+    /// # Returns
+    /// True if collector meets or exceeds threshold
+    pub fn meets_threshold(env: Env, collector: Address, threshold: u32) -> bool {
+        let score_record = Self::get_score(env, collector);
+        score_record.score >= threshold
+    }
+
+    /// Get reputation tier for a collector
+    ///
+    /// # Arguments
+    /// * `collector` - Collector address
+    ///
+    /// # Returns
+    /// Tier number: 1 (Bronze: 0-400), 2 (Silver: 401-700), 3 (Gold: 701-900), 4 (Platinum: 901-1000)
+    pub fn get_reputation_tier(env: Env, collector: Address) -> u32 {
+        let score_record = Self::get_score(env, collector);
+
+        match score_record.score {
+            0..=400 => 1,    // Bronze
+            401..=700 => 2,  // Silver
+            701..=900 => 3,  // Gold
+            901..=1000 => 4, // Platinum
+            _ => 1,          // Default to Bronze
+        }
+    }
+
+    /// Get detailed reputation breakdown
+    ///
+    /// # Arguments
+    /// * `collector` - Collector address
+    ///
+    /// # Returns
+    /// Tuple of (score, tier, success_rate, total_tx, successful_tx, disputed_tx)
+    pub fn get_reputation_breakdown(
+        env: Env,
+        collector: Address,
+    ) -> (u32, u32, u32, u64, u64, u64) {
+        let score_record = Self::get_score(env.clone(), collector.clone());
+        let tier = Self::get_reputation_tier(env.clone(), collector.clone());
+        let success_rate = Self::get_success_rate(env, collector);
+
+        (
+            score_record.score,
+            tier,
+            success_rate,
+            score_record.total_transactions,
+            score_record.successful_transactions,
+            score_record.disputed_transactions,
+        )
+    }
 }

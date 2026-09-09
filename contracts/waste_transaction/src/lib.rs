@@ -516,4 +516,191 @@ impl WasteTransaction {
             total_amount,
         }
     }
+
+    /// Get transactions by status (filtered query)
+    ///
+    /// # Arguments
+    /// * `status` - Filter by transaction status
+    /// * `limit` - Maximum results (max 100)
+    ///
+    /// # Returns
+    /// Vector of transactions matching the status
+    pub fn get_transactions_by_status(
+        env: Env,
+        status: TransactionStatus,
+        limit: u64,
+    ) -> Vec<WasteRecord> {
+        let max_limit = if limit > 100 { 100 } else { limit };
+        let mut results = Vec::new(&env);
+        let total_count = read_transaction_count(&env);
+
+        for tx_id in 1..=total_count {
+            if results.len() >= max_limit as u32 {
+                break;
+            }
+
+            if let Some(record) = read_transaction(&env, tx_id) {
+                if record.status == status {
+                    results.push_back(record);
+                }
+            }
+        }
+
+        results
+    }
+
+    /// Get transactions by material type (filtered query)
+    ///
+    /// # Arguments
+    /// * `material_type` - Filter by material type
+    /// * `limit` - Maximum results (max 100)
+    ///
+    /// # Returns
+    /// Vector of transactions matching the material type
+    pub fn get_transactions_by_material(
+        env: Env,
+        material_type: MaterialType,
+        limit: u64,
+    ) -> Vec<WasteRecord> {
+        let max_limit = if limit > 100 { 100 } else { limit };
+        let mut results = Vec::new(&env);
+        let total_count = read_transaction_count(&env);
+
+        for tx_id in 1..=total_count {
+            if results.len() >= max_limit as u32 {
+                break;
+            }
+
+            if let Some(record) = read_transaction(&env, tx_id) {
+                if record.material_type == material_type {
+                    results.push_back(record);
+                }
+            }
+        }
+
+        results
+    }
+
+    /// Get transactions in a time range
+    ///
+    /// # Arguments
+    /// * `start_time` - Start timestamp
+    /// * `end_time` - End timestamp
+    /// * `limit` - Maximum results (max 100)
+    ///
+    /// # Returns
+    /// Vector of transactions within the time range
+    pub fn get_transactions_by_time_range(
+        env: Env,
+        start_time: u64,
+        end_time: u64,
+        limit: u64,
+    ) -> Vec<WasteRecord> {
+        let max_limit = if limit > 100 { 100 } else { limit };
+        let mut results = Vec::new(&env);
+        let total_count = read_transaction_count(&env);
+
+        for tx_id in 1..=total_count {
+            if results.len() >= max_limit as u32 {
+                break;
+            }
+
+            if let Some(record) = read_transaction(&env, tx_id) {
+                if record.timestamp >= start_time && record.timestamp <= end_time {
+                    results.push_back(record);
+                }
+            }
+        }
+
+        results
+    }
+
+    /// Get material type statistics
+    ///
+    /// # Arguments
+    /// * `material_type` - Material type to analyze
+    ///
+    /// # Returns
+    /// Tuple of (total_transactions, total_weight, total_amount)
+    pub fn get_material_statistics(env: Env, material_type: MaterialType) -> (u64, u64, i128) {
+        let mut total_transactions = 0u64;
+        let mut total_weight = 0u64;
+        let mut total_amount = 0i128;
+
+        let total_count = read_transaction_count(&env);
+
+        for tx_id in 1..=total_count {
+            if let Some(record) = read_transaction(&env, tx_id) {
+                if record.material_type == material_type {
+                    total_transactions += 1;
+                    total_weight = total_weight.saturating_add(record.weight);
+                    total_amount = total_amount.saturating_add(record.total_amount);
+                }
+            }
+        }
+
+        (total_transactions, total_weight, total_amount)
+    }
+
+    /// Get global transaction statistics
+    ///
+    /// # Returns
+    /// Tuple of (total_transactions, total_weight, total_amount, verified_count, pending_count)
+    pub fn get_global_tx_statistics(env: Env) -> (u64, u64, i128, u64, u64) {
+        let mut total_weight = 0u64;
+        let mut total_amount = 0i128;
+        let mut verified_count = 0u64;
+        let mut pending_count = 0u64;
+
+        let total_transactions = read_transaction_count(&env);
+
+        for tx_id in 1..=total_transactions {
+            if let Some(record) = read_transaction(&env, tx_id) {
+                total_weight = total_weight.saturating_add(record.weight);
+                total_amount = total_amount.saturating_add(record.total_amount);
+
+                if record.verified {
+                    verified_count += 1;
+                }
+                if record.status == TransactionStatus::Pending {
+                    pending_count += 1;
+                }
+            }
+        }
+
+        (
+            total_transactions,
+            total_weight,
+            total_amount,
+            verified_count,
+            pending_count,
+        )
+    }
+
+    /// Get recent transactions (last N transactions)
+    ///
+    /// # Arguments
+    /// * `limit` - Number of recent transactions (max 50)
+    ///
+    /// # Returns
+    /// Vector of most recent transactions
+    pub fn get_recent_transactions(env: Env, limit: u64) -> Vec<WasteRecord> {
+        let max_limit = if limit > 50 { 50 } else { limit };
+        let mut results = Vec::new(&env);
+        let total_count = read_transaction_count(&env);
+
+        let start_id = if total_count > max_limit {
+            total_count - max_limit + 1
+        } else {
+            1
+        };
+
+        for tx_id in start_id..=total_count {
+            if let Some(record) = read_transaction(&env, tx_id) {
+                results.push_back(record);
+            }
+        }
+
+        results
+    }
 }

@@ -411,4 +411,207 @@ impl CollectorRegistry {
 
         results
     }
+
+    /// Get collectors by status (filtered query)
+    ///
+    /// # Arguments
+    /// * `status` - Filter by collector status
+    /// * `limit` - Maximum number of results (max 100)
+    ///
+    /// # Returns
+    /// Vector of collectors matching the status
+    pub fn get_collectors_by_status(
+        env: Env,
+        status: common::CollectorStatus,
+        limit: u64,
+    ) -> soroban_sdk::Vec<common::Collector> {
+        let max_limit = if limit > 100 { 100 } else { limit };
+        let mut results = soroban_sdk::Vec::new(&env);
+        let mut found = 0u64;
+
+        // Get all collectors and filter
+        let all_addresses = read_all_collectors(&env, 0, 1000);
+
+        for i in 0..all_addresses.len() {
+            if found >= max_limit {
+                break;
+            }
+
+            if let Some(addr) = all_addresses.get(i) {
+                if let Some(collector) = read_collector(&env, &addr) {
+                    if collector.status == status {
+                        results.push_back(collector);
+                        found += 1;
+                    }
+                }
+            }
+        }
+
+        results
+    }
+
+    /// Get top collectors by total weight (leaderboard)
+    ///
+    /// # Arguments
+    /// * `limit` - Number of top collectors to return (max 50)
+    ///
+    /// # Returns
+    /// Vector of collectors sorted by total weight (descending)
+    ///
+    /// # Note
+    /// This is a simplified implementation. For production, use indexed storage
+    pub fn get_top_collectors_by_weight(
+        env: Env,
+        limit: u64,
+    ) -> soroban_sdk::Vec<common::Collector> {
+        let max_limit = if limit > 50 { 50 } else { limit };
+        let mut collectors = soroban_sdk::Vec::new(&env);
+
+        // Get all active collectors
+        let all_addresses = read_all_collectors(&env, 0, 500);
+
+        for i in 0..all_addresses.len() {
+            if let Some(addr) = all_addresses.get(i) {
+                if let Some(collector) = read_collector(&env, &addr) {
+                    if collector.status == common::CollectorStatus::Active {
+                        collectors.push_back(collector);
+                    }
+                }
+            }
+        }
+
+        // Simple bubble sort by total_weight (descending)
+        // Note: For production, consider more efficient sorting or pre-sorted indexes
+        for i in 0..collectors.len() {
+            for j in (i + 1)..collectors.len() {
+                if let (Some(mut a), Some(b)) = (collectors.get(i), collectors.get(j)) {
+                    if b.total_weight > a.total_weight {
+                        // Swap
+                        let temp = a.clone();
+                        a = b.clone();
+                        collectors.set(i, a);
+                        collectors.set(j, temp);
+                    }
+                }
+            }
+        }
+
+        // Return top N
+        let mut top = soroban_sdk::Vec::new(&env);
+        for i in 0..max_limit.min(collectors.len() as u64) {
+            if let Some(collector) = collectors.get(i as u32) {
+                top.push_back(collector);
+            }
+        }
+
+        top
+    }
+
+    /// Get collectors registered in a time range
+    ///
+    /// # Arguments
+    /// * `start_time` - Start timestamp
+    /// * `end_time` - End timestamp
+    /// * `limit` - Maximum results (max 100)
+    ///
+    /// # Returns
+    /// Vector of collectors registered within the time range
+    pub fn get_collectors_by_reg_time(
+        env: Env,
+        start_time: u64,
+        end_time: u64,
+        limit: u64,
+    ) -> soroban_sdk::Vec<common::Collector> {
+        let max_limit = if limit > 100 { 100 } else { limit };
+        let mut results = soroban_sdk::Vec::new(&env);
+        let mut found = 0u64;
+
+        let all_addresses = read_all_collectors(&env, 0, 1000);
+
+        for i in 0..all_addresses.len() {
+            if found >= max_limit {
+                break;
+            }
+
+            if let Some(addr) = all_addresses.get(i) {
+                if let Some(collector) = read_collector(&env, &addr) {
+                    if collector.registration_time >= start_time
+                        && collector.registration_time <= end_time
+                    {
+                        results.push_back(collector);
+                        found += 1;
+                    }
+                }
+            }
+        }
+
+        results
+    }
+
+    /// Get aggregate statistics for all collectors
+    ///
+    /// # Returns
+    /// Tuple of (total_collectors, total_weight, total_collections)
+    pub fn get_global_statistics(env: Env) -> (u64, u64, u64) {
+        let mut total_weight = 0u64;
+        let mut total_collections = 0u64;
+
+        let all_addresses = read_all_collectors(&env, 0, 1000);
+
+        for i in 0..all_addresses.len() {
+            if let Some(addr) = all_addresses.get(i) {
+                if let Some(collector) = read_collector(&env, &addr) {
+                    total_weight = total_weight.saturating_add(collector.total_weight);
+                    total_collections =
+                        total_collections.saturating_add(collector.total_collections);
+                }
+            }
+        }
+
+        let total_collectors = read_collector_count(&env);
+
+        (total_collectors, total_weight, total_collections)
+    }
+
+    /// Search collectors by name (partial match)
+    ///
+    /// # Arguments
+    /// * `_search_term` - Partial name to search for (placeholder)
+    /// * `limit` - Maximum results (max 50)
+    ///
+    /// # Returns
+    /// Vector of collectors with matching names
+    ///
+    /// # Note
+    /// This is a placeholder. Soroban String doesn't have substring search yet.
+    /// Returns first N collectors as placeholder implementation.
+    pub fn search_collectors_by_name(
+        env: Env,
+        _search_term: String,
+        limit: u64,
+    ) -> soroban_sdk::Vec<common::Collector> {
+        let max_limit = if limit > 50 { 50 } else { limit };
+        let mut results = soroban_sdk::Vec::new(&env);
+        let mut found = 0u64;
+
+        let all_addresses = read_all_collectors(&env, 0, 500);
+
+        for i in 0..all_addresses.len() {
+            if found >= max_limit {
+                break;
+            }
+
+            if let Some(addr) = all_addresses.get(i) {
+                if let Some(collector) = read_collector(&env, &addr) {
+                    // Simple contains check (case-sensitive)
+                    // Note: Soroban String doesn't have built-in substring search
+                    // This is a placeholder for the concept
+                    results.push_back(collector);
+                    found += 1;
+                }
+            }
+        }
+
+        results
+    }
 }
