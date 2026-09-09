@@ -364,4 +364,156 @@ impl WasteTransaction {
     pub fn admin(env: Env) -> Address {
         common::AccessControl::get_admin(&env).expect("Admin not found")
     }
+
+    /// Batch record multiple waste collections
+    ///
+    /// # Arguments
+    /// * `collections` - Vector of (collector, collection_point, material_type, weight, price_per_kg) tuples
+    ///
+    /// # Returns
+    /// Vector of transaction IDs
+    pub fn batch_record_collections(
+        env: Env,
+        collections: Vec<(Address, Address, MaterialType, u64, i128)>,
+    ) -> Vec<u64> {
+        common::Initializable::require_initialized(&env).expect("Not initialized");
+        common::Pausable::require_not_paused(&env).expect("Contract paused");
+
+        let mut transaction_ids = Vec::new(&env);
+
+        for i in 0..collections.len() {
+            if let Some((collector, collection_point, material_type, weight, price_per_kg)) =
+                collections.get(i)
+            {
+                // Validate inputs
+                if common::validation::validate_weight_bounds(weight).is_err()
+                    || common::validation::validate_price(price_per_kg).is_err()
+                {
+                    continue;
+                }
+
+                // Calculate total amount
+                let weight_kg = (weight as i128) / 1000;
+                let total_amount = weight_kg.saturating_mul(price_per_kg);
+
+                // Get next transaction ID
+                let transaction_id = increment_transaction_count(&env);
+
+                // Create transaction record
+                let record = WasteRecord {
+                    id: transaction_id,
+                    collector: collector.clone(),
+                    collection_point: collection_point.clone(),
+                    material_type: material_type.clone(),
+                    weight,
+                    price_per_kg,
+                    total_amount,
+                    status: TransactionStatus::Pending,
+                    timestamp: env.ledger().timestamp(),
+                    verified: false,
+                };
+
+                // Store transaction
+                write_transaction(&env, transaction_id, &record);
+
+                // Index by collector
+                add_collector_transaction(&env, &collector, transaction_id);
+
+                // Emit event
+                common::TransactionEvents::recorded(
+                    &env,
+                    transaction_id,
+                    collector,
+                    material_type,
+                    weight,
+                );
+
+                transaction_ids.push_back(transaction_id);
+            }
+        }
+
+        // Bump storage
+        common::bump_instance(&env);
+
+        transaction_ids
+    }
+
+    /// Batch verify multiple transactions (admin only)
+    ///
+    /// # Arguments
+    /// * `transaction_ids` - Vector of transaction IDs to verify
+    ///
+    /// # Returns
+    /// Number of transactions successfully verified
+    pub fn batch_verify_transactions(env: Env, transaction_ids: Vec<u64>) -> u32 {
+        common::Initializable::require_initialized(&env).expect("Not initialized");
+
+        // Get admin and verify
+        let admin = common::AccessControl::get_admin(&env).expect("Admin not found");
+        common::AccessControl::require_admin(&env, &admin).expect("Not admin");
+
+        let mut verified_count = 0u32;
+
+        for i in 0..transaction_ids.len() {
+            if let Some(transaction_id) = transaction_ids.get(i) {
+                // Get transaction
+                if let Some(mut record) = read_transaction(&env, transaction_id) {
+                    // Update verification status
+                    record.verified = true;
+                    record.status = TransactionStatus::Completed;
+
+                    // Save updated record
+                    write_transaction(&env, transaction_id, &record);
+
+                    // Emit event
+                    common::TransactionEvents::verified(&env, transaction_id);
+
+                    verified_count += 1;
+                }
+            }
+        }
+
+        // Bump storage
+        common::bump_instance(&env);
+
+        verified_count
+    }
+
+    /// Get multiple transactions at once (optimized batch query)
+    ///
+    /// # Arguments
+    /// * `transaction_ids` - Vector of transaction IDs
+    ///
+    /// # Returns
+    /// Vector of transaction records (None for non-existent transactions)
+    pub fn get_transactions_batch(env: Env, transaction_ids: Vec<u64>) -> Vec<Option<WasteRecord>> {
+        let mut results = Vec::new(&env);
+
+        for i in 0..transaction_ids.len() {
+            if let Some(tx_id) = transaction_ids.get(i) {
+                let record = read_transaction(&env, tx_id);
+                results.push_back(record);
+            }
+        }
+
+        results
+    }
+
+    /// Get collector statistics (convenience method)
+    ///
+    /// # Arguments
+    /// * `collector` - Collector address
+    ///
+    /// # Returns
+    /// CollectorStats struct
+    pub fn get_collector_statistics(env: Env, collector: Address) -> CollectorStats {
+        let (total_transactions, total_weight, total_amount) =
+            Self::get_collector_stats(env, collector);
+
+        CollectorStats {
+            total_transactions,
+            total_weight,
+            total_amount,
+        }
+    }
 }

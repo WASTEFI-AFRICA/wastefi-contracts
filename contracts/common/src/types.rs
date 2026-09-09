@@ -161,3 +161,12 @@ pub struct MaterialPassport {
     pub chain_of_custody: Vec<Address>,
     pub created_at: u64,
 }
+
+/// Collector statistics summary
+#[contracttype]
+#[derive(Clone, Debug)]
+pub struct CollectorStats {
+    pub total_transactions: u64,
+    pub total_weight: u64,  // in grams
+    pub total_amount: i128, // in stroops
+}

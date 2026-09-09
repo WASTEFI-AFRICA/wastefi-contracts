@@ -256,4 +256,121 @@ impl Reputation {
     pub fn admin(env: Env) -> Address {
         common::AccessControl::get_admin(&env).expect("Admin not found")
     }
+
+    /// Batch update reputation scores for multiple collectors
+    ///
+    /// # Arguments
+    /// * `updates` - Vector of (collector, transaction_successful) tuples
+    ///
+    /// # Returns
+    /// Number of scores successfully updated
+    pub fn batch_update_scores(env: Env, updates: soroban_sdk::Vec<(Address, bool)>) -> u32 {
+        common::Initializable::require_initialized(&env).expect("Not initialized");
+        common::Pausable::require_not_paused(&env).expect("Contract paused");
+
+        // Get admin and verify
+        let admin = common::AccessControl::get_admin(&env).expect("Admin not found");
+        common::AccessControl::require_admin(&env, &admin).expect("Not admin");
+
+        let mut updated_count = 0u32;
+
+        for i in 0..updates.len() {
+            if let Some((collector, transaction_successful)) = updates.get(i) {
+                // Get or create reputation score
+                let key = common::StorageKey::Reputation(collector.clone());
+                let mut score: ReputationScore =
+                    env.storage()
+                        .persistent()
+                        .get(&key)
+                        .unwrap_or(ReputationScore {
+                            collector: collector.clone(),
+                            score: 500,
+                            total_transactions: 0,
+                            successful_transactions: 0,
+                            disputed_transactions: 0,
+                            last_updated: env.ledger().timestamp(),
+                        });
+
+                // Update transaction counts
+                score.total_transactions += 1;
+                if transaction_successful {
+                    score.successful_transactions += 1;
+                } else {
+                    score.disputed_transactions += 1;
+                }
+
+                // Calculate new score
+                let old_score = score.score;
+                score.score = Self::calculate_score_internal(&score);
+                score.last_updated = env.ledger().timestamp();
+
+                // Save updated score
+                env.storage().persistent().set(&key, &score);
+                common::bump_persistent(&env, &key);
+
+                // Emit event
+                common::ReputationEvents::score_updated(&env, collector, old_score, score.score);
+
+                updated_count += 1;
+            }
+        }
+
+        // Bump storage
+        common::bump_instance(&env);
+
+        updated_count
+    }
+
+    /// Get reputation scores for multiple collectors (optimized batch query)
+    ///
+    /// # Arguments
+    /// * `collectors` - Vector of collector addresses
+    ///
+    /// # Returns
+    /// Vector of reputation scores
+    pub fn get_scores_batch(
+        env: Env,
+        collectors: soroban_sdk::Vec<Address>,
+    ) -> soroban_sdk::Vec<ReputationScore> {
+        let mut results = soroban_sdk::Vec::new(&env);
+
+        for i in 0..collectors.len() {
+            if let Some(collector) = collectors.get(i) {
+                let score = Self::get_score(env.clone(), collector);
+                results.push_back(score);
+            }
+        }
+
+        results
+    }
+
+    /// Record transaction status for reputation tracking
+    ///
+    /// # Arguments
+    /// * `collector` - Collector address
+    /// * `status` - Transaction status
+    ///
+    /// # Note
+    /// This is a convenience method that maps TransactionStatus to boolean
+    pub fn record_transaction(env: Env, collector: Address, status: TransactionStatus) {
+        let transaction_successful = status == TransactionStatus::Completed;
+        Self::update_score(env, collector, transaction_successful);
+    }
+
+    /// Get collector statistics
+    ///
+    /// # Arguments
+    /// * `collector` - Collector address
+    ///
+    /// # Returns
+    /// Tuple of (score, total_transactions, successful_transactions, disputed_transactions)
+    pub fn get_statistics(env: Env, collector: Address) -> (u32, u64, u64, u64) {
+        let score_record = Self::get_score(env, collector);
+        (
+            score_record.score,
+            score_record.total_transactions,
+            score_record.successful_transactions,
+            score_record.disputed_transactions,
+        )
+    }
 }

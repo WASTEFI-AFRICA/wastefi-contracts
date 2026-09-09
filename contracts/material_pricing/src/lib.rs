@@ -246,4 +246,47 @@ impl MaterialPricing {
     pub fn admin(env: Env) -> Address {
         common::AccessControl::get_admin(&env).expect("Admin not found")
     }
+
+    /// Get prices for multiple material types (optimized batch query)
+    ///
+    /// # Arguments
+    /// * `material_types` - Vector of material types
+    ///
+    /// # Returns
+    /// Vector of prices (in same order as input)
+    pub fn get_prices_batch(env: Env, material_types: Vec<MaterialType>) -> Vec<i128> {
+        let mut prices = Vec::new(&env);
+
+        for i in 0..material_types.len() {
+            if let Some(material_type) = material_types.get(i) {
+                let price = Self::get_price(env.clone(), material_type);
+                prices.push_back(price);
+            }
+        }
+
+        prices
+    }
+
+    /// Get price records for multiple material types (optimized batch query with metadata)
+    ///
+    /// # Arguments
+    /// * `material_types` - Vector of material types
+    ///
+    /// # Returns
+    /// Vector of MaterialPrice records
+    pub fn get_price_records_batch(
+        env: Env,
+        material_types: Vec<MaterialType>,
+    ) -> Vec<MaterialPrice> {
+        let mut records = Vec::new(&env);
+
+        for i in 0..material_types.len() {
+            if let Some(material_type) = material_types.get(i) {
+                let record = Self::get_price_record(env.clone(), material_type);
+                records.push_back(record);
+            }
+        }
+
+        records
+    }
 }

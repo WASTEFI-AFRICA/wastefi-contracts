@@ -271,4 +271,144 @@ impl CollectorRegistry {
     pub fn admin(env: Env) -> Address {
         common::AccessControl::get_admin(&env).expect("Admin not found")
     }
+
+    /// Batch register multiple collectors (admin only)
+    ///
+    /// # Arguments
+    /// * `collectors` - Vector of (address, name, phone) tuples
+    ///
+    /// # Returns
+    /// Number of collectors successfully registered
+    pub fn batch_register(
+        env: Env,
+        collectors: soroban_sdk::Vec<(Address, String, String)>,
+    ) -> u32 {
+        common::Initializable::require_initialized(&env).expect("Not initialized");
+        common::Pausable::require_not_paused(&env).expect("Contract paused");
+
+        // Verify admin
+        let admin = common::AccessControl::get_admin(&env).expect("Admin not found");
+        common::AccessControl::require_admin(&env, &admin).expect("Not admin");
+
+        let mut registered_count = 0u32;
+
+        for i in 0..collectors.len() {
+            if let Some((collector, name, phone)) = collectors.get(i) {
+                // Skip if already registered
+                if has_collector(&env, &collector) {
+                    continue;
+                }
+
+                // Validate inputs
+                if common::validation::validate_collector_name(&name).is_err()
+                    || common::validation::validate_phone_number(&phone).is_err()
+                {
+                    continue;
+                }
+
+                // Create collector profile
+                let collector_data = common::Collector {
+                    address: collector.clone(),
+                    name: name.clone(),
+                    phone,
+                    status: common::CollectorStatus::Pending,
+                    reputation_score: 500,
+                    total_collections: 0,
+                    total_weight: 0,
+                    registration_time: common::get_timestamp(&env),
+                    last_active: common::get_timestamp(&env),
+                };
+
+                // Save collector
+                write_collector(&env, &collector, &collector_data);
+                registered_count += 1;
+
+                // Emit event
+                common::CollectorEvents::registered(&env, collector, name);
+            }
+        }
+
+        // Update total count
+        let count = read_collector_count(&env);
+        write_collector_count(&env, count + registered_count as u64);
+
+        // Bump storage
+        common::bump_instance(&env);
+
+        registered_count
+    }
+
+    /// Batch update collector statuses (admin only)
+    ///
+    /// # Arguments
+    /// * `updates` - Vector of (collector_address, new_status) tuples
+    ///
+    /// # Returns
+    /// Number of collectors successfully updated
+    pub fn batch_update_status(
+        env: Env,
+        updates: soroban_sdk::Vec<(Address, common::CollectorStatus)>,
+    ) -> u32 {
+        common::Initializable::require_initialized(&env).expect("Not initialized");
+
+        // Verify admin
+        let admin = common::AccessControl::get_admin(&env).expect("Admin not found");
+        common::AccessControl::require_admin(&env, &admin).expect("Not admin");
+
+        let mut updated_count = 0u32;
+
+        for i in 0..updates.len() {
+            if let Some((collector, new_status)) = updates.get(i) {
+                // Get collector
+                if let Some(mut collector_data) = read_collector(&env, &collector) {
+                    // Validate status transition
+                    if common::validation::validate_status_transition(
+                        &collector_data.status,
+                        &new_status,
+                    )
+                    .is_ok()
+                    {
+                        // Update status
+                        collector_data.status = new_status.clone();
+                        collector_data.last_active = common::get_timestamp(&env);
+
+                        // Save updated collector
+                        write_collector(&env, &collector, &collector_data);
+                        updated_count += 1;
+
+                        // Emit event
+                        common::CollectorEvents::status_updated(&env, collector, new_status);
+                    }
+                }
+            }
+        }
+
+        // Bump storage
+        common::bump_instance(&env);
+
+        updated_count
+    }
+
+    /// Get multiple collectors at once (optimized batch query)
+    ///
+    /// # Arguments
+    /// * `addresses` - Vector of collector addresses
+    ///
+    /// # Returns
+    /// Vector of collector data (None for non-existent collectors)
+    pub fn get_collectors_batch(
+        env: Env,
+        addresses: soroban_sdk::Vec<Address>,
+    ) -> soroban_sdk::Vec<Option<common::Collector>> {
+        let mut results = soroban_sdk::Vec::new(&env);
+
+        for i in 0..addresses.len() {
+            if let Some(addr) = addresses.get(i) {
+                let collector = read_collector(&env, &addr);
+                results.push_back(collector);
+            }
+        }
+
+        results
+    }
 }
