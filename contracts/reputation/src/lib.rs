@@ -1,5 +1,7 @@
 #![no_std]
-use soroban_sdk::{contract, contractimpl};
+use soroban_sdk::{contract, contractimpl, Address, Env};
+
+use common::types::*;
 
 #[cfg(test)]
 mod test;
@@ -9,5 +11,249 @@ pub struct Reputation;
 
 #[contractimpl]
 impl Reputation {
-    // Placeholder - will be implemented in Phase 2
+    /// Initialize the reputation contract
+    ///
+    /// # Arguments
+    /// * `admin` - Contract administrator address
+    pub fn initialize(env: Env, admin: Address) {
+        common::Initializable::require_not_initialized(&env).expect("Already initialized");
+
+        // Set admin
+        common::AccessControl::set_admin(&env, admin);
+
+        // Mark as initialized
+        common::Initializable::mark_initialized(&env);
+
+        // Bump storage
+        common::bump_instance(&env);
+    }
+
+    /// Update reputation score for a collector after a transaction
+    ///
+    /// # Arguments
+    /// * `collector` - Collector address
+    /// * `transaction_successful` - Whether the transaction was successful
+    pub fn update_score(env: Env, collector: Address, transaction_successful: bool) {
+        common::Initializable::require_initialized(&env).expect("Not initialized");
+        common::Pausable::require_not_paused(&env).expect("Contract paused");
+
+        // Get admin and verify
+        let admin = common::AccessControl::get_admin(&env).expect("Admin not found");
+        common::AccessControl::require_admin(&env, &admin).expect("Not admin");
+
+        // Get or create reputation score
+        let key = common::StorageKey::Reputation(collector.clone());
+        let mut score: ReputationScore =
+            env.storage()
+                .persistent()
+                .get(&key)
+                .unwrap_or(ReputationScore {
+                    collector: collector.clone(),
+                    score: 500, // Start with neutral score
+                    total_transactions: 0,
+                    successful_transactions: 0,
+                    disputed_transactions: 0,
+                    last_updated: env.ledger().timestamp(),
+                });
+
+        // Update transaction counts
+        score.total_transactions += 1;
+        if transaction_successful {
+            score.successful_transactions += 1;
+        } else {
+            score.disputed_transactions += 1;
+        }
+
+        // Calculate new score
+        let old_score = score.score;
+        score.score = Self::calculate_score_internal(&score);
+        score.last_updated = env.ledger().timestamp();
+
+        // Save updated score
+        env.storage().persistent().set(&key, &score);
+        common::bump_persistent(&env, &key);
+
+        // Emit event
+        common::ReputationEvents::score_updated(&env, collector, old_score, score.score);
+
+        // Bump storage
+        common::bump_instance(&env);
+    }
+
+    /// Get reputation score for a collector
+    ///
+    /// # Arguments
+    /// * `collector` - Collector address
+    ///
+    /// # Returns
+    /// Reputation score record
+    pub fn get_score(env: Env, collector: Address) -> ReputationScore {
+        let key = common::StorageKey::Reputation(collector.clone());
+        env.storage()
+            .persistent()
+            .get(&key)
+            .unwrap_or(ReputationScore {
+                collector,
+                score: 500, // Default neutral score
+                total_transactions: 0,
+                successful_transactions: 0,
+                disputed_transactions: 0,
+                last_updated: 0,
+            })
+    }
+
+    /// Calculate reputation score based on transaction history
+    ///
+    /// # Arguments
+    /// * `collector` - Collector address
+    ///
+    /// # Returns
+    /// Calculated score (0-1000)
+    pub fn calculate_score(env: Env, collector: Address) -> u32 {
+        let score_record = Self::get_score(env, collector);
+        Self::calculate_score_internal(&score_record)
+    }
+
+    /// Internal score calculation logic
+    ///
+    /// Score calculation:
+    /// - Base score: 500 (neutral)
+    /// - Each successful transaction: +5 points (up to max 1000)
+    /// - Each disputed transaction: -10 points (down to min 0)
+    /// - Success rate bonus: up to +100 points for high success rate
+    fn calculate_score_internal(score_record: &ReputationScore) -> u32 {
+        if score_record.total_transactions == 0 {
+            return 500; // Neutral score for new collectors
+        }
+
+        let mut score: i32 = 500; // Start with neutral
+
+        // Add points for successful transactions
+        score += (score_record.successful_transactions as i32) * 5;
+
+        // Subtract points for disputed transactions
+        score -= (score_record.disputed_transactions as i32) * 10;
+
+        // Calculate success rate bonus
+        let success_rate = (score_record.successful_transactions as f64)
+            / (score_record.total_transactions as f64);
+
+        // Bonus for high success rate (only if significant transaction history)
+        if score_record.total_transactions >= 10 {
+            let bonus = (success_rate * 100.0) as i32;
+            score += bonus;
+        }
+
+        // Clamp score between 0 and 1000
+        if score < 0 {
+            0
+        } else if score > 1000 {
+            1000
+        } else {
+            score as u32
+        }
+    }
+
+    /// Manually set reputation score (admin only, for special cases)
+    ///
+    /// # Arguments
+    /// * `collector` - Collector address
+    /// * `new_score` - New score value (0-1000)
+    pub fn set_score(env: Env, collector: Address, new_score: u32) {
+        common::Initializable::require_initialized(&env).expect("Not initialized");
+
+        // Get admin and verify
+        let admin = common::AccessControl::get_admin(&env).expect("Admin not found");
+        common::AccessControl::require_admin(&env, &admin).expect("Not admin");
+
+        // Validate score
+        common::validation::validate_reputation_bounds(new_score).expect("Invalid score");
+
+        // Get existing or create new score record
+        let key = common::StorageKey::Reputation(collector.clone());
+        let mut score: ReputationScore =
+            env.storage()
+                .persistent()
+                .get(&key)
+                .unwrap_or(ReputationScore {
+                    collector: collector.clone(),
+                    score: 500,
+                    total_transactions: 0,
+                    successful_transactions: 0,
+                    disputed_transactions: 0,
+                    last_updated: env.ledger().timestamp(),
+                });
+
+        // Update score
+        let old_score = score.score;
+        score.score = new_score;
+        score.last_updated = env.ledger().timestamp();
+
+        // Save updated score
+        env.storage().persistent().set(&key, &score);
+        common::bump_persistent(&env, &key);
+
+        // Emit event
+        common::ReputationEvents::score_updated(&env, collector, old_score, new_score);
+
+        // Bump storage
+        common::bump_instance(&env);
+    }
+
+    /// Reset reputation score (admin only, for testing or special cases)
+    ///
+    /// # Arguments
+    /// * `collector` - Collector address
+    pub fn reset_score(env: Env, collector: Address) {
+        common::Initializable::require_initialized(&env).expect("Not initialized");
+
+        // Get admin and verify
+        let admin = common::AccessControl::get_admin(&env).expect("Admin not found");
+        common::AccessControl::require_admin(&env, &admin).expect("Not admin");
+
+        let key = common::StorageKey::Reputation(collector.clone());
+        let reset_score = ReputationScore {
+            collector: collector.clone(),
+            score: 500,
+            total_transactions: 0,
+            successful_transactions: 0,
+            disputed_transactions: 0,
+            last_updated: env.ledger().timestamp(),
+        };
+
+        env.storage().persistent().set(&key, &reset_score);
+        common::bump_persistent(&env, &key);
+
+        // Emit event
+        common::ReputationEvents::score_updated(&env, collector, 0, 500);
+
+        // Bump storage
+        common::bump_instance(&env);
+    }
+
+    /// Pause the contract (admin only)
+    pub fn pause(env: Env) {
+        let admin = common::AccessControl::get_admin(&env).expect("Admin not found");
+        common::Pausable::admin_pause(&env, &admin).expect("Not admin");
+
+        common::AdminEvents::paused(&env);
+    }
+
+    /// Unpause the contract (admin only)
+    pub fn unpause(env: Env) {
+        let admin = common::AccessControl::get_admin(&env).expect("Admin not found");
+        common::Pausable::admin_unpause(&env, &admin).expect("Not admin");
+
+        common::AdminEvents::unpaused(&env);
+    }
+
+    /// Check if contract is paused
+    pub fn is_paused(env: Env) -> bool {
+        common::Pausable::is_paused(&env)
+    }
+
+    /// Get admin address
+    pub fn admin(env: Env) -> Address {
+        common::AccessControl::get_admin(&env).expect("Admin not found")
+    }
 }
