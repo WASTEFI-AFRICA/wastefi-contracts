@@ -9,6 +9,7 @@ pub mod events;
 pub mod interfaces;
 pub mod storage;
 pub mod types;
+pub mod upgrade;
 pub mod utils;
 pub mod validation;
 
@@ -24,6 +25,7 @@ pub use events::*;
 pub use interfaces::*;
 pub use storage::*;
 pub use types::*;
+pub use upgrade::*;
 pub use utils::*;
 pub use validation::*;
 

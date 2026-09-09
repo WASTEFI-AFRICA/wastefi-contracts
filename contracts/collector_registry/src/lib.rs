@@ -25,6 +25,13 @@ impl CollectorRegistry {
         // Initialize collector count to 0
         write_collector_count(&env, 0);
 
+        // Set initial version
+        let initial_version = common::ContractVersion::new(1, 0, 0);
+        common::Upgrade::set_version(&env, initial_version);
+
+        // Set initial storage schema version
+        common::StorageSchema::set_schema_version(&env, 1);
+
         // Mark as initialized
         common::Initializable::mark_initialized(&env);
 
@@ -353,6 +360,89 @@ impl CollectorRegistry {
     /// Vector of (action, timestamp) tuples
     pub fn get_pause_history(env: Env, limit: u32) -> soroban_sdk::Vec<(soroban_sdk::String, u64)> {
         common::Pausable::get_pause_history(&env, limit)
+    }
+
+    /// Get contract version
+    ///
+    /// # Returns
+    /// Tuple of (major, minor, patch)
+    pub fn get_version(env: Env) -> (u32, u32, u32) {
+        if let Some(version) = common::Upgrade::get_version(&env) {
+            version.to_tuple()
+        } else {
+            (1, 0, 0) // Default version
+        }
+    }
+
+    /// Upgrade contract (admin only)
+    ///
+    /// # Arguments
+    /// * `new_wasm_hash` - Hash of new WASM code
+    pub fn upgrade(env: Env, new_wasm_hash: soroban_sdk::BytesN<32>) {
+        let admin = common::AccessControl::get_admin(&env).expect("Admin not found");
+
+        // Mark upgrade in progress
+        common::Upgrade::mark_upgrade_in_progress(&env);
+
+        // Perform upgrade
+        common::Upgrade::upgrade_contract(&env, &admin, new_wasm_hash);
+
+        common::bump_instance(&env);
+    }
+
+    /// Complete upgrade (admin only, called after upgrade)
+    ///
+    /// # Arguments
+    /// * `major` - Major version
+    /// * `minor` - Minor version
+    /// * `patch` - Patch version
+    pub fn complete_upgrade(env: Env, major: u32, minor: u32, patch: u32) {
+        let admin = common::AccessControl::get_admin(&env).expect("Admin not found");
+        common::AccessControl::require_admin(&env, &admin).expect("Not admin");
+
+        let new_version = common::ContractVersion::new(major, minor, patch);
+        common::Upgrade::mark_upgrade_complete(&env, new_version);
+
+        common::bump_instance(&env);
+    }
+
+    /// Check if upgrade is in progress
+    ///
+    /// # Returns
+    /// True if upgrade is in progress
+    pub fn is_upgrading(env: Env) -> bool {
+        common::Upgrade::is_upgrade_in_progress(&env)
+    }
+
+    /// Get storage schema version
+    ///
+    /// # Returns
+    /// Current storage schema version
+    pub fn get_schema_version(env: Env) -> u32 {
+        common::StorageSchema::get_schema_version(&env)
+    }
+
+    /// Enable feature (admin only)
+    ///
+    /// # Arguments
+    /// * `feature` - Feature name
+    pub fn enable_feature(env: Env, feature: soroban_sdk::String) {
+        let admin = common::AccessControl::get_admin(&env).expect("Admin not found");
+        common::AccessControl::require_admin(&env, &admin).expect("Not admin");
+
+        common::Compatibility::enable_feature(&env, feature);
+        common::bump_instance(&env);
+    }
+
+    /// Check if feature is supported
+    ///
+    /// # Arguments
+    /// * `feature` - Feature name
+    ///
+    /// # Returns
+    /// True if feature is supported
+    pub fn is_feature_supported(env: Env, feature: soroban_sdk::String) -> bool {
+        common::Compatibility::is_feature_supported(&env, feature)
     }
 
     /// Trigger emergency (admin only)

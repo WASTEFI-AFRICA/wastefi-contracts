@@ -64,6 +64,11 @@ pub enum WasteFiError {
     FraudDetected = 95,
     DuplicateTransaction = 96,
 
+    // Upgrade errors (85-89)
+    IncompatibleVersion = 85,
+    VersionNotSet = 86,
+    UpgradeInProgress = 87,
+
     // RecycleGraph errors (100-109)
     InvalidPassportId = 100,
     PassportNotFound = 101,
