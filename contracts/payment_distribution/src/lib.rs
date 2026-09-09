@@ -43,12 +43,17 @@ impl PaymentDistribution {
     /// Process payment for a completed transaction
     ///
     /// # Arguments
-    /// * `transaction_contract` - WasteTransaction contract address
-    /// * `transaction_id` - Transaction ID to process payment for
+    /// * `transaction_id` - Transaction ID from WasteTransaction contract
+    /// * `recipient` - Payment recipient address
+    /// * `amount` - Payment amount in stroops
     ///
     /// # Returns
     /// Payment ID
-    pub fn process_payment(env: Env, _transaction_contract: Address, transaction_id: u64) -> u64 {
+    ///
+    /// # Note
+    /// This is a simplified version. Full implementation would call WasteTransaction
+    /// contract to fetch transaction details and validate completion status.
+    pub fn process_payment(env: Env, transaction_id: u64, recipient: Address, amount: i128) -> u64 {
         common::Initializable::require_initialized(&env).expect("Not initialized");
         common::Pausable::require_not_paused(&env).expect("Contract paused");
 
@@ -56,23 +61,21 @@ impl PaymentDistribution {
         let admin = common::AccessControl::get_admin(&env).expect("Admin not found");
         common::AccessControl::require_admin(&env, &admin).expect("Not admin");
 
+        // Validate amount is positive
+        if amount <= 0 {
+            panic!("Amount must be positive");
+        }
+
         // Get next payment ID
         let payment_count: u64 = env.storage().instance().get(&PAYMENT_COUNT).unwrap_or(0);
         let payment_id = payment_count + 1;
         env.storage().instance().set(&PAYMENT_COUNT, &payment_id);
 
-        // In a real implementation, we would:
-        // 1. Call transaction_contract.get_transaction(transaction_id)
-        // 2. Verify transaction is completed and not already paid
-        // 3. Get collector address and amount from transaction
-        // 4. Call token_contract.mint(collector, amount)
-        // 5. Store payment record
-
-        // For now, create a placeholder payment record
+        // Create payment record
         let payment = Payment {
             id: payment_id,
-            recipient: admin.clone(), // Placeholder
-            amount: 0,
+            recipient: recipient.clone(),
+            amount,
             status: PaymentStatus::Pending,
             transaction_id,
             created_at: env.ledger().timestamp(),
@@ -85,7 +88,7 @@ impl PaymentDistribution {
         common::bump_persistent(&env, &key);
 
         // Index by recipient
-        let recipient_key = ("PaymentsByRecipient", payment.recipient.clone());
+        let recipient_key = ("PaymentsByRecipient", recipient.clone());
         let mut recipient_payments: Vec<u64> = env
             .storage()
             .persistent()
@@ -97,7 +100,7 @@ impl PaymentDistribution {
             .set(&recipient_key, &recipient_payments);
 
         // Emit event
-        common::PaymentEvents::processed(&env, payment_id);
+        common::PaymentEvents::created(&env, payment_id, recipient, amount);
 
         // Bump storage
         common::bump_instance(&env);
@@ -162,16 +165,11 @@ impl PaymentDistribution {
     /// Batch process payments for multiple transactions
     ///
     /// # Arguments
-    /// * `transaction_contract` - WasteTransaction contract address
-    /// * `transaction_ids` - Vector of transaction IDs
+    /// * `payments` - Vector of (transaction_id, recipient, amount) tuples
     ///
     /// # Returns
     /// Vector of payment IDs
-    pub fn batch_process(
-        env: Env,
-        _transaction_contract: Address,
-        transaction_ids: Vec<u64>,
-    ) -> Vec<u64> {
+    pub fn batch_process(env: Env, payments: Vec<(u64, Address, i128)>) -> Vec<u64> {
         common::Initializable::require_initialized(&env).expect("Not initialized");
         common::Pausable::require_not_paused(&env).expect("Contract paused");
 
@@ -181,10 +179,9 @@ impl PaymentDistribution {
 
         let mut payment_ids = Vec::new(&env);
 
-        for i in 0..transaction_ids.len() {
-            if let Some(tx_id) = transaction_ids.get(i) {
-                let payment_id =
-                    Self::process_payment(env.clone(), _transaction_contract.clone(), tx_id);
+        for i in 0..payments.len() {
+            if let Some((tx_id, recipient, amount)) = payments.get(i) {
+                let payment_id = Self::process_payment(env.clone(), tx_id, recipient, amount);
                 payment_ids.push_back(payment_id);
             }
         }
