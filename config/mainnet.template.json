@@ -1,0 +1,139 @@
+{
+  "_comment": "MAINNET CONFIGURATION TEMPLATE - Update values before deployment",
+  "_warning": "DO NOT commit actual mainnet admin keys to version control",
+  
+  "network": "mainnet",
+  "rpc_url": "https://soroban-mainnet.stellar.org:443",
+  "network_passphrase": "Public Global Stellar Network ; September 2015",
+  
+  "admin": "REPLACE_WITH_MAINNET_ADMIN_ADDRESS",
+  "operator": "REPLACE_WITH_MAINNET_OPERATOR_ADDRESS",
+  
+  "contracts": {
+    "waste_token": {
+      "wasm": "target/wasm32-unknown-unknown/release/waste_token.wasm",
+      "init_params": {
+        "name": "WasteFi Token",
+        "symbol": "WASTE",
+        "decimals": 7,
+        "max_supply": 1000000000000000
+      },
+      "notes": "Consider implementing supply cap before mainnet"
+    },
+    "collector_registry": {
+      "wasm": "target/wasm32-unknown-unknown/release/collector_registry.wasm",
+      "init_params": {},
+      "notes": "Ensure KYC integration ready"
+    },
+    "collection_point": {
+      "wasm": "target/wasm32-unknown-unknown/release/collection_point.wasm",
+      "init_params": {},
+      "notes": "Verify all collection points before registration"
+    },
+    "waste_transaction": {
+      "wasm": "target/wasm32-unknown-unknown/release/waste_transaction.wasm",
+      "init_params": {},
+      "notes": "Monitor fraud detection effectiveness closely"
+    },
+    "payment_distribution": {
+      "wasm": "target/wasm32-unknown-unknown/release/payment_distribution.wasm",
+      "init_params": {},
+      "notes": "CRITICAL: Implement double-payment prevention before mainnet"
+    },
+    "material_pricing": {
+      "wasm": "target/wasm32-unknown-unknown/release/material_pricing.wasm",
+      "init_params": {
+        "default_prices": {
+          "plastic": "REPLACE_WITH_MARKET_PRICE",
+          "paper": "REPLACE_WITH_MARKET_PRICE",
+          "metal": "REPLACE_WITH_MARKET_PRICE",
+          "glass": "REPLACE_WITH_MARKET_PRICE",
+          "organic": "REPLACE_WITH_MARKET_PRICE"
+        }
+      },
+      "notes": "Verify prices with market research before deployment"
+    },
+    "reputation": {
+      "wasm": "target/wasm32-unknown-unknown/release/reputation.wasm",
+      "init_params": {
+        "initial_score": 500
+      }
+    }
+  },
+  
+  "rate_limits": {
+    "registration": {
+      "per_day": 3,
+      "notes": "May need adjustment based on usage patterns"
+    },
+    "transaction_submission": {
+      "per_hour": 20,
+      "notes": "Conservative limit, increase if needed"
+    },
+    "queries": {
+      "per_minute": 60,
+      "notes": "Can be increased for production traffic"
+    }
+  },
+  
+  "fraud_detection": {
+    "critical_risk_threshold": 800,
+    "high_risk_threshold": 601,
+    "medium_risk_threshold": 301,
+    "notes": "Thresholds validated during testnet phase"
+  },
+  
+  "price_bounds": {
+    "min_price": 0,
+    "max_price": 1000000,
+    "notes": "Review bounds based on real-world market data"
+  },
+  
+  "emergency": {
+    "contact_email": "security@wastefi.io",
+    "contact_phone": "REPLACE_WITH_24_7_CONTACT",
+    "pagerduty_integration_key": "REPLACE_WITH_PAGERDUTY_KEY",
+    "notes": "Ensure 24/7 on-call coverage established"
+  },
+  
+  "monitoring": {
+    "enabled": true,
+    "alert_webhook": "REPLACE_WITH_PRODUCTION_WEBHOOK",
+    "metrics_endpoint": "https://metrics.wastefi.io/mainnet",
+    "sentry_dsn": "REPLACE_WITH_SENTRY_DSN",
+    "notes": "Configure all monitoring before deployment"
+  },
+  
+  "security": {
+    "multi_sig_enabled": false,
+    "multi_sig_threshold": 2,
+    "multi_sig_signers": [
+      "REPLACE_WITH_SIGNER_1",
+      "REPLACE_WITH_SIGNER_2",
+      "REPLACE_WITH_SIGNER_3"
+    ],
+    "notes": "STRONGLY RECOMMENDED: Enable multi-sig for mainnet admin"
+  },
+  
+  "deployment_checklist": [
+    "✓ Security audit completed",
+    "✓ All Critical/High findings resolved",
+    "✓ Testnet deployment successful",
+    "✓ Integration tests passing on testnet",
+    "✓ Multi-sig admin configured",
+    "✓ Monitoring and alerting configured",
+    "✓ Emergency response team ready",
+    "✓ User documentation complete",
+    "✓ Legal and compliance review done",
+    "✓ Insurance coverage in place",
+    "✓ Budget allocated for operations",
+    "✓ Marketing and launch plan ready"
+  ],
+  
+  "post_deployment": {
+    "monitoring_frequency": "Every 5 minutes",
+    "health_check_endpoint": "https://api.wastefi.io/health",
+    "backup_frequency": "Daily",
+    "incident_response_sla": "< 15 minutes for P0 incidents"
+  }
+}

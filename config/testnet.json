@@ -1,0 +1,80 @@
+{
+  "network": "testnet",
+  "rpc_url": "https://soroban-testnet.stellar.org:443",
+  "network_passphrase": "Test SDF Network ; September 2015",
+  "admin": "GABC...XYZ",
+  "operator": "GDEF...UVW",
+  "contracts": {
+    "waste_token": {
+      "wasm": "target/wasm32-unknown-unknown/release/waste_token.wasm",
+      "init_params": {
+        "name": "WasteFi Token Testnet",
+        "symbol": "WASTE-TEST",
+        "decimals": 7
+      }
+    },
+    "collector_registry": {
+      "wasm": "target/wasm32-unknown-unknown/release/collector_registry.wasm",
+      "init_params": {}
+    },
+    "collection_point": {
+      "wasm": "target/wasm32-unknown-unknown/release/collection_point.wasm",
+      "init_params": {}
+    },
+    "waste_transaction": {
+      "wasm": "target/wasm32-unknown-unknown/release/waste_transaction.wasm",
+      "init_params": {}
+    },
+    "payment_distribution": {
+      "wasm": "target/wasm32-unknown-unknown/release/payment_distribution.wasm",
+      "init_params": {}
+    },
+    "material_pricing": {
+      "wasm": "target/wasm32-unknown-unknown/release/material_pricing.wasm",
+      "init_params": {
+        "default_prices": {
+          "plastic": 100,
+          "paper": 80,
+          "metal": 150,
+          "glass": 60,
+          "organic": 40
+        }
+      }
+    },
+    "reputation": {
+      "wasm": "target/wasm32-unknown-unknown/release/reputation.wasm",
+      "init_params": {
+        "initial_score": 500
+      }
+    }
+  },
+  "rate_limits": {
+    "registration": {
+      "per_day": 3
+    },
+    "transaction_submission": {
+      "per_hour": 20
+    },
+    "queries": {
+      "per_minute": 60
+    }
+  },
+  "fraud_detection": {
+    "critical_risk_threshold": 800,
+    "high_risk_threshold": 601,
+    "medium_risk_threshold": 301
+  },
+  "price_bounds": {
+    "min_price": 0,
+    "max_price": 1000000
+  },
+  "emergency": {
+    "contact_email": "security@wastefi.io",
+    "contact_phone": "+1-XXX-XXX-XXXX"
+  },
+  "monitoring": {
+    "enabled": true,
+    "alert_webhook": "https://hooks.slack.com/services/YOUR/WEBHOOK/URL",
+    "metrics_endpoint": "https://metrics.wastefi.io/testnet"
+  }
+}
