@@ -136,11 +136,9 @@ impl Reputation {
 
         // Calculate success rate bonus (using integer math to avoid floating-point)
         // Success rate = (successful * 10000) / total gives basis points (0-10000 = 0%-100%)
-        let success_rate_basis_points = if score_record.total_transactions > 0 {
-            (score_record.successful_transactions * 10000) / score_record.total_transactions
-        } else {
-            0
-        };
+        let success_rate_basis_points = (score_record.successful_transactions * 10000)
+            .checked_div(score_record.total_transactions)
+            .unwrap_or(0);
 
         // Bonus for high success rate (only if significant transaction history)
         // Convert basis points to bonus: 10000 basis points = 100 bonus
