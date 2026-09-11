@@ -1,7 +1,7 @@
 #![cfg(test)]
 
 //! End-to-End Integration Tests
-//! 
+//!
 //! This test suite validates complete workflows across all WasteFi contracts,
 //! simulating real-world usage scenarios from collector registration through
 //! payment distribution.
@@ -194,7 +194,7 @@ fn test_multiple_collectors_concurrent_submissions() {
     //             &1000u64,
     //             &100i128,
     //         );
-    //         
+    //
     //         // Verify transaction recorded
     //         assert!(tx_id > 0);
     //     }
@@ -841,12 +841,7 @@ fn setup_complete_test_environment(env: &Env) -> (Address, Vec<Address>) {
 
 /// Create a test transaction and return its ID
 #[allow(dead_code)]
-fn create_test_transaction(
-    env: &Env,
-    collector: &Address,
-    weight: u64,
-    material: u32,
-) -> u64 {
+fn create_test_transaction(env: &Env, collector: &Address, weight: u64, material: u32) -> u64 {
     // TODO: Create transaction
     // waste_transaction.record_collection(
     //     collector,
@@ -860,19 +855,14 @@ fn create_test_transaction(
 
 /// Verify transaction and release payment
 #[allow(dead_code)]
-fn complete_transaction_flow(
-    env: &Env,
-    admin: &Address,
-    tx_id: u64,
-    collector: &Address,
-) {
+fn complete_transaction_flow(env: &Env, admin: &Address, tx_id: u64, collector: &Address) {
     // TODO: Complete flow
     // 1. Verify transaction
     // waste_transaction.verify_transaction(admin, &tx_id);
-    
+
     // 2. Calculate payment
     // let payment = payment_distribution.calculate_payment(&tx_id);
-    
+
     // 3. Release payment
     // payment_distribution.release_payment(admin, &tx_id, collector);
 }
@@ -885,16 +875,16 @@ fn complete_transaction_flow(
 mod test_constants {
     /// Default test material type (Plastic)
     pub const TEST_MATERIAL: u32 = 1;
-    
+
     /// Default test weight (1kg in grams)
     pub const TEST_WEIGHT: u64 = 1000;
-    
+
     /// Default test price (100 per kg)
     pub const TEST_PRICE: i128 = 100;
-    
+
     /// Rate limit for testing (transactions per hour)
     pub const RATE_LIMIT: u32 = 20;
-    
+
     /// Duplicate detection window (seconds)
     pub const DUPLICATE_WINDOW: u64 = 300;
 }

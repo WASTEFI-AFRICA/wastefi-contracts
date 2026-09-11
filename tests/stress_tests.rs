@@ -1,14 +1,11 @@
 #![cfg(test)]
 
 //! Stress Tests
-//! 
+//!
 //! This test suite validates system performance under high load, tests storage
 //! capacity limits, measures gas consumption, and validates concurrent operations.
 
-use soroban_sdk::{
-    testutils::Address as _,
-    Address, Env, String, Vec,
-};
+use soroban_sdk::{testutils::Address as _, Address, Env, String, Vec};
 use std::time::Instant;
 
 // =============================================================================
@@ -100,7 +97,10 @@ fn stress_test_high_volume_sequential_transactions() {
     println!("Average time per tx: {}ms", avg_ms);
     println!("Min time: {}ms", min_ms);
     println!("Max time: {}ms", max_ms);
-    println!("Transactions per second: {}", (HIGH_VOLUME_TX_COUNT as f64 / total_duration.as_secs_f64()));
+    println!(
+        "Transactions per second: {}",
+        (HIGH_VOLUME_TX_COUNT as f64 / total_duration.as_secs_f64())
+    );
 
     // Assertions
     assert_eq!(transaction_ids.len(), HIGH_VOLUME_TX_COUNT);
@@ -151,7 +151,7 @@ fn stress_test_concurrent_user_transactions() {
     let mut total_transactions = 0u32;
     for i in 0..users.len() {
         let user = users.get(i).unwrap();
-        
+
         for j in 0..10 {
             // let tx_id = waste_transaction.record_collection_test(
             //     &user,
@@ -176,7 +176,10 @@ fn stress_test_concurrent_user_transactions() {
     println!("Transactions per user: 10");
     println!("Total transactions: {}", total_transactions);
     println!("Total time: {}ms", duration.as_millis());
-    println!("Throughput: {} tx/sec", total_transactions as f64 / duration.as_secs_f64());
+    println!(
+        "Throughput: {} tx/sec",
+        total_transactions as f64 / duration.as_secs_f64()
+    );
 
     // Verify transaction count
     assert_eq!(total_transactions, CONCURRENT_USERS * 10);
@@ -300,7 +303,10 @@ fn stress_test_storage_capacity_transactions() {
     println!("Attempted: {}", MAX_STORAGE_ITEMS);
     println!("Created: {}", created);
     println!("Time: {}s", duration.as_secs());
-    println!("Records per second: {}", created as f64 / duration.as_secs_f64());
+    println!(
+        "Records per second: {}",
+        created as f64 / duration.as_secs_f64()
+    );
 
     // Test retrieval performance with large dataset
     println!("\nTesting query performance...");
@@ -315,7 +321,10 @@ fn stress_test_storage_capacity_transactions() {
     println!("100 queries completed in {}ms", query_duration.as_millis());
     println!("Average query time: {}ms", query_duration.as_millis() / 100);
 
-    assert!(query_duration.as_millis() < 1000, "Queries should complete in < 1s");
+    assert!(
+        query_duration.as_millis() < 1000,
+        "Queries should complete in < 1s"
+    );
 
     println!("✓ Storage capacity test passed");
 }
@@ -650,8 +659,9 @@ fn stress_test_query_performance_large_dataset() {
         // assert!(tx.is_ok());
     }
     let direct_time = start.elapsed();
-    println!("100 direct lookups: {}ms (avg: {}ms)", 
-        direct_time.as_millis(), 
+    println!(
+        "100 direct lookups: {}ms (avg: {}ms)",
+        direct_time.as_millis(),
         direct_time.as_millis() / 100
     );
 
@@ -659,7 +669,10 @@ fn stress_test_query_performance_large_dataset() {
     let start = Instant::now();
     // let collector_txs = waste_transaction.get_collector_transactions(&collector);
     let filtered_time = start.elapsed();
-    println!("Filtered query (1000 items): {}ms", filtered_time.as_millis());
+    println!(
+        "Filtered query (1000 items): {}ms",
+        filtered_time.as_millis()
+    );
 
     // Benchmark 3: Paginated query
     let start = Instant::now();
@@ -668,15 +681,25 @@ fn stress_test_query_performance_large_dataset() {
         // assert_eq!(recent.len(), 10);
     }
     let paginated_time = start.elapsed();
-    println!("10 paginated queries: {}ms (avg: {}ms)", 
+    println!(
+        "10 paginated queries: {}ms (avg: {}ms)",
         paginated_time.as_millis(),
         paginated_time.as_millis() / 10
     );
 
     // Performance assertions
-    assert!(direct_time.as_millis() < 500, "Direct lookups should be fast");
-    assert!(filtered_time.as_millis() < 1000, "Filtered queries should be < 1s");
-    assert!(paginated_time.as_millis() < 500, "Paginated queries should be fast");
+    assert!(
+        direct_time.as_millis() < 500,
+        "Direct lookups should be fast"
+    );
+    assert!(
+        filtered_time.as_millis() < 1000,
+        "Filtered queries should be < 1s"
+    );
+    assert!(
+        paginated_time.as_millis() < 500,
+        "Paginated queries should be fast"
+    );
 
     println!("✓ Query performance acceptable at scale");
 }
@@ -722,7 +745,10 @@ fn stress_test_worst_case_fraud_detection() {
     println!("Risk calculation time: {}ms", calc_time.as_millis());
     // println!("Risk score: {}", risk_score);
 
-    assert!(calc_time.as_millis() < 100, "Risk calculation should be < 100ms");
+    assert!(
+        calc_time.as_millis() < 100,
+        "Risk calculation should be < 100ms"
+    );
     // assert!(risk_score > 800, "Should detect critical risk");
 
     println!("✓ Fraud detection performs well under stress");
@@ -794,12 +820,12 @@ fn calculate_stats(timings: &[u128]) -> (u128, u128, u128, f64) {
     let min = *timings.iter().min().unwrap_or(&0);
     let max = *timings.iter().max().unwrap_or(&0);
     let sum: u128 = timings.iter().sum();
-    let avg = if !timings.is_empty() { 
-        sum as f64 / timings.len() as f64 
-    } else { 
-        0.0 
+    let avg = if !timings.is_empty() {
+        sum as f64 / timings.len() as f64
+    } else {
+        0.0
     };
-    
+
     (min, max, sum, avg)
 }
 
