@@ -1,0 +1,11 @@
+﻿{
+    "success_rate":  "50%",
+    "test_date":  "2026-09-11T22:50:09Z",
+    "passed":  7,
+    "failed":  7,
+    "status":  "SOME_FAILED",
+    "test_collector":  "GBKKMOEBKLQU3YARAASL7CB7YWAEXOZ47AXW6AIEZ5UAWFP5SIS4NJNM",
+    "total_tests":  14,
+    "test_collection_point":  "GBKKMOEBKLQU3YARAASL7CB7YWAEXOZ47AXW6AIEZ5UAWFP5SIS4NJNM",
+    "network":  "testnet"
+}
