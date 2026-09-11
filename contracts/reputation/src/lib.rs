@@ -134,13 +134,18 @@ impl Reputation {
         // Subtract points for disputed transactions
         score -= (score_record.disputed_transactions as i32) * 10;
 
-        // Calculate success rate bonus
-        let success_rate = (score_record.successful_transactions as f64)
-            / (score_record.total_transactions as f64);
+        // Calculate success rate bonus (using integer math to avoid floating-point)
+        // Success rate = (successful * 10000) / total gives basis points (0-10000 = 0%-100%)
+        let success_rate_basis_points = if score_record.total_transactions > 0 {
+            (score_record.successful_transactions * 10000) / score_record.total_transactions
+        } else {
+            0
+        };
 
         // Bonus for high success rate (only if significant transaction history)
+        // Convert basis points to bonus: 10000 basis points = 100 bonus
         if score_record.total_transactions >= 10 {
-            let bonus = (success_rate * 100.0) as i32;
+            let bonus = (success_rate_basis_points / 100) as i32;  // Convert to 0-100 range
             score += bonus;
         }
 
@@ -427,9 +432,8 @@ impl Reputation {
             return 0;
         }
 
-        let rate = (score_record.successful_transactions as f64
-            / score_record.total_transactions as f64)
-            * 100.0;
+        // Use integer math: (successful * 100) / total
+        let rate = (score_record.successful_transactions * 100) / score_record.total_transactions;
 
         rate as u32
     }

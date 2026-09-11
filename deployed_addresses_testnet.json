@@ -1,31 +1,34 @@
 {
   "network": "testnet",
-  "deployment_date": "2026-09-11T14:30:00Z",
+  "deployment_date": "2026-09-11T14:45:00Z",
   "deployer": "GBKKMOEBKLQU3YARAASL7CB7YWAEXOZ47AXW6AIEZ5UAWFP5SIS4NJNM",
   "contracts": {
     "waste_token": "CAHS7LIK27YZC6BZFC2YK2DMPWV723T2TE4YIDGIPYIGH43AIWG5KO57",
     "collector_registry": "CABTIKQTUNCK6JUYZ4NI25EAQR7XUDD65MEUUGTEBDSS5DNJKSV3YICG",
     "collection_point": "CDTUANOROBJA7MQUZEL6JJXXAXXLTRYR5YSCM5KR4XX4UKOPQ6UKGJYX",
     "material_pricing": "CDGCMLGNIS7NP3ZBXASOSIZPAQONXEBHBZAQGBH5CDQ4FT2PVCUZV7ZK",
-    "reputation": "DEPLOYMENT_FAILED_FLOATING_POINT_ISSUE",
+    "reputation": "CBS5M43AO77OFUQ4DUMMSGWNW3XQK3ETCIDTZBY5XVDMCUBWKDJZJXN6",
     "waste_transaction": "CBMAAHILLEQCRUUPBJSIM2KQGDC7RJDAKQH6II7DLUIET4EAMMW2LFMI",
     "payment_distribution": "CDY6RAZ2PR63FQBUCUTT5CIZF7EHLQINWYAYLIMCWGW7RLVSXE6DN62U"
   },
-  "deployment_status": "PARTIAL",
-  "deployed_contracts": 6,
-  "failed_contracts": 1,
-  "issues": [
+  "deployment_status": "COMPLETE",
+  "deployed_contracts": 7,
+  "failed_contracts": 0,
+  "notes": [
+    "ALL 7 contracts successfully deployed to Stellar testnet",
+    "Reputation contract fixed: floating-point operations replaced with integer math",
+    "All contracts functional and ready for testing",
+    "Platform 100% deployed and operational"
+  ],
+  "fixes_applied": [
     {
       "contract": "reputation",
-      "issue": "Floating-point operations not allowed in Soroban WASM",
-      "error": "Error(WasmVm, InvalidAction) - floating-point instruction disallowed",
-      "fix_required": "Replace floating-point division in reputation calculation with integer math"
+      "issue": "Floating-point operations in score calculation",
+      "fix": "Replaced f64 division with integer math using basis points",
+      "locations": [
+        "calculate_score_internal: success rate calculation",
+        "get_success_rate: percentage calculation"
+      ]
     }
-  ],
-  "notes": [
-    "6 out of 7 contracts successfully deployed to testnet",
-    "Reputation contract requires code fix to remove floating-point operations",
-    "All deployed contracts are functional and can be tested",
-    "Platform can operate with manual reputation management until fix is deployed"
   ]
 }
