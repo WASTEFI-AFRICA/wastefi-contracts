@@ -1,315 +1,389 @@
-# WasteFi Smart Contracts - Audit Scope
+# WasteFi Security Audit Scope
 
-## Document Information
+## Document Purpose
 
-**Version**: 1.0.0  
-**Date**: February 2024  
-**Audit Request**: Ready for Scheduling  
-**Estimated Audit Duration**: 2-3 weeks
+This document defines the scope, priorities, and expectations for the security audit of WasteFi smart contracts. It provides auditors with clear boundaries, focus areas, and deliverables.
+
+**Version**: 0.1.0  
+**Date**: September 2026  
+**Audit Start Date**: [TBD]  
+**Target Completion**: [TBD + 4 weeks]
 
 ---
 
-## 1. Executive Summary
+## 1. Audit Overview
 
-WasteFi requests a comprehensive security audit of its Stellar Soroban smart contracts. This document defines the audit scope, priorities, deliverables, and logistics for the security audit engagement.
+### 1.1 Project Summary
 
-### Project Overview
-WasteFi is a mobile-first waste banking platform that enables financial inclusion through waste collection in emerging markets. The smart contracts manage collector identities, transaction recording, fraud detection, payment distribution, and reward token economics.
+**Project Name**: WasteFi  
+**Platform**: Stellar Soroban  
+**Language**: Rust  
+**Total Contracts**: 7 production contracts + 1 shared library  
+**Lines of Code**: ~8,100 (excluding tests)  
+**Development Phase**: Pre-Mainnet  
+**Purpose**: Decentralized waste management with tokenized incentives
 
-### Audit Goals
-1. Verify absence of critical vulnerabilities
-2. Validate security controls effectiveness
-3. Review fraud detection mechanisms
-4. Assess emergency response systems
-5. Evaluate upgrade safety procedures
-6. Identify optimization opportunities
+### 1.2 Audit Objectives
+
+1. **Identify Security Vulnerabilities**: Find critical, high, and medium severity issues
+2. **Verify Security Controls**: Validate fraud detection, access control, rate limiting
+3. **Assess Code Quality**: Review best practices, patterns, error handling
+4. **Evaluate Architecture**: Assess contract interactions and state management
+5. **Gas Optimization Review**: Identify cost-efficiency improvements
+6. **Provide Recommendations**: Suggest security enhancements and best practices
 
 ---
 
 ## 2. In-Scope Contracts
 
-### 2.1 Critical Priority Contracts (Must Audit)
+### 2.1 Production Contracts
 
-#### Common Module
-**Path**: `contracts/common/src/`  
-**Lines of Code**: ~2,000  
-**Purpose**: Shared security infrastructure  
-**Priority**: Critical
-
-**Files to Audit**:
-- `access_control.rs` - Admin/operator management
-- `anti_fraud.rs` - Fraud detection and rate limiting
-- `emergency.rs` - Emergency response systems
-- `upgrade.rs` - Contract upgradeability
-- `validation.rs` - Input validation
-- `errors.rs` - Error definitions
-- `types.rs` - Core data structures
-
-**Focus Areas**:
-- Access control bypass vulnerabilities
-- Fraud detection algorithm effectiveness
-- Emergency mechanism security
-- Upgrade safety procedures
-
----
-
-#### WasteToken Contract
-**Path**: `contracts/waste_token/src/lib.rs`  
-**Lines of Code**: ~400  
-**Purpose**: Reward token management  
-**Priority**: Critical (financial asset)
-
-**Focus Areas**:
-- Unauthorized minting vulnerabilities
-- Transfer authorization
-- Balance overflow/underflow
-- Token supply management
-
----
-
-#### PaymentDistribution Contract
-**Path**: `contracts/payment_distribution/src/lib.rs`  
-**Lines of Code**: ~500  
-**Purpose**: Payment calculation and escrow  
-**Priority**: Critical (financial operations)
-
-**Focus Areas**:
-- Payment calculation correctness
-- Double-payment prevention
-- Escrow fund safety
-- Balance verification logic
-
----
-
-#### WasteTransaction Contract
-**Path**: `contracts/waste_transaction/src/lib.rs`  
-**Lines of Code**: ~700  
-**Purpose**: Transaction recording with fraud detection  
-**Priority**: Critical (fraud prevention core)
-
-**Focus Areas**:
-- Fraud detection evasion
-- Duplicate transaction prevention
-- Rate limit bypass
-- Verification workflow security
-
----
-
-### 2.2 High Priority Contracts (Should Audit)
-
-#### CollectorRegistry Contract
-**Path**: `contracts/collector_registry/src/lib.rs`  
+#### Contract 1: CollectorRegistry
+**Location**: `contracts/collector_registry/src/lib.rs`  
 **Lines of Code**: ~600  
-**Purpose**: Collector identity management  
-**Priority**: High
+**Purpose**: Collector registration and status management  
+**Priority**: **MEDIUM**
 
-**Focus Areas**:
-- Registration spam prevention
+**Key Functions to Review**:
+- ✅ `initialize(admin)` - Contract initialization
+- ✅ `register(collector, name, contact)` - Self-registration
+- ✅ `update_status(collector, status)` - Admin status changes
+- ✅ `update_profile(collector, name, contact)` - Profile updates
+- ✅ `get_collector(address)` - Profile query
+
+**Security Focus**:
+- Sybil attack resistance
 - Status manipulation prevention
-- Sybil attack mitigation
+- Access control enforcement
+- Input validation
 
 ---
 
-#### MaterialPricing Contract
-**Path**: `contracts/material_pricing/src/lib.rs`  
-**Lines of Code**: ~350  
-**Purpose**: Material price oracle  
-**Priority**: High (economic manipulation risk)
+#### Contract 2: WasteTransaction
+**Location**: `contracts/waste_transaction/src/lib.rs`  
+**Lines of Code**: ~800  
+**Purpose**: Transaction recording and verification workflow  
+**Priority**: **CRITICAL**
 
-**Focus Areas**:
-- Price manipulation prevention
-- Oracle integrity
-- Rate limiting on updates
+**Key Functions to Review**:
+- 🔴 `record_collection(collector, point, material, weight, price)` - **CRITICAL**
+- 🔴 `verify_transaction(transaction_id)` - **CRITICAL**
+- 🔴 `update_status(transaction_id, status)` - **CRITICAL**
+- ✅ `get_transaction(transaction_id)` - Query
+- ✅ `get_risk_score(collector)` - Fraud detection query
+
+**Security Focus**:
+- **Weight inflation attacks**
+- **Duplicate transaction prevention**
+- **Fraud detection bypass**
+- **Rate limiting effectiveness**
+- **Authorization on verification**
+- **State machine integrity**
+- **Cross-contract call safety**
 
 ---
 
-#### CollectionPoint Contract
-**Path**: `contracts/collection_point/src/lib.rs`  
+#### Contract 3: PaymentDistribution
+**Location**: `contracts/payment_distribution/src/lib.rs`  
+**Lines of Code**: ~700  
+**Purpose**: Payment processing and reward distribution  
+**Priority**: **CRITICAL**
+
+**Key Functions to Review**:
+- 🔴 `process_payment(transaction_id, recipient, amount)` - **CRITICAL**
+- 🔴 `distribute_rewards(payment_id)` - **CRITICAL**
+- ✅ `get_payment(payment_id)` - Query
+- ✅ `get_recipient_payments(recipient, limit)` - Query
+
+**Security Focus**:
+- **Double payment prevention** ⚠️ Known issue
+- **Arithmetic overflow in calculations**
+- **Payment calculation correctness**
+- **Transaction status validation** ⚠️ Missing
+- **Authorization enforcement**
+- **Cross-contract call to WasteToken**
+
+**⚠️ KNOWN ISSUES**:
+- No idempotency check (same transaction_id can be paid multiple times)
+- No verification of transaction Completed status
+
+---
+
+#### Contract 4: MaterialPricing
+**Location**: `contracts/material_pricing/src/lib.rs`  
+**Lines of Code**: ~500  
+**Purpose**: Material pricing oracle  
+**Priority**: **HIGH**
+
+**Key Functions to Review**:
+- 🟡 `update_price(material_type, price_per_kg)` - **HIGH**
+- ✅ `get_current_price(material_type)` - Query
+- ✅ `get_last_updated(material_type)` - Query
+
+**Security Focus**:
+- **Price manipulation attacks**
+- **Price bounds enforcement**
+- **Stale price handling**
+- **Operator authorization**
+- **Price update rate limiting** ⚠️ Missing
+
+**⚠️ KNOWN LIMITATIONS**:
+- Manual price updates (no automated oracle)
+- Single operator trust model
+
+---
+
+#### Contract 5: Reputation
+**Location**: `contracts/reputation/src/lib.rs`  
+**Lines of Code**: ~600  
+**Purpose**: Reputation scoring for collectors and points  
+**Priority**: **MEDIUM**
+
+**Key Functions to Review**:
+- ✅ `update_score(address, adjustment)` - Admin score updates
+- ✅ `calculate_reputation(address)` - Score calculation
+- ✅ `get_reputation(address)` - Query
+
+**Security Focus**:
+- **Score manipulation**
+- **Gaming resistance**
+- **Calculation correctness**
+- **Score bounds enforcement**
+
+**⚠️ KNOWN LIMITATIONS**:
+- No time-based decay
+- No recency weighting
+
+---
+
+#### Contract 6: WasteToken
+**Location**: `contracts/waste_token/src/lib.rs`  
 **Lines of Code**: ~400  
-**Purpose**: Collection point verification  
-**Priority**: High
+**Purpose**: ERC-20 style reward token  
+**Priority**: **CRITICAL**
 
-**Focus Areas**:
-- Fake collection point prevention
-- Verification integrity
-- Material acceptance controls
+**Key Functions to Review**:
+- 🔴 `mint(to, amount)` - **CRITICAL**
+- 🔴 `transfer(from, to, amount)` - **CRITICAL**
+- 🔴 `burn(from, amount)` - **HIGH**
+- ✅ `balance_of(address)` - Query
+- ✅ `total_supply()` - Query
 
----
+**Security Focus**:
+- **Unauthorized minting** ⚠️ No supply cap
+- **Transfer authorization (Soroban native)**
+- **Balance overflow/underflow**
+- **Supply integrity**
+- **Burn authorization**
 
-### 2.3 Medium Priority Contracts
-
-#### Reputation Contract
-**Path**: `contracts/reputation/src/lib.rs`  
-**Lines of Code**: ~400  
-**Purpose**: Collector reputation scoring  
-**Priority**: Medium (fairness, not directly financial)
-
-**Focus Areas**:
-- Score manipulation prevention
-- Algorithm fairness
-- Manual adjustment security
+**⚠️ KNOWN ISSUES**:
+- No maximum supply cap (unlimited minting possible)
+- Admin can burn any user's tokens
 
 ---
 
-## 3. Out-of-Scope
+#### Contract 7: CollectionPoint
+**Location**: `contracts/collection_point/src/lib.rs`  
+**Lines of Code**: ~500  
+**Purpose**: Collection point registry and verification  
+**Priority**: **MEDIUM**
 
-### 3.1 Explicitly Out of Scope
+**Key Functions to Review**:
+- ✅ `register_point(point, name, location, operator)` - Admin only
+- 🟡 `verify_collection(point, transaction_id)` - **MEDIUM**
+- ✅ `update_point_status(point, status)` - Admin status changes
+- ✅ `get_point(address)` - Query
 
-**Frontend Application**:
-- Mobile app security
-- Web interface
-- API endpoints
-- Client-side validation
-
-**Infrastructure**:
-- Server security
-- Database security
-- Network security
-- DevOps practices
-
-**Off-Chain Components**:
-- Backend services
-- Integration APIs
-- External oracles (future)
-- Payment gateways
-
-**Third-Party Code**:
-- Soroban SDK (trust Stellar's security)
-- Rust standard library
-- External dependencies (unless specifically requested)
-
-### 3.2 Future Work (Not This Audit)
-
-- Cross-chain bridge contracts (not yet developed)
-- Advanced privacy features (planned)
-- Governance contracts (future phase)
-- Additional token standards (future)
+**Security Focus**:
+- **Collusion between point and collector**
+- **Fake verification attacks**
+- **Authorization enforcement**
+- **Status checks**
 
 ---
 
-## 4. Audit Priorities
+### 2.2 Common Library
+**Location**: `contracts/common/src/`  
+**Lines of Code**: ~4,000  
+**Purpose**: Shared security, validation, and utility functions  
+**Priority**: **CRITICAL**
 
-### 4.1 Critical Focus Areas (Highest Priority)
+**Modules to Review**:
 
-#### 1. Access Control Vulnerabilities
-**Why Critical**: Unauthorized admin access = full system compromise
+#### access_control.rs (~200 lines) - **CRITICAL**
+- Role-based access control
+- Admin/operator management
+- Authorization checks
 
-**Test Cases**:
-- Attempt to call admin functions as non-admin
-- Try to escalate privileges (operator → admin)
-- Test admin transfer security
-- Verify operator permission scoping
-- Check for backdoor admin creation
+#### anti_fraud.rs (~680 lines) - **CRITICAL**
+- Fraud detection algorithm
+- Risk scoring (0-1000)
+- Rate limiting (per-minute, per-hour, per-day)
+- Duplicate detection
 
-**Expected Finding**: No privilege escalation possible
-
----
-
-#### 2. Financial Security
-**Why Critical**: Direct monetary loss possible
-
-**Test Cases**:
-- Double-payment attempts
-- Payment calculation manipulation
-- Balance overflow/underflow
-- Unauthorized token minting
-- Escrow drainage vectors
-
-**Expected Finding**: All financial operations secure
-
----
-
-#### 3. Fraud Detection Effectiveness
-**Why Critical**: Core value proposition
-
-**Test Cases**:
-- Risk scoring algorithm validation
-- Rate limit bypass attempts
-- Duplicate detection evasion
-- Weight anomaly detection
-- Velocity monitoring effectiveness
-
-**Expected Finding**: Fraud detection works as designed
-
----
-
-#### 4. Emergency Mechanisms
-**Why Critical**: Last line of defense
-
-**Test Cases**:
-- Emergency trigger authorization
-- Pause functionality effectiveness
-- Circuit breaker operation
-- Emergency withdrawal security
+#### emergency.rs (~530 lines) - **HIGH**
+- Emergency levels (Normal, Warning, Critical, Shutdown)
+- Circuit breaker pattern
 - Operation throttling
+- Emergency withdrawal
 
-**Expected Finding**: Emergency systems functional and secure
+#### validation.rs (~150 lines) - **HIGH**
+- Input validation
+- Address validation
+- String validation
+- Numeric bounds
 
----
+#### upgrade.rs (~200 lines) - **MEDIUM**
+- Version management
+- Upgrade authorization
+- Data migration hooks
 
-### 4.2 High Priority Areas
-
-#### 5. State Management
-- State transition validity
-- Storage consistency
-- Event emission completeness
-- Data integrity
-
-#### 6. Input Validation
-- Boundary condition handling
-- Type safety
-- Format validation
-- Injection prevention (if applicable)
-
-#### 7. Upgrade Safety
-- Version compatibility logic
-- Migration procedure safety
-- Rollback capability
-- Data preservation
+**Security Focus**:
+- **Fraud detection bypass**
+- **Rate limit evasion**
+- **Authorization logic flaws**
+- **Emergency mechanism abuse**
+- **Validation completeness**
 
 ---
 
-### 4.3 Medium Priority Areas
+## 3. Out of Scope
 
-#### 8. Gas Optimization & DOS
-- Gas exhaustion vectors
-- Storage cost attacks
-- Computational efficiency
+### 3.1 Explicitly Excluded
 
-#### 9. Integration Security
-- Cross-contract call safety
-- Reentrancy prevention
-- State consistency across contracts
+❌ **Frontend Application**: React/TypeScript user interface  
+❌ **Backend Services**: Off-chain APIs, databases, monitoring  
+❌ **Stellar Network**: Platform-level security (assumed secure)  
+❌ **Deployment Scripts**: CI/CD, deployment automation  
+❌ **Documentation**: User guides, API docs (unless security-relevant)  
+❌ **Test Code**: Test files (`.rs` files in `test.rs` or `tests/`)
 
-#### 10. Code Quality
-- Code clarity and maintainability
-- Test coverage adequacy
-- Documentation quality
+### 3.2 Assumed Secure
+
+✅ **Stellar Soroban Platform**: Consensus, execution environment  
+✅ **Rust Compiler**: Type safety, memory safety  
+✅ **Soroban SDK**: Standard library functions  
+✅ **Admin Key Management**: Secure storage and access (external to contracts)
+
+### 3.3 Future Work (Not This Audit)
+
+⏳ **Multi-Sig Admin**: Planned but not yet implemented  
+⏳ **Automated Oracle**: Price oracle integration (future enhancement)  
+⏳ **Advanced Fraud Detection**: Machine learning models (v2 feature)  
+⏳ **Frontend Integration**: User interface security review
 
 ---
 
-## 5. Known Issues & Workarounds
+## 4. Priority Areas for Auditors
 
-### 5.1 Acknowledged Limitations
+### 4.1 Critical Priority (Must Review Thoroughly)
 
-#### Sybil Attack (Medium Risk)
-**Issue**: Cannot prevent multiple addresses per user at contract level  
-**Workaround**: Rate limiting, fraud detection, off-chain KYC integration  
-**Status**: Accepted risk for MVP
+#### Payment Processing Logic (PaymentDistribution)
+**Why Critical**: Direct fund loss risk
 
-#### Admin Key as Single Point of Failure (Medium Risk)
-**Issue**: Compromised admin has full control  
-**Workaround**: Hardware wallet, operational security, multi-sig recommended  
-**Status**: Operational concern, not contract bug
+**Focus Areas**:
+1. Double payment prevention (known issue)
+2. Arithmetic overflow in calculations
+3. Payment amount validation
+4. Transaction status verification
+5. Cross-contract call safety
 
-#### Fraud Detection Not Foolproof (Low Risk)
-**Issue**: Sophisticated attackers may evade temporarily  
-**Workaround**: Manual review, continuous algorithm improvement  
-**Status**: Acceptable, requires ongoing refinement
+**Expected Findings**: High severity issues likely
 
-### 5.2 Pending Items (If Any)
+---
 
-Currently none. All development complete and tested.
+#### Token Minting (WasteToken)
+**Why Critical**: Unlimited token creation = value destruction
+
+**Focus Areas**:
+1. Minting authorization
+2. Supply cap enforcement (currently missing)
+3. Balance overflow protection
+4. Total supply integrity
+
+**Expected Findings**: High severity issues possible
+
+---
+
+#### Fraud Detection & Rate Limiting (anti_fraud.rs)
+**Why Critical**: Platform abuse prevention
+
+**Focus Areas**:
+1. Risk score calculation accuracy
+2. Evasion techniques (multi-account, timing manipulation)
+3. Rate limit effectiveness
+4. Duplicate detection bypass
+5. Temporary storage security
+
+**Expected Findings**: Medium severity issues likely
+
+---
+
+### 4.2 High Priority (Thorough Review Required)
+
+- Transaction recording and verification workflow
+- Access control implementation and coverage
+- Emergency response mechanisms
+- Price manipulation attacks
+- Input validation completeness
+
+---
+
+### 4.3 Medium Priority (Standard Review)
+
+- Collector registration and status management
+- Reputation scoring algorithm
+- Collection point verification
+- Storage efficiency
+- Event logging coverage
+
+---
+
+### 4.4 Low Priority (Brief Review)
+
+- Query methods (read-only operations)
+- Contract initialization
+- Version management
+- Gas optimization opportunities
+
+---
+
+## 5. Known Issues and Limitations
+
+### 5.1 Critical Known Issues
+
+| ID | Issue | Location | Status | Workaround |
+|----|-------|----------|--------|------------|
+| KI-1 | No double-payment prevention | PaymentDistribution | 🔴 Open | Admin manual tracking |
+| KI-2 | No supply cap | WasteToken | 🔴 Open | Admin restraint |
+| KI-3 | Single admin key | All contracts | 🔴 Open | Secure key management |
+
+**Auditor Action**: Confirm these issues and assess severity
+
+---
+
+### 5.2 High Priority Limitations
+
+| ID | Limitation | Impact | Mitigation |
+|----|------------|--------|------------|
+| LIM-1 | Manual price updates | Stale pricing | Price bounds, timestamps |
+| LIM-2 | No collector status check in transactions | Banned users can transact | Admin verification step |
+| LIM-3 | Fraud detection static thresholds | Sophisticated evasion | Multi-factor scoring |
+| LIM-4 | No transaction expiry | Stale data | Admin review process |
+
+**Auditor Action**: Evaluate if mitigations are sufficient
+
+---
+
+### 5.3 Medium Priority Limitations
+
+- No reputation decay mechanism
+- Simple duplicate detection (weight +1g bypass)
+- No cross-collector fraud pattern detection
+- No collection point verification in transactions
+- No Sybil resistance (identity verification)
+
+**Auditor Action**: Note in report, suggest improvements
 
 ---
 
@@ -317,477 +391,405 @@ Currently none. All development complete and tested.
 
 ### 6.1 Prerequisites
 
+**Required Software**:
+- Rust 1.79.0 or later
+- Soroban CLI 21.7.7 or later
+- wasm32-unknown-unknown target
+
+**Installation**:
 ```bash
-# Install Rust (version 1.74.0+)
+# Install Rust
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 
 # Install Soroban CLI
-cargo install --locked soroban-cli
+cargo install --locked soroban-cli --version 21.7.7
 
-# Configure Stellar Testnet
-soroban network add testnet \
-  --rpc-url https://soroban-testnet.stellar.org:443 \
-  --network-passphrase "Test SDF Network ; September 2015"
+# Add wasm target
+rustup target add wasm32-unknown-unknown
 ```
 
-### 6.2 Build Instructions
+### 6.2 Build and Test
 
+**Clone Repository**:
 ```bash
-# Clone repository
-git clone <repository-url>
+git clone https://github.com/wastefi/wastefi-contracts.git
 cd wastefi-contracts
-
-# Install dependencies
-cargo fetch
-
-# Build all contracts
-cargo build --release --target wasm32-unknown-unknown
-
-# Output location
-ls target/wasm32-unknown-unknown/release/*.wasm
 ```
 
-### 6.3 Running Tests
-
+**Build All Contracts**:
 ```bash
-# Run all unit tests
+cargo build --target wasm32-unknown-unknown --release
+```
+
+**Run Unit Tests**:
+```bash
 cargo test --workspace
-
-# Run specific contract tests
-cargo test -p waste_transaction
-
-# Run tests with output
-cargo test -- --nocapture
-
-# Run integration tests
-cargo test --test integration_test
-
-# Check for warnings
-cargo clippy --workspace -- -D warnings
-
-# Format check
-cargo fmt --all --check
 ```
 
-### 6.4 Test Coverage
-
+**Run Integration Tests**:
 ```bash
-# Install tarpaulin
-cargo install cargo-tarpaulin
-
-# Generate coverage report
-cargo tarpaulin --workspace --out Html
-
-# View coverage
-open tarpaulin-report.html
+cargo test --test integration
 ```
 
-### 6.5 Testnet Deployment
-
-Contracts are deployed to Stellar testnet for live testing:
-
+**Generate Coverage**:
 ```bash
-# Testnet contract addresses (to be provided)
-WASTE_TOKEN=[ADDRESS]
-COLLECTOR_REGISTRY=[ADDRESS]
-WASTE_TRANSACTION=[ADDRESS]
-PAYMENT_DISTRIBUTION=[ADDRESS]
-# ... other contracts
+cargo tarpaulin --workspace --out Html --output-dir coverage
 ```
+
+### 6.3 Test Network Deployment
+
+**Network**: Stellar Testnet (Futurenet)  
+**RPC URL**: [To be provided]  
+**Contract Addresses**: [To be provided after testnet deployment]
+
+**Admin Account**: [Test account, not production]
 
 ---
 
-## 7. Documentation & Resources
+## 7. Audit Deliverables
 
-### 7.1 Security Documentation
+### 7.1 Required Reports
 
-**Primary Documents** (in `docs/`):
-- `SECURITY_AUDIT.md` - Comprehensive audit guide
-- `THREAT_MODEL.md` - Threat analysis and mitigations
-- `SECURITY_CHECKLIST.md` - Pre-deployment verification
-- `SECURITY_CONSIDERATIONS.md` - Per-contract security analysis
-- `INCIDENT_RESPONSE.md` - Emergency procedures
-- `AUDIT_SCOPE.md` - This document
+#### Executive Summary (2-3 pages)
+- High-level findings overview
+- Risk assessment summary
+- Overall security posture
+- Recommendations prioritization
 
-**Supporting Documentation**:
-- `GAS_OPTIMIZATION.md` - Gas optimization strategies
-- `UPGRADE_GUIDE.md` - Upgrade procedures
-- `DEPLOYMENT.md` - Deployment guide (to be created)
-- `API.md` - API reference (to be created)
+#### Detailed Findings Report
+For each finding:
+- **Severity**: Critical, High, Medium, Low, Informational
+- **Description**: What is the issue
+- **Location**: File, function, line numbers
+- **Impact**: What could happen
+- **Proof of Concept**: Demonstrable exploit (if possible)
+- **Recommendation**: How to fix
+- **References**: Similar vulnerabilities, best practices
 
-### 7.2 Code Documentation
+**Minimum Expected Findings**:
+- 2+ Critical/High issues (known issues exist)
+- 5+ Medium issues
+- 10+ Low/Informational issues
 
-- Inline code comments
-- Function documentation
-- Module-level documentation
-- README files per contract
+#### Code Quality Assessment
+- Best practices adherence
+- Code organization and clarity
+- Error handling patterns
+- Gas optimization opportunities
+- Documentation quality
 
-### 7.3 Previous Commit Summaries
-
-Located in root directory:
-- `COMMIT_19_SUMMARY.md` - Emergency response mechanisms
-- `COMMIT_20_SUMMARY.md` - Rate limiting and anti-fraud
-- `COMMIT_21_SUMMARY.md` - Contract upgradeability patterns
-- `COMMIT_22_SUMMARY.md` - Gas optimization and storage efficiency
-
-### 7.4 Test Suite Documentation
-
-- Unit tests: ~60 tests across modules
-- Integration tests: 15+ scenarios
-- Security tests: (to be added in Commit 24)
-- Stress tests: (to be added in Commit 24)
+#### Testing Coverage Analysis
+- Review existing test coverage (~85%)
+- Identify testing gaps
+- Recommend additional test scenarios
+- Evaluate test quality
 
 ---
 
-## 8. Audit Deliverables
+### 7.2 Severity Classification
 
-### 8.1 Expected from Auditors
+**Critical** (Immediate action required):
+- Direct fund loss possible
+- Unlimited token minting
+- Admin key bypass
+- System-wide compromise
 
-#### Primary Deliverable: Audit Report
-**Format**: PDF + Markdown  
-**Language**: English  
-**Sections**:
-1. Executive Summary
-2. Scope and Methodology
-3. Findings by Severity
-4. Code Quality Assessment
-5. Recommendations
-6. Conclusion
+**High** (Fix before mainnet):
+- Significant fund loss possible
+- Major functionality bypass
+- Authentication/authorization flaws
+- State corruption
 
-#### Finding Classification
+**Medium** (Fix or document):
+- Limited fund loss possible
+- DOS attack vectors
+- Moderate impact vulnerabilities
+- Design flaws
 
-**Critical**: 
-- Immediate threat to funds or system integrity
-- Active exploitation possible
-- Requires immediate fix before mainnet
-
-**High**:
-- Significant security risk
-- Potential for exploitation
-- Should be fixed before mainnet
-
-**Medium**:
-- Moderate security concern
-- Limited impact or difficult to exploit
-- Recommended to fix
-
-**Low**:
-- Minor security concern or edge case
-- Consider fixing in future update
+**Low** (Future improvement):
+- Best practice violations
+- Code quality issues
+- Minor security concerns
+- Gas inefficiencies
 
 **Informational**:
-- Code quality suggestions
-- Best practice recommendations
-- No security impact
+- Suggestions
+- Observations
+- Documentation improvements
+- Style recommendations
 
-#### Finding Format
+---
 
-For each finding:
-- **Title**: Brief description
-- **Severity**: Critical/High/Medium/Low/Informational
-- **Location**: File:line or contract::function
-- **Description**: Detailed explanation
-- **Impact**: Potential consequences
-- **Proof of Concept**: Code demonstrating issue (if applicable)
-- **Recommendation**: How to fix
-- **Status**: Open/Acknowledged/Fixed/Wont-Fix
+### 7.3 Delivery Format
 
-### 8.2 Remediation Support
+**Reports**:
+- PDF format (primary)
+- Markdown format (secondary, for GitHub)
 
-**Included**:
-- Clarification calls (up to 3)
-- Email support during audit
-- Re-audit of fixed issues (1 pass)
+**Supporting Materials**:
+- Proof of concept code (if applicable)
+- Test cases demonstrating vulnerabilities
+- Recommended fixes (code examples)
+
+**Presentation** (optional):
+- 1-hour findings presentation to team
+- Q&A session
+- Remediation discussion
+
+---
+
+## 8. Timeline and Milestones
+
+### 8.1 Proposed Schedule
+
+| Week | Activity | Deliverable |
+|------|----------|-------------|
+| 0 | Kickoff meeting, access provisioning | Audit plan confirmed |
+| 1 | Architecture review, code familiarization | Initial observations |
+| 2 | Deep dive into critical functions | Preliminary findings |
+| 3 | Testing, POC development, cross-contract analysis | Draft report |
+| 4 | Report finalization, remediation discussion | Final report |
+
+**Total Duration**: 4 weeks  
+**Estimated Effort**: 2 auditors × 160 hours = 320 hours
+
+---
+
+### 8.2 Key Milestones
+
+**Day 1**: Kickoff meeting
+- Scope confirmation
+- Team introductions
+- Access provisioning
+- Questions and clarifications
+
+**Week 1 End**: Architecture review complete
+- System understanding confirmed
+- High-level concerns identified
+- Audit approach finalized
+
+**Week 2 End**: Deep analysis complete
+- Critical functions reviewed
+- Preliminary findings documented
+- POCs developed
+
+**Week 3 End**: Draft report delivered
+- All findings documented
+- Recommendations provided
+- Team review initiated
+
+**Week 4 End**: Final report delivered
+- All feedback incorporated
+- Final recommendations
+- Audit complete
+
+---
+
+## 9. Auditor Access and Support
+
+### 9.1 Repository Access
+
+**GitHub**: https://github.com/wastefi/wastefi-contracts  
+**Branch**: `audit/v0.1.0` (dedicated audit branch, code freeze)  
+**Access**: Read-only for auditors
+
+**Documentation**:
+- `docs/SECURITY_AUDIT.md` - Audit preparation guide
+- `docs/THREAT_MODEL.md` - Threat analysis
+- `docs/SECURITY_CHECKLIST.md` - Security checklist
+- `docs/SECURITY_CONSIDERATIONS.md` - Per-contract analysis
+- `README.md` - Project overview
+
+---
+
+### 9.2 Communication Channels
+
+**Primary Contact**: [Security Lead Name]  
+**Email**: security@wastefi.io  
+**Slack**: #security-audit (private channel)  
+**Meeting Cadence**: Weekly sync (1 hour)
+
+**Response Time**:
+- Critical questions: < 4 hours
+- Standard questions: < 24 hours
+
+---
+
+### 9.3 Team Availability
+
+**Code Walkthrough**: Available on request  
+**Q&A Sessions**: Scheduled weekly, ad-hoc as needed  
+**Remediation Discussion**: Post-audit, before mainnet deployment
+
+---
+
+## 10. Post-Audit Process
+
+### 10.1 Finding Remediation
+
+**Process**:
+1. WasteFi team reviews findings
+2. Severity and priority confirmed
+3. Fixes developed and tested
+4. Re-audit requested for Critical/High findings
 
 **Timeline**:
-- Initial audit: 2-3 weeks
-- Remediation period: 1-2 weeks (our team)
-- Re-audit: 1 week
-- Final report: 1 week after re-audit
+- Critical fixes: Within 1 week
+- High fixes: Within 2 weeks
+- Medium fixes: Before mainnet or documented
 
 ---
 
-## 9. Audit Logistics
+### 10.2 Re-Audit Scope
 
-### 9.1 Access & Permissions
+**For Critical/High Findings Only**:
+- Review fixes for identified issues
+- Verify issues resolved
+- Confirm no new issues introduced
 
-**Repository Access**:
-- Private GitHub repository
-- Auditor team added as read-only collaborators
-- Access to all branches and history
+**Not a Full Re-Audit**:
+- Limited to modified code
+- Focus on remediation verification
 
-**Communication Channels**:
-- Dedicated Slack/Discord channel
-- Email thread for formal communication
-- Weekly sync calls (optional)
-
-**Documentation Access**:
-- Full access to all documentation
-- Access to test environment
-- Testnet contract addresses
-
-### 9.2 Team Availability
-
-**Primary Contacts**:
-- Technical Lead: [Name] - [Email]
-- Security Officer: [Name] - [Email]
-- Project Manager: [Name] - [Email]
-
-**Availability**:
-- Business hours: 9 AM - 5 PM [Timezone]
-- Response time: <24 hours for questions
-- Emergency contact: [Phone] (critical findings only)
-
-**Sync Meetings**:
-- Kickoff meeting: 1 hour (audit start)
-- Weekly check-ins: 30 minutes (optional)
-- Finding review: 1-2 hours (as findings discovered)
-- Closing meeting: 1 hour (audit completion)
-
-### 9.3 Audit Timeline
-
-**Week 1: Initial Review**
-- Setup and environment familiarization
-- Documentation review
-- High-level architecture analysis
-- Critical contract review begins
-
-**Week 2: Deep Dive**
-- Detailed code review
-- Security testing
-- Integration analysis
-- Finding documentation
-
-**Week 3: Wrap-Up**
-- Final testing
-- Finding validation
-- Report drafting
-- Team review
-
-**Post-Audit: Remediation & Re-Audit**
-- Fixes implemented by WasteFi team (1-2 weeks)
-- Re-audit of fixes (1 week)
-- Final report publication (1 week)
+**Timeline**: 1 week after fixes submitted
 
 ---
 
-## 10. Audit Methodology Recommendations
+### 10.3 Public Disclosure
 
-### 10.1 Recommended Approach
+**Audit Report**: Will be published publicly  
+**Timing**: After all Critical/High findings resolved  
+**Location**: GitHub repository, project website, blog post
 
-**Phase 1: Automated Analysis**
-- Static analysis tools
-- Linting and formatting checks
-- Dependency vulnerability scanning
-- Test coverage analysis
-
-**Phase 2: Manual Review**
-- Line-by-line code review
-- Architecture analysis
-- Threat modeling validation
-- Security pattern verification
-
-**Phase 3: Dynamic Testing**
-- Unit test review
-- Integration test execution
-- Fuzzing (if applicable)
-- Edge case testing
-
-**Phase 4: Specialized Testing**
-- Access control testing
-- Financial logic verification
-- Fraud detection validation
-- Upgrade scenario testing
-
-### 10.2 Tools & Techniques
-
-**Recommended Tools**:
-- Rust static analyzers (Clippy, rust-analyzer)
-- Manual code review
-- Test execution and validation
-- Custom exploit scripts
-
-**Focus Techniques**:
-- STRIDE threat modeling
-- Attack tree analysis
-- State machine validation
-- Invariant checking
+**Unresolved Issues**: Will be documented as known limitations
 
 ---
 
-## 11. Success Criteria
+## 11. Budget and Payment
 
-### 11.1 Audit Considered Successful If:
+**Audit Fee**: [To be negotiated]  
+**Payment Terms**: [To be negotiated]  
+**Re-Audit Fee**: [To be negotiated]
 
-- [ ] All critical and high severity findings identified
-- [ ] No critical vulnerabilities remain after remediation
-- [ ] High severity issues have mitigation plans
-- [ ] Code quality assessed and documented
-- [ ] Security recommendations provided
-- [ ] Team educated on findings
-- [ ] Final report published
+**Included**:
+- 4 weeks of audit work
+- Executive summary
+- Detailed findings report
+- Code quality assessment
+- Testing coverage analysis
+- One remediation review cycle
 
-### 11.2 Ready for Mainnet If:
-
-- [ ] Zero critical findings
-- [ ] Zero high findings (or accepted with documented risk)
-- [ ] Medium findings addressed or accepted
-- [ ] Audit report published
-- [ ] Fixes verified by re-audit
-- [ ] Team trained on security best practices
-- [ ] Incident response plan ready
-- [ ] Monitoring and alerting configured
+**Not Included**:
+- Additional re-audits beyond first cycle
+- Post-deployment monitoring
+- Ongoing security consultation
+- Frontend application review
 
 ---
 
-## 12. Post-Audit Actions
+## 12. Success Criteria
 
-### 12.1 Remediation Process
+### 12.1 Audit Success
 
-1. **Review Findings**
-   - Team review of audit report
-   - Classify findings (agree/disagree)
-   - Prioritize fixes
-
-2. **Implement Fixes**
-   - Address critical findings first
-   - Fix high priority issues
-   - Consider medium/low recommendations
-   - Add tests for each fix
-
-3. **Internal Testing**
-   - Verify fixes work as intended
-   - Ensure no regressions
-   - Test edge cases
-   - Update documentation
-
-4. **Re-Audit Submission**
-   - Submit fixed code to auditors
-   - Provide fix documentation
-   - Request verification
-
-5. **Final Approval**
-   - Receive final audit report
-   - Publish audit report
-   - Plan mainnet deployment
-
-### 12.2 Continuous Security
-
-- Establish bug bounty program
-- Quarterly security reviews
-- Monitor for new vulnerability types
-- Update threat model as needed
-- Maintain audit relationships
+✅ **Complete Coverage**: All in-scope contracts reviewed  
+✅ **Thorough Analysis**: Critical functions analyzed in depth  
+✅ **Actionable Findings**: Clear recommendations with examples  
+✅ **Timely Delivery**: Final report within 4 weeks  
+✅ **Quality Report**: Professional, detailed, well-structured
 
 ---
 
-## 13. Budget & Pricing
+### 12.2 WasteFi Remediation Success
 
-**Note**: This section to be completed during audit firm selection.
-
-### 13.1 Estimated Scope
-
-- **Total Lines of Code**: ~5,000
-- **Contracts to Audit**: 7 contracts + common module
-- **Estimated Audit Hours**: 120-180 hours
-- **Team Size**: 2-3 auditors
-- **Duration**: 2-3 weeks
-
-### 13.2 Payment Terms
-
-To be negotiated with selected audit firm.
+✅ **All Critical Findings Resolved**: Before mainnet  
+✅ **All High Findings Resolved or Mitigated**: Before mainnet  
+✅ **Medium Findings Evaluated**: Fix or document as limitation  
+✅ **Re-Audit Passed**: For modified code  
+✅ **Public Disclosure**: Transparent reporting
 
 ---
 
-## 14. Confidentiality & NDA
+## 13. Appendix
 
-### 14.1 Confidential Information
+### Appendix A: Contract Function Summary
 
-The following is considered confidential:
-- Unpatched security vulnerabilities
-- Audit findings before remediation
-- Deployment strategies
-- Future roadmap details
-- Business metrics
+**Total Functions**: ~150 public functions across all contracts
 
-### 14.2 Public Disclosure
-
-The following will be made public after remediation:
-- Final audit report
-- Fixed security issues
-- Recommendations implemented
-- Code improvements made
-
-### 14.3 NDA Requirements
-
-- Standard mutual NDA
-- Non-disclosure of vulnerabilities until fixed
-- Coordinated disclosure timeline
-- Public attribution to audit firm (with permission)
+**Function Distribution**:
+- CollectorRegistry: ~15 functions
+- WasteTransaction: ~20 functions
+- PaymentDistribution: ~15 functions
+- MaterialPricing: ~10 functions
+- Reputation: ~12 functions
+- WasteToken: ~15 functions
+- CollectionPoint: ~15 functions
+- Common library: ~60+ utility functions
 
 ---
 
-## 15. Questions for Auditors
+### Appendix B: Test Coverage Summary
 
-### 15.1 Audit Firm Qualifications
+**Current Coverage**: ~85% (unit tests)
 
-- [ ] Experience with Rust smart contracts?
-- [ ] Experience with Stellar Soroban?
-- [ ] Previous DeFi/FinTech audits?
-- [ ] Team certifications?
-- [ ] Reference clients?
+**Coverage by Contract**:
+- CollectorRegistry: 90%
+- WasteTransaction: 85%
+- PaymentDistribution: 80%
+- MaterialPricing: 85%
+- Reputation: 85%
+- WasteToken: 90%
+- CollectionPoint: 85%
+- Common library: 85%
 
-### 15.2 Methodology
+**Test Distribution**:
+- Unit tests: 135+ tests
+- Integration tests: 20+ scenarios
+- Security tests: 15+ cases
 
-- [ ] Audit methodology documentation?
-- [ ] Tools and techniques used?
-- [ ] Test coverage requirements?
-- [ ] Finding classification criteria?
-
-### 15.3 Logistics
-
-- [ ] Estimated timeline?
-- [ ] Team availability?
-- [ ] Communication preferences?
-- [ ] Re-audit included?
-- [ ] Report format?
-
----
-
-## Appendix A: Contract Summary Table
-
-| Contract | Path | LOC | Priority | Main Risks |
-|----------|------|-----|----------|------------|
-| Common | contracts/common/ | 2000 | Critical | Access control, fraud detection |
-| WasteToken | contracts/waste_token/ | 400 | Critical | Unauthorized minting, transfers |
-| PaymentDistribution | contracts/payment_distribution/ | 500 | Critical | Double payment, calculation |
-| WasteTransaction | contracts/waste_transaction/ | 700 | Critical | Fraud evasion, rate limits |
-| CollectorRegistry | contracts/collector_registry/ | 600 | High | Spam, status manipulation |
-| MaterialPricing | contracts/material_pricing/ | 350 | High | Price manipulation |
-| CollectionPoint | contracts/collection_point/ | 400 | High | Fake points, verification |
-| Reputation | contracts/reputation/ | 400 | Medium | Score manipulation |
-| **Total** | | **~5,000** | | |
+**Gaps**:
+- Limited chaos testing
+- Limited stress testing
+- Some edge cases not covered
 
 ---
 
-## Appendix B: Contact Information
+### Appendix C: Dependencies
 
-**Project Team**:
-- Project Lead: [Name] - [Email]
-- Technical Lead: [Name] - [Email]
-- Security Lead: [Name] - [Email]
+**Direct Dependencies**:
+- `soroban-sdk = "21.7.7"` (only production dependency)
 
-**For Audit Inquiries**:
-- Email: security@wastefi.example
-- Website: [URL]
-- GitHub: [Repository URL]
+**Development Dependencies**:
+- `soroban-sdk` (with testutils)
+- All WasteFi contracts (for integration tests)
+
+**No External Dependencies**: Minimal attack surface
+
+---
+
+### Appendix D: Contact Information
+
+**Project Lead**: [Name]  
+**Email**: [email]  
+**Phone**: [phone]
+
+**Security Lead**: [Name]  
+**Email**: security@wastefi.io  
+**Phone**: [phone]
+
+**Technical Lead**: [Name]  
+**Email**: [email]  
+**Phone**: [phone]
+
+---
+
+## Document Revision History
+
+| Version | Date | Author | Changes |
+|---------|------|--------|---------|
+| 0.1.0 | 2026-09-11 | WasteFi Team | Initial audit scope document |
 
 ---
 
 **End of Audit Scope Document**
 
-*This document defines the scope for the WasteFi smart contract security audit. It should be reviewed and agreed upon by both parties before audit commencement.*
-
-**Version**: 1.0.0  
-**Last Updated**: February 2024  
-**Status**: Ready for Audit Firm Selection
+For questions or clarifications, contact: security@wastefi.io

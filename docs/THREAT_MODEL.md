@@ -1,946 +1,994 @@
-# WasteFi Smart Contracts - Threat Model
+# WasteFi Threat Model
 
-## Document Information
+## Document Purpose
 
-**Version**: 1.0.0  
-**Date**: February 2024  
-**Classification**: Internal Security Document  
-**Last Review**: February 2024
+This document provides a comprehensive threat analysis for the WasteFi smart contracts, identifying assets, threat actors, attack vectors, and implemented mitigations. It serves as a foundation for security audit, incident response planning, and ongoing security improvements.
+
+**Version**: 0.1.0  
+**Date**: September 2026  
+**Network**: Stellar Soroban  
+**Status**: Pre-Mainnet
 
 ---
 
 ## 1. Executive Summary
 
-This threat model identifies potential security risks to the WasteFi smart contract system, analyzes attack vectors, and documents implemented mitigations. The model follows the STRIDE methodology (Spoofing, Tampering, Repudiation, Information Disclosure, Denial of Service, Elevation of Privilege) adapted for blockchain smart contracts.
+The WasteFi platform manages valuable digital assets (tokens, payments) and critical reputation data for waste collectors and collection points. The threat landscape includes malicious users attempting fraud, compromised administrators, external attackers, and system design vulnerabilities.
 
-### Key Findings
-
-- **Critical Risks**: 8 identified, all mitigated
-- **High Risks**: 15 identified, 14 mitigated, 1 accepted
-- **Medium Risks**: 12 identified, all mitigated
-- **Total Threats Analyzed**: 35+
-
-### Risk Summary
-
-| Risk Level | Count | Mitigated | Accepted | Residual Risk |
-|------------|-------|-----------|----------|---------------|
-| Critical   | 8     | 8         | 0        | Low           |
-| High       | 15    | 14        | 1        | Low-Medium    |
-| Medium     | 12    | 12        | 0        | Low           |
-| Low        | 10+   | 10+       | 0        | Negligible    |
+**Key Security Posture**:
+- ✅ Multi-layered defense with fraud detection, rate limiting, and access control
+- ✅ Emergency response capability for incident management
+- ✅ Comprehensive audit trail for forensics
+- ⚠️ Single admin model presents centralization risk (multi-sig planned)
+- ⚠️ Manual price oracles could be manipulation vector
 
 ---
 
-## 2. Assets
+## 2. System Assets
 
 ### 2.1 Digital Assets
 
-#### Tokens & Funds (Critical Value)
-- **WasteFi Tokens**: Reward tokens with monetary value
-- **Escrow Funds**: Held payments awaiting verification
-- **Treasury Balance**: Contract-held funds for operations
+#### Waste Tokens (High Value)
+- **Description**: Reward tokens minted to collectors upon transaction verification
+- **Storage**: WasteToken contract balances
+- **Value**: Convertible to fiat or other cryptocurrencies
+- **Criticality**: **CRITICAL** - Direct financial impact
 
-**Protection Level**: Maximum  
-**Owner**: Platform and users  
-**Value**: High (direct financial impact)
+**Threats**:
+- Unauthorized minting
+- Token theft through transfer manipulation
+- Supply inflation attack
+- Burn authorization bypass
 
-#### User Balances (Critical Value)
-- **Collector Earnings**: Accumulated rewards
-- **Token Holdings**: User-owned tokens
-- **Pending Payments**: Unverified transaction values
+**Controls**:
+- ✅ Admin-only minting
+- ✅ Transfer authorization checks
+- ✅ Supply tracking
+- ⚠️ No supply cap (unlimited minting possible)
 
-**Protection Level**: Maximum  
-**Owner**: Individual users  
-**Value**: High (user trust, regulatory)
+#### Payment Funds (High Value)
+- **Description**: XLM or other tokens held for payment distribution
+- **Storage**: PaymentDistribution contract
+- **Value**: Real monetary value
+- **Criticality**: **CRITICAL** - Direct fund loss risk
 
-### 2.2 Identity & Reputation Assets
+**Threats**:
+- Unauthorized withdrawal
+- Payment calculation manipulation
+- Double payment vulnerability
+- Emergency withdrawal abuse
 
-#### Collector Identities (High Value)
-- **Collector Records**: Registration data
-- **Verification Status**: Approved/pending status
-- **Account Status**: Active/suspended/banned
+**Controls**:
+- ✅ Admin-only payment processing
+- ✅ Payment amount validation
+- ✅ Transaction verification requirement
+- ❓ Emergency withdrawal not fully implemented
 
-**Protection Level**: High  
-**Owner**: Individual collectors  
-**Value**: Medium-High (livelihood impact)
+### 2.2 User Data
+
+#### Collector Profiles (Medium Value)
+- **Description**: Collector registration data, status, contact info
+- **Storage**: CollectorRegistry contract
+- **Sensitivity**: PII (names, addresses, contact info)
+- **Criticality**: **HIGH** - Privacy and regulatory compliance
+
+**Threats**:
+- Unauthorized profile access
+- Profile manipulation
+- Status manipulation (ban evasion)
+- Identity theft
+
+**Controls**:
+- ✅ Owner-only profile updates
+- ✅ Admin-only status changes
+- ✅ Access control on all methods
+- ✅ Event logging for auditing
+
+#### Transaction Records (Medium Value)
+- **Description**: Waste collection transaction history
+- **Storage**: WasteTransaction contract
+- **Sensitivity**: Business data, payment history
+- **Criticality**: **HIGH** - Financial and operational impact
+
+**Threats**:
+- Transaction history tampering
+- Unauthorized verification
+- Status manipulation
+- Data deletion
+
+**Controls**:
+- ✅ Immutable transaction records (no delete)
+- ✅ Admin-only verification
+- ✅ Admin-only status updates
+- ✅ Complete event trail
+
+### 2.3 System Integrity
 
 #### Reputation Scores (Medium Value)
-- **Score Data**: 0-1000 reputation points
-- **Historical Performance**: Transaction success rates
-- **Trust Indicators**: Verification history
+- **Description**: Trust scores for collectors and collection points
+- **Storage**: Reputation contract
+- **Purpose**: Risk assessment, platform quality control
+- **Criticality**: **MEDIUM** - System trust and fairness
 
-**Protection Level**: Medium  
-**Owner**: Individual collectors  
-**Value**: Medium (impacts future earnings)
+**Threats**:
+- Score manipulation
+- Sybil attacks (fake reputation)
+- Score inflation/deflation
+- Review bombing
 
-### 2.3 Transactional Data
+**Controls**:
+- ✅ Algorithm-based score calculation
+- ✅ Multiple factors considered
+- ✅ Admin oversight capability
+- ⚠️ No decay mechanism (reputation doesn't decrease over time)
 
-#### Transaction Records (High Value)
-- **Collection Records**: Weight, material, location
-- **Verification Status**: Verified/pending/rejected
-- **Pricing Data**: Applied prices and calculations
+#### Material Pricing (Medium Value)
+- **Description**: Pricing data for waste materials
+- **Storage**: MaterialPricing contract
+- **Purpose**: Payment calculation basis
+- **Criticality**: **HIGH** - Affects all payments
 
-**Protection Level**: High  
-**Owner**: Platform and collectors  
-**Value**: High (financial and audit implications)
+**Threats**:
+- Price manipulation
+- Oracle data tampering
+- Stale pricing data
+- Extreme price attacks
 
-#### Pricing Information (High Value)
-- **Material Prices**: Current market rates
-- **Price History**: Historical pricing data
-- **Update Timestamps**: Last modification times
+**Controls**:
+- ✅ Operator-only price updates
+- ✅ Price bounds validation (min/max)
+- ✅ Update timestamp tracking
+- ⚠️ Manual updates (no automated oracle)
 
-**Protection Level**: High  
-**Owner**: Platform  
-**Value**: High (economic manipulation potential)
+#### Contract Code (Critical Asset)
+- **Description**: Smart contract WASM binaries
+- **Storage**: Stellar network
+- **Purpose**: Platform logic and rules
+- **Criticality**: **CRITICAL** - Complete system integrity
 
-### 2.4 System Integrity Assets
+**Threats**:
+- Unauthorized upgrades
+- Malicious code deployment
+- Downgrade attacks
+- Logic bugs
 
-#### Contract Code (Critical Value)
-- **WASM Binaries**: Deployed contract code
-- **Contract State**: Storage and configurations
-- **Upgrade Mechanisms**: Version control and migration
-
-**Protection Level**: Maximum  
-**Owner**: Platform  
-**Value**: Critical (system-wide impact)
-
-#### Admin Controls (Critical Value)
-- **Admin Address**: Superadmin account
-- **Operator List**: Semi-trusted accounts
-- **Permission System**: Access control state
-
-**Protection Level**: Maximum  
-**Owner**: Platform governance  
-**Value**: Critical (full system control)
+**Controls**:
+- ✅ Admin-only upgrades
+- ✅ Version management
+- ✅ WASM hash verification
+- ✅ Upgrade event logging
 
 ---
 
 ## 3. Trust Boundaries
 
-### 3.1 Trust Levels
+### 3.1 Administration Boundary
 
-```
-┌─────────────────────────────────────────┐
-│         Trusted Zone                     │
-│  ┌────────────────────────────────┐     │
-│  │    Soroban Runtime (Stellar)   │     │
-│  │  - Code execution              │     │
-│  │  - Storage guarantees          │     │
-│  │  - Cryptographic operations    │     │
-│  └────────────────────────────────┘     │
-└─────────────────────────────────────────┘
-              │
-              ▼
-┌─────────────────────────────────────────┐
-│      Semi-Trusted Zone                   │
-│  ┌────────────────────────────────┐     │
-│  │  Contract Administrators       │     │
-│  │  - Emergency controls          │     │
-│  │  - Verification authority      │     │
-│  │  - Upgrade capability          │     │
-│  └────────────────────────────────┘     │
-│  ┌────────────────────────────────┐     │
-│  │  Contract Operators            │     │
-│  │  - Transaction verification    │     │
-│  │  - Status updates              │     │
-│  └────────────────────────────────┘     │
-└─────────────────────────────────────────┘
-              │
-              ▼
-┌─────────────────────────────────────────┐
-│       Untrusted Zone                     │
-│  ┌────────────────────────────────┐     │
-│  │  End Users (Collectors)        │     │
-│  │  - Transaction submission      │     │
-│  │  - Registration                │     │
-│  │  - Queries                     │     │
-│  └────────────────────────────────┘     │
-│  ┌────────────────────────────────┐     │
-│  │  External Systems              │     │
-│  │  - Integration partners        │     │
-│  │  - Data consumers              │     │
-│  │  - Analytics systems           │     │
-│  └────────────────────────────────┘     │
-└─────────────────────────────────────────┘
-```
+**Trusted Zone**: Admin/Operator accounts
 
-### 3.2 Boundary Protections
+**Privileges**:
+- Contract upgrades (Admin only)
+- Emergency triggers (Admin only)
+- Transaction verification (Admin only)
+- Price updates (Operator only)
+- Role transfers (Admin only)
 
-**Trusted → Semi-Trusted**:
-- Admin key management (off-chain security)
-- Multi-signature recommendations
-- Time-locked operations (upgrade delays)
+**Assumptions**:
+- Admin private keys are secure
+- Admin accounts are not compromised
+- Admins act in good faith
+- Multi-sig planned for mainnet (not yet implemented)
 
-**Semi-Trusted → Untrusted**:
-- `require_admin()` gates on all privileged functions
-- Operator permission scoping
-- Admin action logging
+**Risk**: **HIGH** - Admin compromise = system compromise
 
-**Untrusted → Contract**:
-- Input validation on all functions
-- Rate limiting
-- Fraud detection
-- Duplicate prevention
+### 3.2 User Boundary
 
-**Contract → External**:
-- Read-only queries
-- Event emission only
-- No external calls (except internal cross-contract)
+**Untrusted Zone**: Collector and Collection Point accounts
+
+**Privileges**:
+- Self-registration
+- Transaction submission
+- Profile updates (own profile only)
+- Query operations
+
+**Assumptions**:
+- Users may be malicious
+- Users will attempt fraud
+- Users will try to game the system
+- Users may collude
+
+**Risk**: **MEDIUM** - Mitigated by fraud detection and rate limiting
+
+### 3.3 Contract-to-Contract Boundary
+
+**Semi-Trusted Zone**: Cross-contract calls
+
+**Interactions**:
+- WasteTransaction → MaterialPricing (price queries)
+- PaymentDistribution → WasteToken (minting)
+- Reputation → WasteTransaction (score updates)
+
+**Assumptions**:
+- Contracts follow protocol
+- No recursive calls
+- Circuit breakers protect external failures
+
+**Risk**: **LOW** - Soroban prevents reentrancy
+
+### 3.4 On-Chain vs Off-Chain Boundary
+
+**On-Chain** (Trusted):
+- Contract storage
+- Transaction history
+- Event logs
+- Consensus-based timestamps
+
+**Off-Chain** (Untrusted):
+- Frontend applications
+- Monitoring systems
+- User inputs
+- External data sources
+
+**Risk**: **MEDIUM** - Input validation critical
 
 ---
 
 ## 4. Threat Actors
 
-### 4.1 Malicious Collector
+### 4.1 Malicious Collectors
 
-**Profile**:
-- **Motivation**: Financial gain through fraud
-- **Capabilities**: Submit transactions, register accounts
-- **Access Level**: Untrusted user
-- **Technical Skill**: Low to Medium
+**Motivation**: Financial gain through fraud
 
-**Attack Vectors**:
-- Submit fraudulent transactions (inflated weight, fake materials)
-- Create multiple accounts (Sybil attack)
-- Exploit rate limits
+**Capabilities**:
+- Submit false transaction data
+- Inflate waste weights
 - Submit duplicate transactions
-- Manipulate reputation scores
-
-**Potential Impact**: Financial loss, system integrity damage
-
-### 4.2 Compromised Administrator
-
-**Profile**:
-- **Motivation**: Financial gain, sabotage, or coercion
-- **Capabilities**: Full admin access
-- **Access Level**: Trusted admin
-- **Technical Skill**: High
+- Create multiple identities (Sybil)
+- Coordinate with other malicious collectors
 
 **Attack Vectors**:
-- Drain escrow funds via emergency withdrawal
-- Manipulate material prices
-- Suspend legitimate collectors
-- Upgrade to malicious contract code
-- Disable fraud detection
+- Weight inflation
+- Material misrepresentation
+- Duplicate submission
+- Rapid-fire submission (DOS)
+- Collusion with collection points
 
-**Potential Impact**: Catastrophic (full system compromise)
+**Impact**: **HIGH** - Direct financial loss, system integrity
 
-### 4.3 External Attacker
+**Mitigations**:
+- ✅ Fraud detection (risk scoring 0-1000)
+- ✅ Weight anomaly detection
+- ✅ Duplicate transaction prevention
+- ✅ Rate limiting (20 transactions/hour)
+- ✅ Admin verification requirement
+- ⚠️ No identity verification (planned for v2)
 
-**Profile**:
-- **Motivation**: Financial gain, disruption, reputation damage
-- **Capabilities**: Read contract state, submit transactions
-- **Access Level**: Untrusted external
-- **Technical Skill**: High
+### 4.2 Compromised Administrators
 
-**Attack Vectors**:
-- DOS attack via spam transactions
-- Front-running attacks
-- Smart contract exploits (reentrancy, overflow)
-- Brute-force admin credentials (off-chain)
-- Social engineering admin
+**Motivation**: Financial gain, sabotage, or coercion
 
-**Potential Impact**: Service disruption, financial loss
-
-### 4.4 Malicious Collection Point
-
-**Profile**:
-- **Motivation**: Financial gain through collusion
-- **Capabilities**: Verify transactions, report collections
-- **Access Level**: Semi-trusted (verified)
-- **Technical Skill**: Medium
-
-**Attack Vectors**:
-- Collude with collectors for fake verifications
-- Accept materials not actually collected
-- Inflate weight measurements
-- Create shell collection points
-
-**Potential Impact**: Financial loss, data integrity issues
-
-### 4.5 Malicious Operator
-
-**Profile**:
-- **Motivation**: Financial gain, sabotage
-- **Capabilities**: Verify transactions, update statuses
-- **Access Level**: Semi-trusted operator
-- **Technical Skill**: Medium to High
-
-**Attack Vectors**:
+**Capabilities**:
+- Full system access
+- Trigger emergencies
+- Upgrade contracts
 - Verify fraudulent transactions
-- Reject legitimate transactions
-- Manipulate reputation scores
-- DoS via excessive verifications
+- Mint unlimited tokens
 
-**Potential Impact**: Financial loss, service degradation
+**Attack Vectors**:
+- Private key theft
+- Social engineering
+- Insider threat
+- Coercion
+
+**Impact**: **CRITICAL** - Complete system compromise
+
+**Mitigations**:
+- ✅ All admin actions logged
+- ✅ Event-based monitoring possible
+- ⚠️ Single admin key (single point of failure)
+- ⏳ Multi-sig planned for mainnet
+- ⏳ Time-lock upgrades planned
+
+### 4.3 External Attackers
+
+**Motivation**: Financial gain, disruption, data theft
+
+**Capabilities**:
+- Network-level attacks
+- Smart contract exploitation
+- DOS attacks
+- Front-running
+- MEV extraction
+
+**Attack Vectors**:
+- Contract vulnerability exploitation
+- DOS through rate limit exhaustion
+- Front-running payments
+- Price oracle manipulation
+- Network flooding
+
+**Impact**: **HIGH** - System downtime, financial loss
+
+**Mitigations**:
+- ✅ Rate limiting (per-user)
+- ✅ Circuit breakers
+- ✅ Emergency shutdown capability
+- ✅ Input validation
+- ✅ Gas optimization (DOS resistance)
+- ✅ Soroban's deterministic execution (no traditional front-running)
+
+### 4.4 Malicious Collection Points
+
+**Motivation**: Fraud enablement, fee extraction
+
+**Capabilities**:
+- Collude with collectors
+- Fake collection verification
+- Price manipulation
+- Selective service denial
+
+**Attack Vectors**:
+- Verify fake collections
+- Coordinate fraud with collectors
+- Charge excessive fees
+- Discriminate against collectors
+
+**Impact**: **MEDIUM** - Fraud facilitation, unfair practices
+
+**Mitigations**:
+- ✅ Collection point verification
+- ✅ Reputation system for points
+- ✅ Admin oversight of verifications
+- ✅ Event logging for auditing
+- ⚠️ No automated anomaly detection for points
+
+### 4.5 Sybil Attackers
+
+**Motivation**: Reputation manipulation, fraud scaling
+
+**Capabilities**:
+- Create multiple identities
+- Coordinate actions across identities
+- Game reputation system
+- Bypass rate limits
+
+**Attack Vectors**:
+- Multiple collector registrations
+- Distributed fraud attacks
+- Vote manipulation
+- Rate limit evasion
+
+**Impact**: **MEDIUM** - System gaming, reputation pollution
+
+**Mitigations**:
+- ✅ Per-address rate limiting
+- ✅ Fraud detection per identity
+- ✅ Registration throttling
+- ⚠️ No identity verification (planned)
+- ⚠️ No stake requirement for registration
 
 ---
 
-## 5. Threat Analysis by Contract
+## 5. Attack Vectors by Contract
 
-### 5.1 CollectorRegistry Threats
+### 5.1 CollectorRegistry Attacks
 
-#### T-CR-001: Sybil Attack (High)
-**Description**: Attacker creates multiple collector accounts to bypass rate limits or accumulate rewards.
+#### Attack: Unauthorized Status Manipulation
+**Description**: Attacker attempts to change their status from Banned to Active
 
-**Attack Steps**:
-1. Generate multiple Stellar addresses
-2. Register each as separate collector
-3. Submit transactions from each account
-4. Evade per-user rate limits
-
-**Mitigations**:
-- ✅ Rate limiting on registration (3/hour per source)
-- ✅ Fraud detection cross-references behavior patterns
-- ✅ Admin verification workflow
-- ⚠️ Residual: Cannot prevent at contract level (requires off-chain KYC)
-
-**Risk Level**: High → Medium (partially mitigated)
-
-#### T-CR-002: Registration Spam (Medium)
-**Description**: Attacker floods registration to exhaust storage or gas.
+**Threat Actor**: Malicious Collector  
+**Impact**: Ban evasion, continued fraud  
+**Likelihood**: Medium
 
 **Attack Steps**:
-1. Submit rapid registration requests
-2. Fill storage with bogus collector records
-3. Increase gas costs for legitimate operations
+1. Attacker calls `update_status()` on their own account
+2. Attempts to set status to Active
 
 **Mitigations**:
-- ✅ Rate limiting (3 registrations/hour)
-- ✅ Operation throttling
-- ✅ Storage pruning for inactive accounts
-- ✅ Batch operations for efficiency
+- ✅ Admin-only status updates
+- ✅ Authorization check: `AccessControl::require_admin()`
+- ✅ Event logging: StatusChanged event
 
-**Risk Level**: Medium → Low (mitigated)
+**Residual Risk**: **LOW** - Requires admin key compromise
 
-#### T-CR-003: Status Manipulation (Critical)
-**Description**: Unauthorized user changes collector status to active/banned.
+#### Attack: Mass Registration DOS
+**Description**: Attacker registers thousands of fake collectors
+
+**Threat Actor**: External Attacker  
+**Impact**: Storage bloat, network congestion  
+**Likelihood**: Medium
 
 **Attack Steps**:
-1. Call `update_status()` without admin privileges
-2. Activate suspended accounts
-3. Ban competitors
+1. Attacker creates script to call `register()` repeatedly
+2. Floods system with fake registrations
 
 **Mitigations**:
-- ✅ `require_admin()` on all status changes
-- ✅ Admin action logging
-- ✅ Status transition validation
+- ✅ Rate limiting: 3 registrations per day per address
+- ✅ Operation throttling in emergency module
+- ✅ Storage optimization with pruning
 
-**Risk Level**: Critical → Low (mitigated)
+**Residual Risk**: **LOW** - Rate limiting effective
 
-### 5.2 WasteTransaction Threats
+#### Attack: Profile Information Tampering
+**Description**: Attacker modifies another user's profile
 
-#### T-WT-001: Fraudulent Transaction Submission (Critical)
-**Description**: Collector submits fake or inflated waste collection transactions.
+**Threat Actor**: Malicious Collector  
+**Impact**: Identity theft, data corruption  
+**Likelihood**: Low
 
 **Attack Steps**:
-1. Submit transaction with inflated weight
-2. Use fake collection point
-3. Claim non-existent materials
-4. Bypass verification
+1. Attacker calls `update_profile()` with victim's address
+2. Attempts to change victim's data
 
 **Mitigations**:
-- ✅ Fraud detection with risk scoring
-- ✅ Weight anomaly detection
+- ✅ Owner-only profile updates
+- ✅ Authorization check: `require_owner()` or `require_admin()`
+- ✅ Address validation
+
+**Residual Risk**: **LOW** - Authorization enforced
+
+### 5.2 WasteTransaction Attacks
+
+#### Attack: Weight Inflation
+**Description**: Collector submits inflated waste weights for higher payments
+
+**Threat Actor**: Malicious Collector  
+**Impact**: Financial loss, payment overpayment  
+**Likelihood**: **HIGH**
+
+**Attack Steps**:
+1. Collector submits transaction with 10x normal weight
+2. Attempts to get verified for inflated payment
+
+**Mitigations**:
+- ✅ Weight anomaly detection (tracks historical average)
+- ✅ Risk score increases (up to 200 points for 3x+ weight)
 - ✅ Admin verification requirement
-- ✅ Collection point validation
-- ✅ Historical pattern analysis
+- ✅ Fraud flagging system
 
-**Risk Level**: Critical → Low (mitigated)
+**Residual Risk**: **MEDIUM** - Requires admin vigilance
 
-#### T-WT-002: Duplicate Transaction Attack (High)
-**Description**: Collector submits same transaction multiple times for multiple payments.
+#### Attack: Duplicate Transaction Submission
+**Description**: Collector submits same transaction multiple times
+
+**Threat Actor**: Malicious Collector  
+**Impact**: Double payment, financial loss  
+**Likelihood**: Medium
 
 **Attack Steps**:
-1. Submit legitimate transaction
-2. Wait for initial processing
-3. Resubmit identical transaction
-4. Receive double payment
+1. Collector records collection transaction
+2. Within 5 minutes, submits identical transaction
+3. Attempts to get both verified
 
 **Mitigations**:
-- ✅ Duplicate detection (5-minute window)
-- ✅ Transaction ID uniqueness
+- ✅ Duplicate detection (weight + material + collector + time)
+- ✅ 5-minute tolerance window
+- ✅ Temporary storage tracking (20 recent transactions)
+- ✅ Automatic blocking: `DuplicateDetection::require_not_duplicate()`
+
+**Residual Risk**: **LOW** - Duplicate detection effective
+
+#### Attack: Rapid-Fire Transaction Spam
+**Description**: Attacker floods system with transaction submissions
+
+**Threat Actor**: External Attacker / Malicious Collector  
+**Impact**: Network congestion, gas exhaustion, storage bloat  
+**Likelihood**: Medium
+
+**Attack Steps**:
+1. Attacker submits 100+ transactions in rapid succession
+2. Attempts to overwhelm system
+
+**Mitigations**:
+- ✅ Rate limiting: 20 transactions per hour per collector
+- ✅ Transaction velocity tracking
+- ✅ Risk score increase (up to 300 points for 30+/hour)
+- ✅ Critical risk auto-block (risk ≥ 800)
+
+**Residual Risk**: **LOW** - Multi-layered protection
+
+#### Attack: Unauthorized Verification
+**Description**: Non-admin attempts to verify their own transactions
+
+**Threat Actor**: Malicious Collector  
+**Impact**: Fraud enablement, payment without validation  
+**Likelihood**: Low
+
+**Attack Steps**:
+1. Collector submits transaction
+2. Immediately calls `verify_transaction()` on their own TX
+3. Attempts to receive payment without admin review
+
+**Mitigations**:
+- ✅ Admin-only verification
+- ✅ Authorization check: `AccessControl::require_admin()`
+- ✅ Transaction ID validation
+
+**Residual Risk**: **LOW** - Authorization enforced
+
+#### Attack: Status Manipulation
+**Description**: Attacker changes transaction status to avoid consequences
+
+**Threat Actor**: Malicious Collector  
+**Impact**: Fraud concealment, audit trail tampering  
+**Likelihood**: Low
+
+**Attack Steps**:
+1. Transaction gets marked as Disputed
+2. Collector attempts to change status back to Completed
+3. Avoids reputation penalty
+
+**Mitigations**:
+- ✅ Admin-only status updates
+- ✅ Authorization check: `AccessControl::require_admin()`
+- ✅ Status change event logging
+- ✅ Immutable transaction history
+
+**Residual Risk**: **LOW** - Admin-only control
+
+### 5.3 PaymentDistribution Attacks
+
+#### Attack: Payment Calculation Manipulation
+**Description**: Attacker exploits rounding errors or overflow in payment calculation
+
+**Threat Actor**: Malicious Collector / External Attacker  
+**Impact**: Financial loss, incorrect payments  
+**Likelihood**: Low
+
+**Attack Steps**:
+1. Attacker submits transaction with edge-case values
+2. Exploits integer overflow or rounding errors
+3. Receives inflated payment
+
+**Mitigations**:
+- ✅ Rust checked arithmetic (panics on overflow)
+- ✅ Payment amount validation
+- ✅ Price bounds checking
+- ❓ Rounding error accumulation not fully analyzed
+
+**Residual Risk**: **LOW** - Rust safety features
+
+#### Attack: Double Payment
+**Description**: Attacker receives payment twice for same transaction
+
+**Threat Actor**: Malicious Collector  
+**Impact**: Financial loss, fund drainage  
+**Likelihood**: Low
+
+**Attack Steps**:
+1. Transaction gets verified and paid
+2. Attacker calls `process_payment()` again on same TX
+3. Attempts second payment
+
+**Mitigations**:
 - ✅ Payment status tracking
-- ✅ Verification workflow prevents double-pay
+- ✅ Idempotency checks (one payment per transaction)
+- ✅ Transaction verification requirement
+- ✅ Event logging
 
-**Risk Level**: High → Low (mitigated)
+**Residual Risk**: **LOW** - Idempotency enforced
 
-#### T-WT-003: Rapid Transaction Spam (High)
-**Description**: Attacker floods system with transactions to DoS or evade detection.
+#### Attack: Unauthorized Payment Processing
+**Description**: Non-admin triggers payment processing
+
+**Threat Actor**: Malicious Collector  
+**Impact**: Unauthorized fund distribution  
+**Likelihood**: Low
 
 **Attack Steps**:
-1. Submit 100+ transactions rapidly
-2. Overwhelm verification queue
-3. Hide fraudulent transactions in volume
-4. Exhaust gas/storage
+1. Attacker calls `process_payment()` or `distribute_rewards()`
+2. Attempts to trigger payments without authorization
 
 **Mitigations**:
-- ✅ Rate limiting (20 transactions/hour)
-- ✅ Transaction velocity monitoring
-- ✅ Fraud risk increases with velocity
-- ✅ Circuit breaker for repeated failures
+- ✅ Admin-only payment functions
+- ✅ Authorization check: `AccessControl::require_admin()`
+- ✅ Payment event logging
 
-**Risk Level**: High → Low (mitigated)
+**Residual Risk**: **LOW** - Authorization enforced
 
-#### T-WT-004: Verification Bypass (Critical)
-**Description**: Attacker directly marks transactions as verified without admin.
+### 5.4 MaterialPricing Attacks
+
+#### Attack: Price Manipulation
+**Description**: Attacker manipulates material prices for financial gain
+
+**Threat Actor**: Compromised Operator / External Attacker  
+**Impact**: Incorrect payments, financial loss  
+**Likelihood**: Medium
 
 **Attack Steps**:
-1. Call `verify_transaction()` as non-admin
-2. Self-verify fraudulent transactions
-3. Trigger payment without review
+1. Attacker gains operator access or exploits vulnerability
+2. Sets extreme prices (very high or very low)
+3. Colludes with collectors to exploit pricing
 
 **Mitigations**:
-- ✅ `require_admin()` on verification
-- ✅ Status transition validation
-- ✅ Admin action logging
-- ✅ Payment tied to verification status
+- ✅ Operator-only price updates
+- ✅ Price bounds validation (min/max enforcement)
+- ✅ Price update event logging
+- ✅ Update timestamp tracking
+- ⚠️ Manual updates (no automated oracle)
 
-**Risk Level**: Critical → Low (mitigated)
+**Residual Risk**: **MEDIUM** - Operator compromise risk
 
-#### T-WT-005: Transaction Status Manipulation (High)
-**Description**: Attacker changes transaction status to avoid rejection or force approval.
+#### Attack: Stale Price Exploitation
+**Description**: Attacker exploits outdated pricing data
+
+**Threat Actor**: Malicious Collector  
+**Impact**: Overpayment or underpayment  
+**Likelihood**: Low
 
 **Attack Steps**:
-1. Submit fraudulent transaction
-2. Change status to "Completed" without verification
-3. Trigger payment release
+1. Material price hasn't been updated recently
+2. Real-world price changes significantly
+3. Collector exploits stale on-chain price
 
 **Mitigations**:
-- ✅ `require_admin()` on status updates
-- ✅ Valid status transition enforcement
-- ✅ Payment requires verification
-- ✅ Audit trail for status changes
+- ✅ Update timestamp tracking
+- ✅ Query method shows last update time
+- ⚠️ No automated staleness detection
+- ⚠️ No price expiry mechanism
 
-**Risk Level**: High → Low (mitigated)
+**Residual Risk**: **MEDIUM** - Requires operational discipline
 
-### 5.3 PaymentDistribution Threats
+### 5.5 Reputation Attacks
 
-#### T-PD-001: Payment Calculation Manipulation (Critical)
-**Description**: Attacker manipulates payment calculations to receive inflated amounts.
+#### Attack: Score Manipulation
+**Description**: Attacker artificially inflates reputation score
+
+**Threat Actor**: Malicious Collector  
+**Impact**: Unfair advantages, fraud concealment  
+**Likelihood**: Medium
 
 **Attack Steps**:
-1. Submit transaction with manipulated parameters
-2. Exploit calculation formula flaws
-3. Overflow/underflow in arithmetic
-4. Receive excessive payment
+1. Attacker submits many small, legitimate transactions
+2. Builds high reputation
+3. Uses reputation to commit large fraud
 
 **Mitigations**:
-- ✅ Checked arithmetic (no overflows)
-- ✅ Price bounds validation
-- ✅ Weight validation
-- ✅ Admin verification before payment
-- ✅ Balance checks before transfers
+- ✅ Algorithm-based score calculation
+- ✅ Multiple factors considered
+- ✅ Admin oversight capability
+- ⚠️ No reputation decay mechanism
 
-**Risk Level**: Critical → Low (mitigated)
+**Residual Risk**: **MEDIUM** - Long-term gaming possible
 
-#### T-PD-002: Double Payment (Critical)
-**Description**: Attacker receives payment multiple times for same transaction.
+#### Attack: Review Bombing
+**Description**: Coordinated attack to damage victim's reputation
+
+**Threat Actor**: Malicious Collectors (coordinated)  
+**Impact**: Unfair reputation damage  
+**Likelihood**: Low
 
 **Attack Steps**:
-1. Get transaction verified
-2. Call `release_payment()` multiple times
-3. Drain escrow
+1. Multiple attackers submit negative reviews/disputes
+2. Victim's reputation score drops
+3. Victim gets banned or restricted
 
 **Mitigations**:
-- ✅ Payment status tracking (AlreadyProcessed error)
-- ✅ Single payment per transaction
-- ✅ Balance verification
-- ✅ Admin-only release
+- ✅ Algorithm-based scoring (not direct reviews)
+- ✅ Admin review of disputed transactions
+- ✅ Fraud detection on attacker accounts
+- ✅ Manual flag clearing capability
 
-**Risk Level**: Critical → Low (mitigated)
+**Residual Risk**: **LOW** - Not review-based system
 
-#### T-PD-003: Escrow Drainage (Critical)
-**Description**: Attacker drains escrow funds without legitimate transactions.
+### 5.6 WasteToken Attacks
 
-**Attack Steps**:
-1. Compromise admin account
-2. Release payments to attacker addresses
-3. Or use emergency withdrawal
+#### Attack: Unauthorized Minting
+**Description**: Attacker mints tokens without authorization
 
-**Mitigations**:
-- ✅ Admin-only payment release
-- ✅ Admin action logging
-- ✅ Emergency withdrawal requires explicit enable
-- ✅ Withdrawal history maintained
-- ⚠️ Residual: Admin compromise still critical
-
-**Risk Level**: Critical → Medium (partially mitigated, relies on admin security)
-
-#### T-PD-004: Insufficient Balance Handling (Medium)
-**Description**: Payment calculation doesn't check available balance, causing failures.
+**Threat Actor**: External Attacker / Compromised Account  
+**Impact**: Supply inflation, token value destruction  
+**Likelihood**: Low
 
 **Attack Steps**:
-1. Submit many transactions
-2. Exhaust escrow balance
-3. Cause payment failures
-4. Damage reputation
-
-**Mitigations**:
-- ✅ Balance checks before payment
-- ✅ InsufficientBalance error
-- ✅ Graceful failure handling
-- ✅ Balance monitoring
-
-**Risk Level**: Medium → Low (mitigated)
-
-### 5.4 MaterialPricing Threats
-
-#### T-MP-001: Price Oracle Manipulation (Critical)
-**Description**: Attacker manipulates material prices to inflate payments.
-
-**Attack Steps**:
-1. Compromise admin account or operator
-2. Set artificially high prices
-3. Submit transactions at inflated prices
-4. Receive excessive payments
-
-**Mitigations**:
-- ✅ Admin-only price updates
-- ✅ Price change rate limiting
-- ✅ Price bounds validation
-- ✅ Historical price tracking
-- ✅ Admin action logging
-- ⚠️ Residual: Compromised admin can still manipulate
-
-**Risk Level**: Critical → Medium (partially mitigated)
-
-#### T-MP-002: Price Update Spam (Medium)
-**Description**: Attacker rapidly updates prices to cause confusion or DoS.
-
-**Attack Steps**:
-1. Update prices rapidly
-2. Cause verification delays
-3. Create pricing confusion
-4. Exhaust gas
-
-**Mitigations**:
-- ✅ Rate limiting on price updates
-- ✅ Admin-only access
-- ✅ Update frequency limits
-- ✅ Price history for auditing
-
-**Risk Level**: Medium → Low (mitigated)
-
-#### T-MP-003: Historical Price Tampering (Medium)
-**Description**: Attacker modifies historical price data to hide manipulation.
-
-**Attack Steps**:
-1. Update prices
-2. Modify historical records
-3. Hide evidence of manipulation
-
-**Mitigations**:
-- ✅ Append-only price history
-- ✅ Immutable on-chain events
-- ✅ Timestamp verification
-- ✅ Historical data queryable
-
-**Risk Level**: Medium → Low (mitigated)
-
-### 5.5 WasteToken Threats
-
-#### T-WT-001: Unauthorized Minting (Critical)
-**Description**: Attacker mints tokens without authorization, inflating supply.
-
-**Attack Steps**:
-1. Call `mint()` function as non-admin
-2. Mint unlimited tokens to attacker address
-3. Dump tokens, crash value
+1. Attacker calls `mint()` function
+2. Attempts to mint arbitrary amount
 
 **Mitigations**:
 - ✅ Admin-only minting
-- ✅ `require_admin()` gate
-- ✅ Minting rate limits
-- ✅ Supply cap (configurable)
-- ✅ Minting events logged
+- ✅ Authorization check: `AccessControl::require_admin()`
+- ✅ Mint event logging
+- ⚠️ No supply cap (unlimited minting possible)
 
-**Risk Level**: Critical → Low (mitigated)
+**Residual Risk**: **LOW** - Requires admin compromise
 
-#### T-WT-002: Token Transfer Manipulation (High)
-**Description**: Attacker transfers tokens from other users' balances.
+#### Attack: Transfer Manipulation
+**Description**: Attacker steals tokens through transfer exploit
 
-**Attack Steps**:
-1. Call `transfer()` with victim's address as source
-2. Steal tokens to attacker address
-
-**Mitigations**:
-- ✅ Caller authentication (`require_auth()`)
-- ✅ Balance verification
-- ✅ Transfer validation
-- ✅ Soroban native auth
-
-**Risk Level**: High → Low (mitigated)
-
-#### T-WT-003: Balance Overflow/Underflow (Critical)
-**Description**: Attacker exploits arithmetic bugs to create tokens or steal.
+**Threat Actor**: External Attacker  
+**Impact**: Token theft, financial loss  
+**Likelihood**: Low
 
 **Attack Steps**:
-1. Transfer amount causing overflow
-2. Balance wraps around to max value
-3. Or underflow to drain balance
+1. Attacker calls `transfer()` from victim's account
+2. Attempts to transfer victim's tokens to attacker
 
 **Mitigations**:
-- ✅ Checked arithmetic throughout
-- ✅ No unsafe math operations
-- ✅ Balance validation before operations
-- ✅ Rust's type safety
+- ✅ Sender authorization checks
+- ✅ Balance validation
+- ✅ Soroban's built-in authorization
+- ✅ Transfer event logging
 
-**Risk Level**: Critical → Low (mitigated)
+**Residual Risk**: **LOW** - Soroban authorization enforced
 
-### 5.6 Reputation Threats
+#### Attack: Burn Authorization Bypass
+**Description**: Attacker burns victim's tokens without permission
 
-#### T-REP-001: Score Manipulation (High)
-**Description**: Collector artificially inflates reputation score.
+**Threat Actor**: Malicious Collector  
+**Impact**: Token destruction, financial loss  
+**Likelihood**: Low
 
 **Attack Steps**:
-1. Submit many small legitimate transactions
-2. Game the scoring algorithm
-3. Or call `adjust_score()` without authorization
+1. Attacker calls `burn()` on victim's tokens
+2. Destroys victim's balance
 
 **Mitigations**:
-- ✅ Admin-only manual adjustments
-- ✅ Score bounds (0-1000)
-- ✅ Fraud detection integration
-- ✅ Score calculation based on verified transactions
+- ✅ Owner or admin authorization required
+- ✅ Balance validation
+- ✅ Burn event logging
 
-**Risk Level**: High → Low (mitigated)
+**Residual Risk**: **LOW** - Authorization enforced
 
-#### T-REP-002: Reputation Reset Attack (Medium)
-**Description**: Attacker resets own or others' reputation scores.
+### 5.7 CollectionPoint Attacks
+
+#### Attack: Fake Collection Verification
+**Description**: Collection point verifies fake collections for kickbacks
+
+**Threat Actor**: Malicious Collection Point (colluding with collector)  
+**Impact**: Fraud enablement, payment for fake waste  
+**Likelihood**: Medium
 
 **Attack Steps**:
-1. Call reputation reset functions
-2. Wipe negative history
-3. Start fresh after fraud
+1. Collector and collection point collude
+2. Collection point verifies non-existent collections
+3. Collector receives payment for fake transactions
 
 **Mitigations**:
-- ✅ Admin-only score adjustments
-- ✅ Historical tracking
-- ✅ No score deletion
-- ✅ Audit trail
+- ✅ Collection point verification requirement
+- ✅ Reputation system for points
+- ✅ Admin oversight of verifications
+- ✅ Fraud detection on collectors
+- ⚠️ No automated point anomaly detection
 
-**Risk Level**: Medium → Low (mitigated)
-
-### 5.7 CollectionPoint Threats
-
-#### T-CP-001: Fake Collection Point (High)
-**Description**: Attacker creates fake collection points for fraudulent verifications.
-
-**Attack Steps**:
-1. Register fake collection point
-2. Self-verify without admin
-3. Use in fraudulent transactions
-
-**Mitigations**:
-- ✅ Admin verification required
-- ✅ Location validation
-- ✅ Material acceptance controls
-- ✅ Verification workflow
-
-**Risk Level**: High → Low (mitigated)
-
-#### T-CP-002: Collection Point Impersonation (Medium)
-**Description**: Attacker uses another point's identity in transactions.
-
-**Attack Steps**:
-1. Reference legitimate collection point ID
-2. Submit transactions claiming collection there
-3. Without actual collection
-
-**Mitigations**:
-- ✅ Collection point validation in transactions
-- ✅ Verification workflow catches mismatches
-- ✅ Fraud detection patterns
-- ⚠️ Residual: Requires verification diligence
-
-**Risk Level**: Medium → Low (mostly mitigated)
-
-### 5.8 Cross-Contract Threats
-
-#### T-CC-001: Reentrancy Attack (Critical)
-**Description**: Attacker exploits cross-contract calls to re-enter and drain funds.
-
-**Attack Steps**:
-1. Create malicious contract
-2. Trigger cross-contract call
-3. Re-enter during execution
-4. Drain funds or manipulate state
-
-**Mitigations**:
-- ✅ No external calls to untrusted contracts
-- ✅ All cross-contract calls to known addresses
-- ✅ State updates before external calls (CEI pattern)
-- ✅ Soroban runtime protections
-
-**Risk Level**: Critical → Low (mitigated)
-
-#### T-CC-002: Contract Upgrade Attack (Critical)
-**Description**: Attacker upgrades contract to malicious code.
-
-**Attack Steps**:
-1. Compromise admin key
-2. Call `upgrade_contract()` with malicious WASM
-3. Backdoor access or fund drainage
-
-**Mitigations**:
-- ✅ Admin-only upgrades
-- ✅ Upgrade logging
-- ✅ Version management
-- ✅ Testnet testing requirement
-- ⚠️ Residual: Admin compromise still critical
-
-**Risk Level**: Critical → Medium (partially mitigated)
+**Residual Risk**: **MEDIUM** - Requires admin monitoring
 
 ---
 
-## 6. STRIDE Analysis
+## 6. Mitigations Implemented
 
-### 6.1 Spoofing
+### 6.1 Access Control
 
-**Threat**: Attacker impersonates another user or admin.
+**Effectiveness**: **HIGH**
 
-**Mitigations**:
-- Soroban native authentication (`require_auth()`)
-- Address-based identity
-- No password/username spoofing possible
-- Admin verification for sensitive operations
+**Coverage**:
+- ✅ Admin-only: Upgrades, emergencies, verifications, role transfers
+- ✅ Operator-only: Price updates, point management
+- ✅ Owner-only: Profile updates
+- ✅ Function-level authorization checks
 
-**Residual Risk**: Low (cryptographic identity)
+**Gaps**:
+- ⚠️ Single admin key (no multi-sig yet)
+- ⚠️ No time-lock on upgrades
+- ⚠️ No role hierarchy (admin can do everything)
 
-### 6.2 Tampering
+### 6.2 Fraud Detection
 
-**Threat**: Attacker modifies data or code without authorization.
+**Effectiveness**: **MEDIUM-HIGH**
 
-**Mitigations**:
-- Immutable blockchain storage
-- Admin-only state modifications
-- Access control on all mutations
-- Event logging for audit trail
+**Coverage**:
+- ✅ Transaction velocity (30+/hour = 300 points)
+- ✅ Rejection rate tracking (50%+ = 400 points)
+- ✅ Weight anomalies (3x+ average = 200 points)
+- ✅ Time pattern analysis (rapid submissions = 200 points)
+- ✅ Auto-block at critical risk (≥800)
 
-**Residual Risk**: Low (blockchain guarantees)
+**Gaps**:
+- ⚠️ No machine learning (static rules)
+- ⚠️ Sophisticated attackers may evade
+- ⚠️ No cross-collector pattern detection
 
-### 6.3 Repudiation
+### 6.3 Rate Limiting
 
-**Threat**: User denies performing action.
+**Effectiveness**: **HIGH**
 
-**Mitigations**:
-- All actions emit events with sender address
-- Transaction history on-chain
-- Admin action logging
-- Cryptographic signatures
+**Coverage**:
+- ✅ Per-minute limits (fast operations)
+- ✅ Per-hour limits (transactions: 20/hour)
+- ✅ Per-day limits (registrations: 3/day)
+- ✅ Per-user, per-operation tracking
 
-**Residual Risk**: Negligible (blockchain native)
+**Gaps**:
+- ⚠️ Cliff reset (not gradual)
+- ⚠️ Sybil attackers can create multiple accounts
 
-### 6.4 Information Disclosure
+### 6.4 Duplicate Detection
 
-**Threat**: Sensitive data exposed to unauthorized parties.
+**Effectiveness**: **HIGH**
 
-**Mitigations**:
-- Public blockchain (all data visible by design)
-- No PII stored on-chain
-- Pricing data public (transparency)
-- Admin addresses public (accountability)
+**Coverage**:
+- ✅ Multi-field matching (collector + weight + material + time)
+- ✅ 5-minute tolerance window
+- ✅ Temporary storage (auto-expiring)
+- ✅ Automatic blocking
 
-**Residual Risk**: N/A (transparency by design)
+**Gaps**:
+- ⚠️ Simple evasion (change weight slightly)
+- ⚠️ No cross-collector duplicate detection
 
-### 6.5 Denial of Service
+### 6.5 Emergency Response
 
-**Threat**: Attacker prevents legitimate use of system.
+**Effectiveness**: **HIGH**
 
-**Mitigations**:
-- Rate limiting per user
-- Operation throttling
-- Circuit breakers
-- Gas limits (Soroban enforced)
-- Emergency pause mechanism
+**Coverage**:
+- ✅ 4-level system (Normal, Warning, Critical, Shutdown)
+- ✅ Automatic pause at Critical/Shutdown
+- ✅ Admin-only triggers
+- ✅ Event logging
 
-**Residual Risk**: Low to Medium
+**Gaps**:
+- ⚠️ No automated emergency detection
+- ⚠️ Relies on admin responsiveness
 
-### 6.6 Elevation of Privilege
+### 6.6 Input Validation
 
-**Threat**: Attacker gains unauthorized admin access.
+**Effectiveness**: **HIGH**
 
-**Mitigations**:
-- Strict access control checks
-- No privilege escalation paths
-- Admin transfer logged
-- Operator scoping
-- No backdoor admin creation
+**Coverage**:
+- ✅ Address validation (non-zero)
+- ✅ String length limits
+- ✅ Amount validation (non-negative)
+- ✅ Enum validation
 
-**Residual Risk**: Low (well-protected)
+**Gaps**:
+- ⚠️ Some edge cases may not be covered
+- ⚠️ No formal specification of valid ranges
 
 ---
 
 ## 7. Risk Assessment Matrix
 
-### 7.1 Risk Scoring
+### Risk Levels
 
-**Likelihood**:
-- **High (3)**: Easy to exploit, low skill required
-- **Medium (2)**: Moderate difficulty, some skill required
-- **Low (1)**: Difficult to exploit, high skill required
+- **Critical (9-10)**: Immediate action required
+- **High (7-8)**: Address before mainnet
+- **Medium (4-6)**: Monitor and improve
+- **Low (1-3)**: Accept or address in future versions
 
-**Impact**:
-- **Critical (4)**: Total system compromise, major financial loss
-- **High (3)**: Significant financial loss, service disruption
-- **Medium (2)**: Moderate impact, limited scope
-- **Low (1)**: Minor impact, minimal disruption
+### Assessment
 
-**Risk Score = Likelihood × Impact**
+| Threat | Likelihood | Impact | Risk Score | Status |
+|--------|------------|--------|------------|--------|
+| **Admin Key Compromise** | Low (2) | Critical (10) | **8/10** | ⚠️ Multi-sig planned |
+| **Weight Inflation** | High (8) | Medium (6) | **7/10** | ✅ Mitigated by fraud detection |
+| **Payment Calculation Exploit** | Low (2) | Critical (10) | **6/10** | ✅ Rust safety, needs audit |
+| **Unauthorized Minting** | Low (2) | Critical (10) | **6/10** | ✅ Admin-only, needs audit |
+| **Price Oracle Manipulation** | Medium (5) | High (7) | **6/10** | ⚠️ Manual updates, bounds |
+| **DOS via Spam** | Medium (5) | Medium (5) | **5/10** | ✅ Rate limiting |
+| **Duplicate Transactions** | Medium (4) | High (7) | **5/10** | ✅ Duplicate detection |
+| **Reputation Gaming** | Medium (5) | Low (4) | **4/10** | ⚠️ No decay mechanism |
+| **Status Manipulation** | Low (2) | Medium (5) | **3/10** | ✅ Admin-only |
+| **Collection Point Collusion** | Low (3) | Medium (6) | **4/10** | ⚠️ Requires monitoring |
+| **Stale Pricing** | Low (3) | Medium (5) | **4/10** | ⚠️ Operational discipline |
+| **Cross-Contract Reentrancy** | Very Low (1) | Critical (10) | **2/10** | ✅ Soroban prevents |
 
-### 7.2 Risk Matrix
+### High-Risk Items Requiring Attention
 
-| Threat ID | Threat | Likelihood | Impact | Score | Mitigated |
-|-----------|--------|------------|--------|-------|-----------|
-| T-CR-001 | Sybil Attack | 3 | 3 | 9 | Partial |
-| T-CR-003 | Status Manipulation | 1 | 4 | 4 | Yes |
-| T-WT-001 | Fraudulent TX | 3 | 4 | 12 | Yes |
-| T-WT-002 | Duplicate TX | 2 | 3 | 6 | Yes |
-| T-WT-003 | TX Spam | 2 | 3 | 6 | Yes |
-| T-WT-004 | Verification Bypass | 1 | 4 | 4 | Yes |
-| T-PD-001 | Payment Manipulation | 1 | 4 | 4 | Yes |
-| T-PD-002 | Double Payment | 1 | 4 | 4 | Yes |
-| T-PD-003 | Escrow Drainage | 1 | 4 | 4 | Partial |
-| T-MP-001 | Price Manipulation | 1 | 4 | 4 | Partial |
-| T-TK-001 | Unauthorized Minting | 1 | 4 | 4 | Yes |
-| T-TK-002 | Token Transfer Manip | 1 | 3 | 3 | Yes |
-| T-TK-003 | Balance Overflow | 1 | 4 | 4 | Yes |
-| T-CC-001 | Reentrancy | 1 | 4 | 4 | Yes |
-| T-CC-002 | Upgrade Attack | 1 | 4 | 4 | Partial |
-
-### 7.3 Accepted Risks
-
-**AR-001: Sybil Attack (Medium)**  
-**Justification**: Cannot be fully prevented at contract level without off-chain KYC. Rate limiting and fraud detection provide reasonable protection. Acceptable for MVP.
-
-**AR-002: Admin Key Compromise (Low)**  
-**Justification**: Admin security is operational concern. Multi-sig and hardware wallets recommended but not enforced by contract. Acceptable with operational controls.
-
-**AR-003: Sophisticated Fraud (Low)**  
-**Justification**: Advanced attackers may evade detection temporarily. Manual review and continuous improvement of fraud detection acceptable mitigation strategy.
+1. **Admin Key Compromise (8/10)**: Implement multi-sig before mainnet
+2. **Weight Inflation (7/10)**: Enhance admin monitoring tools
+3. **Payment Calculation (6/10)**: Thorough audit of arithmetic
+4. **Price Manipulation (6/10)**: Implement automated oracle
+5. **Unauthorized Minting (6/10)**: Consider supply cap
 
 ---
 
-## 8. Defense in Depth
+## 8. Assumptions and Dependencies
 
-### Layer 1: Input Validation
-- All inputs validated at entry
-- Type checking
-- Bounds verification
-- Format validation
+### Platform Assumptions
 
-### Layer 2: Access Control
-- Role-based permissions
-- Function-level gates
-- Admin/operator separation
-- Caller authentication
+- **Soroban Security**: Assumes Stellar Soroban platform is secure
+- **Timestamp Accuracy**: Assumes `env.ledger().timestamp()` is consensus-based and accurate
+- **No Reentrancy**: Assumes Soroban prevents reentrancy attacks
+- **Storage Integrity**: Assumes on-chain storage is tamper-proof
 
-### Layer 3: Business Logic
-- State transition validation
-- Fraud detection
-- Duplicate prevention
-- Rate limiting
+### Operational Assumptions
 
-### Layer 4: Emergency Response
-- Emergency pause
-- Circuit breakers
-- Emergency withdrawal
-- Admin controls
+- **Admin Security**: Admin private keys are securely managed
+- **Admin Availability**: Admin responds to emergencies within reasonable time
+- **Admin Honesty**: Admin acts in good faith and follows procedures
+- **Monitoring**: Off-chain monitoring systems detect anomalies
 
-### Layer 5: Monitoring & Audit
-- Event logging
-- Admin action tracking
-- Fraud flag tracking
-- Historical data preservation
+### External Dependencies
+
+- **Stellar Network**: Available and performing normally
+- **Price Data**: Accurate and timely price updates from operators
+- **Frontend**: User interface provides correct data to contracts
 
 ---
 
-## 9. Security Recommendations
+## 9. Future Security Enhancements
 
-### 9.1 Immediate (Pre-Mainnet)
+### Planned for Mainnet (Phase 6)
 
-1. **Multi-Signature Admin**
-   - Implement 2-of-3 or 3-of-5 multi-sig for admin
-   - Reduces single point of failure
-   - Priority: High
+1. **Multi-Signature Admin**: Replace single admin with multi-sig
+2. **Time-Locked Upgrades**: Delay between upgrade announcement and execution
+3. **Emergency Withdrawal**: Complete implementation in all contracts
+4. **Supply Cap**: Implement maximum token supply
 
-2. **Time-Locked Upgrades**
-   - Add 24-48 hour delay on upgrades
-   - Allows community review
-   - Priority: High
+### Planned for v2
 
-3. **External Security Audit**
-   - Professional third-party audit
-   - Penetration testing
-   - Priority: Critical
+1. **Automated Price Oracle**: Chainlink or similar for material pricing
+2. **Identity Verification**: KYC/KYB for collectors and points
+3. **Machine Learning Fraud Detection**: Advanced pattern recognition
+4. **Reputation Decay**: Time-based reputation degradation
+5. **Cross-Collector Analysis**: Detect coordinated fraud
 
-### 9.2 Short-Term (Post-Launch)
+### Under Consideration
 
-1. **Automated Monitoring**
-   - Real-time fraud detection alerts
-   - Anomaly detection
-   - Dashboard for operators
-
-2. **Enhanced KYC**
-   - Off-chain collector verification
-   - Biometric authentication option
-   - Sybil attack mitigation
-
-3. **Bug Bounty Program**
-   - Incentivize security research
-   - Responsible disclosure process
-
-### 9.3 Long-Term
-
-1. **Decentralized Governance**
-   - Community-driven admin decisions
-   - Reduce centralization risk
-
-2. **Advanced Privacy**
-   - Zero-knowledge proofs for transactions
-   - Confidential amounts
-
-3. **Cross-Chain Security**
-   - Bridge security if expanding
-   - Multi-chain consistency
+1. **Stake Requirements**: Require stake for registration (Sybil resistance)
+2. **Slashing Mechanism**: Penalize fraudulent behavior financially
+3. **Dispute Resolution**: Formal dispute process with arbitration
+4. **Insurance Fund**: Reserve fund for incident recovery
 
 ---
 
 ## 10. Incident Response Integration
 
-This threat model informs the incident response plan:
+This threat model informs the incident response plan (see `INCIDENT_RESPONSE.md`):
 
-- **P0 Incidents**: Critical threats (T-*-00* Critical)
-- **P1 Incidents**: High threats
-- **P2 Incidents**: Medium threats
-- **P3 Incidents**: Low threats
+- **P0 Incidents**: Critical threats with Risk Score ≥ 8
+- **P1 Incidents**: High threats with Risk Score 6-7
+- **P2 Incidents**: Medium threats with Risk Score 4-5
+- **P3 Incidents**: Low threats with Risk Score 1-3
 
-See `INCIDENT_RESPONSE.md` for detailed procedures.
+**Emergency Levels Mapping**:
+- **Shutdown**: Active exploitation of Critical/High risks
+- **Critical**: High-confidence detection of High risk threats
+- **Warning**: Medium risk threats or suspicious activity
 
 ---
 
-## 11. Threat Model Maintenance
+## 11. Audit Focus Areas
 
-### Review Schedule
-- **Quarterly**: Review threat landscape
-- **Pre-Upgrade**: Analyze new attack vectors
-- **Post-Incident**: Update based on lessons learned
-- **Annual**: Comprehensive threat model revision
+Based on this threat model, auditors should prioritize:
 
-### Update Process
-1. Identify new threats or changes
-2. Analyze and score
-3. Design mitigations
-4. Implement in code
-5. Update documentation
-6. Communicate to team
+1. **Payment Calculation Logic**: Arithmetic safety, rounding errors
+2. **Token Minting Authorization**: Bypass attempts, supply integrity
+3. **Fraud Detection Evasion**: Multi-account strategies, pattern evasion
+4. **Admin Authorization**: All privileged function coverage
+5. **Price Manipulation**: Oracle trust, bounds enforcement
+6. **Emergency Mechanisms**: Trigger conditions, pause effectiveness
 
-### Version History
-- **v1.0** (Feb 2024): Initial threat model
+---
+
+## 12. Conclusion
+
+The WasteFi platform has implemented **comprehensive security controls** across multiple layers:
+
+**Strengths**:
+- ✅ Multi-factor fraud detection
+- ✅ Robust access control
+- ✅ Rate limiting and DOS protection
+- ✅ Emergency response capability
+- ✅ Comprehensive audit logging
+
+**Areas for Improvement**:
+- ⚠️ Single admin key (multi-sig needed)
+- ⚠️ Manual price oracle (automation needed)
+- ⚠️ No identity verification (planned)
+- ⚠️ Reputation gaming potential
+
+**Overall Security Posture**: **STRONG** for pre-mainnet phase, with clear roadmap for remaining improvements.
+
+---
+
+## Document Revision History
+
+| Version | Date | Author | Changes |
+|---------|------|--------|---------|
+| 0.1.0 | 2026-09-09 | WasteFi Team | Initial threat model |
 
 ---
 
 **End of Threat Model**
 
-*This document should be reviewed alongside the security audit guide, security considerations, and incident response plan.*
+For questions or to report security issues, contact: security@wastefi.io
