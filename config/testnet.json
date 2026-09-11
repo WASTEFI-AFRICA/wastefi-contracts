@@ -2,8 +2,8 @@
   "network": "testnet",
   "rpc_url": "https://soroban-testnet.stellar.org:443",
   "network_passphrase": "Test SDF Network ; September 2015",
-  "admin": "GABC...XYZ",
-  "operator": "GDEF...UVW",
+  "admin": "GBKKMOEBKLQU3YARAASL7CB7YWAEXOZ47AXW6AIEZ5UAWFP5SIS4NJNM",
+  "operator": "GBKKMOEBKLQU3YARAASL7CB7YWAEXOZ47AXW6AIEZ5UAWFP5SIS4NJNM",
   "contracts": {
     "waste_token": {
       "wasm": "target/wasm32-unknown-unknown/release/waste_token.wasm",
