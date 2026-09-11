@@ -145,7 +145,7 @@ impl Reputation {
         // Bonus for high success rate (only if significant transaction history)
         // Convert basis points to bonus: 10000 basis points = 100 bonus
         if score_record.total_transactions >= 10 {
-            let bonus = (success_rate_basis_points / 100) as i32;  // Convert to 0-100 range
+            let bonus = (success_rate_basis_points / 100) as i32; // Convert to 0-100 range
             score += bonus;
         }
 
