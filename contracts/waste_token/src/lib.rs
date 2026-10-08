@@ -9,6 +9,10 @@ mod test;
 
 // Maximum supply cap: 1 billion tokens with 7 decimals
 // 1_000_000_000 * 10^7 = 10_000_000_000_000_000
+// Declared but not yet enforced. Adding a cap check to `mint` is tracked as a
+// pre-mainnet requirement in docs/SECURITY_ROADMAP.md; until that lands the
+// constant documents the intended ceiling only.
+#[allow(dead_code)]
 const MAX_SUPPLY: i128 = 10_000_000_000_000_000;
 
 #[contract]
@@ -73,6 +77,8 @@ impl WasteToken {
         write_balance(&env, &to, new_balance);
 
         // Update total supply
+        let total_supply = read_total_supply(&env);
+        let new_total_supply = total_supply.saturating_add(amount);
         write_total_supply(&env, new_total_supply);
 
         // Bump storage

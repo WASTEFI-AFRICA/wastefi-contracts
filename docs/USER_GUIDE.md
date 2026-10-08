@@ -32,11 +32,11 @@ WasteFi is a blockchain-powered waste management platform that rewards you for c
 
 WasteFi connects waste collectors with collection points and rewards proper waste management with WASTE tokens. Our platform:
 
-✅ **Rewards recycling**: Earn tokens for every kilogram of waste collected  
-✅ **Tracks your impact**: See how much waste you've diverted from landfills  
-✅ **Builds reputation**: Higher reputation = better rewards  
-✅ **100% transparent**: All transactions recorded on blockchain  
-✅ **Secure payments**: Automatic payment after verification  
+Done **Rewards recycling**: Earn tokens for every kilogram of waste collected  
+Done **Tracks your impact**: See how much waste you've diverted from landfills  
+Done **Builds reputation**: Higher reputation = better rewards  
+Done **100% transparent**: All transactions recorded on blockchain  
+Done **Secure payments**: Automatic payment after verification  
 
 ---
 
@@ -73,10 +73,10 @@ WasteFi connects waste collectors with collection points and rewards proper wast
 ### 2.1 Prerequisites
 
 **What you need**:
-- ✅ Smartphone with internet connection
-- ✅ Stellar wallet (we recommend [Freighter](https://www.freighter.app/) or [Lobstr](https://lobstr.co/))
-- ✅ Valid phone number
-- ✅ Identification (for KYC if required in your region)
+- Smartphone with internet connection
+- Stellar wallet (we recommend [Freighter](https://www.freighter.app/) or [Lobstr](https://lobstr.co/))
+- Valid phone number
+- Identification (for KYC if required in your region)
 
 ---
 
@@ -114,7 +114,7 @@ If you already have a wallet:
 4. Tap "Submit Registration"
 5. Wait for confirmation (usually instant!)
 
-**✓ You're now registered! Your initial reputation score is 500.**
+**Done You're now registered! Your initial reputation score is 500.**
 
 ---
 
@@ -158,10 +158,10 @@ After registration, your dashboard shows:
    - User ratings
 
 **Tips for choosing collection points**:
-- ✅ Choose verified points (green checkmark)
-- ✅ Check accepted materials before visiting
-- ✅ Note operating hours
-- ✅ Call ahead for large collections
+- Choose verified points (green checkmark)
+- Check accepted materials before visiting
+- Note operating hours
+- Call ahead for large collections
 
 ---
 
@@ -179,7 +179,7 @@ After registration, your dashboard shows:
 8. **Tap "Submit"**
 9. **Get receipt** with transaction ID
 
-**⏱️ Transaction submitted! Awaiting verification...**
+**Transaction submitted! Awaiting verification...**
 
 ---
 
@@ -226,7 +226,7 @@ For larger quantities:
 |--------|---------|------------|
 | **Pending** | Awaiting verification | Wait for collection point to verify (usually within 24h) |
 | **Verified** | Approved, payment processing | Payment will arrive shortly (usually within 1 hour) |
-| **Paid** | Payment completed | Check your wallet! You've been paid 💰 |
+| **Paid**| Payment completed | Check your wallet! You've been paid |
 | **Rejected** | Not verified | Contact collection point for reason |
 
 ---
@@ -258,7 +258,7 @@ Final Payment = Base Payment × Reputation Multiplier
 - Price: 0.012 WASTE/kg
 - Your Reputation: 750 (Good → 1.1x multiplier)
 - **Base Payment**: 5 × 0.012 = 0.06 WASTE
-- **Final Payment**: 0.06 × 1.1 = **0.066 WASTE** ✨
+- **Final Payment**: 0.06 × 1.1 = **0.066 WASTE**
 
 ---
 
@@ -274,10 +274,10 @@ Final Payment = Base Payment × Reputation Multiplier
 
 **Token Value**:
 - WASTE tokens can be:
-  - ✅ Held as rewards
-  - ✅ Transferred to others
-  - ✅ Exchanged (on supported exchanges - coming soon!)
-  - ✅ Used for platform services
+  - Held as rewards
+  - Transferred to others
+  - Exchanged (on supported exchanges - coming soon!)
+  - Used for platform services
 
 ---
 
@@ -309,14 +309,14 @@ Your reputation score (0-1000) reflects your reliability and quality as a collec
 
 ### 5.2 How to Improve Your Reputation
 
-**✅ Actions that INCREASE reputation**:
+**Done Actions that INCREASE reputation**:
 - Verified collections (consistent submissions)
 - Accurate weight reporting
 - Quality materials (clean, well-sorted)
 - Regular activity (weekly collections)
 - Positive collection point feedback
 
-**❌ Actions that DECREASE reputation**:
+**Not done Actions that DECREASE reputation**:
 - Rejected submissions
 - Fraudulent activity (weight inflation, wrong materials)
 - Duplicate submissions
@@ -335,11 +335,11 @@ Your reputation score (0-1000) reflects your reliability and quality as a collec
 
 | Level | Score Range | Benefits |
 |-------|-------------|----------|
-| 🌟 **Excellent** | 800-1000 | 20% payment bonus, priority support, special badges |
-| 👍 **Good** | 600-799 | 10% payment bonus, faster verification |
-| 😐 **Fair** | 400-599 | Standard benefits |
-| 😟 **Poor** | 200-399 | 10% payment penalty, slower verification |
-| ⚠️ **Bad** | 0-199 | 20% payment penalty, may require re-verification |
+| **Excellent**| 800-1000 | 20% payment bonus, priority support, special badges |
+| **Good**| 600-799 | 10% payment bonus, faster verification |
+| **Fair**| 400-599 | Standard benefits |
+| **Poor**| 200-399 | 10% payment penalty, slower verification |
+| Warning **Bad**| 0-199 | 20% payment penalty, may require re-verification |
 
 ---
 
@@ -397,12 +397,12 @@ Your reputation score (0-1000) reflects your reliability and quality as a collec
    - Collector can appeal if needed
 
 **Verification Standards**:
-- ✅ Correct material type
-- ✅ Clean, sorted materials
-- ✅ Accurate weight (no water, contaminants)
-- ✅ Meets quality standards
-- ❌ Mixed/contaminated materials
-- ❌ Weight discrepancies >5%
+- **+** Correct material type
+- **+** Clean, sorted materials
+- **+** Accurate weight (no water, contaminants)
+- **+** Meets quality standards
+- **−** Mixed/contaminated materials
+- **−** Weight discrepancies >5%
 
 ---
 
@@ -451,12 +451,12 @@ Your reputation score (0-1000) reflects your reliability and quality as a collec
 ### 7.2 Notifications
 
 **You'll receive notifications for**:
-- ✅ Collection verified
-- 💰 Payment received
-- ⚠️ Collection rejected
-- 📈 Reputation changed
-- 📢 Price updates
-- 🚨 Important system alerts
+- **+** Collection verified
+- Payment received
+- **!** Collection rejected
+- Reputation changed
+- Price updates
+- Important system alerts
 
 **Managing Notifications**:
 - Settings → Notifications
@@ -672,7 +672,7 @@ Vote on upcoming features and suggest new ones at [roadmap.wastefi.io](#)
 
 ### Material Types Quick Guide
 
-| Material | ✅ Accepted | ❌ Not Accepted |
+| Material | Done Accepted | Not done Not Accepted |
 |----------|------------|----------------|
 | **Plastic** | Bottles, containers, clean bags | Dirty plastic, styrofoam, certain plastics #3, #6, #7 |
 | **Paper** | Newspapers, cardboard, office paper, magazines | Wet/soiled paper, wax-coated paper |
@@ -699,18 +699,18 @@ With Good Reputation (1.1x): 0.129 WASTE
 ### Reputation Tips
 
 **Quick Tips to Boost Your Score**:
-1. ✅ Submit regularly (weekly is great!)
-2. ✅ Sort materials properly
-3. ✅ Be accurate with weights
-4. ✅ Keep materials clean
-5. ✅ Respond to collection point feedback
+1. Submit regularly (weekly is great!)
+2. Sort materials properly
+3. Be accurate with weights
+4. Keep materials clean
+5. Respond to collection point feedback
 
 **What to Avoid**:
-1. ❌ Don't inflate weights
-2. ❌ Don't submit wrong material types
-3. ❌ Don't duplicate submissions
-4. ❌ Don't mix materials
-5. ❌ Don't abandon rejected collections
+1. Don't inflate weights
+2. Don't submit wrong material types
+3. Don't duplicate submissions
+4. Don't mix materials
+5. Don't abandon rejected collections
 
 ---
 
@@ -728,9 +728,9 @@ By using WasteFi, you agree to our:
 
 ## Thank You for Using WasteFi!
 
-Together, we're making waste management rewarding and sustainable. Every kilogram you collect makes a difference! 🌍♻️
+Together, we're making waste management rewarding and sustainable. Every kilogram you collect makes a difference!
 
-**Happy Collecting!** 💚
+**Happy Collecting!**
 
 ---
 

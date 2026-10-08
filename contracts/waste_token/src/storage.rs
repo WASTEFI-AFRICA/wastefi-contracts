@@ -61,6 +61,9 @@ pub fn read_balance(env: &Env, address: &Address) -> i128 {
 }
 
 /// Write allowance for a spender
+// Allowance storage exists, but no `approve` / `allowance` / `transfer_from`
+// entry points are exposed yet, so these are unreachable from outside the crate.
+#[allow(dead_code)]
 pub fn write_allowance(env: &Env, owner: &Address, spender: &Address, amount: i128) {
     let key = ("Allowance", owner, spender);
     env.storage().persistent().set(&key, &amount);
@@ -71,6 +74,7 @@ pub fn write_allowance(env: &Env, owner: &Address, spender: &Address, amount: i1
 }
 
 /// Read allowance for a spender
+#[allow(dead_code)]
 pub fn read_allowance(env: &Env, owner: &Address, spender: &Address) -> i128 {
     let key = ("Allowance", owner, spender);
     env.storage().persistent().get(&key).unwrap_or(0)

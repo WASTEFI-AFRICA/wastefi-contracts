@@ -41,27 +41,27 @@ Manages collector registration, profiles, and status (Active, Suspended, Banned)
 **Security Level**: **MEDIUM**
 
 **Security Controls**:
-- ✅ Rate limiting: 3 registrations per day per address
-- ✅ Input validation: name and contact length limits
-- ✅ Address validation: non-zero address
-- ✅ Duplicate prevention: Cannot register same address twice
-- ✅ Default status: Active (requires admin to ban)
+- Rate limiting: 3 registrations per day per address
+- Input validation: name and contact length limits
+- Address validation: non-zero address
+- Duplicate prevention: Cannot register same address twice
+- Default status: Active (requires admin to ban)
 
 **Vulnerabilities**:
-- ⚠️ **Sybil Attack**: Attacker can create unlimited identities with different addresses
-- ⚠️ **No KYC**: No identity verification, fake registrations possible
-- ⚠️ **Storage Bloat**: Unbounded registration growth
+- **Sybil Attack**: Attacker can create unlimited identities with different addresses
+- **No KYC**: No identity verification, fake registrations possible
+- **Storage Bloat**: Unbounded registration growth
 
 **Code Reference**:
 ```rust
 pub fn register(env: Env, collector: Address, name: String, contact: String) {
     // Rate limit check
     common::RateLimit::check_per_day(&env, "register", &collector, 3)?;
-    
+
     // Validation
     common::validation::validate_string(&env, &name, 100)?;
     common::validation::validate_address(&env, &collector)?;
-    
+
     // Record attempt
     common::RateLimit::record(&env, "register", &collector);
 }
@@ -75,14 +75,14 @@ pub fn register(env: Env, collector: Address, name: String, contact: String) {
 **Security Level**: **HIGH**
 
 **Security Controls**:
-- ✅ Admin-only authorization
-- ✅ Status validation: Must be valid CollectorStatus enum
-- ✅ Event logging: StatusChanged event
-- ✅ Cannot modify non-existent collector
+- Admin-only authorization
+- Status validation: Must be valid CollectorStatus enum
+- Event logging: StatusChanged event
+- Cannot modify non-existent collector
 
 **Vulnerabilities**:
-- ⚠️ **Admin Key Compromise**: Attacker with admin key can ban all collectors
-- ⚠️ **No Appeal Process**: No mechanism for collectors to dispute bans
+- **Admin Key Compromise**: Attacker with admin key can ban all collectors
+- **No Appeal Process**: No mechanism for collectors to dispute bans
 
 **State Invariants**:
 - Collector must exist before status update
@@ -90,9 +90,9 @@ pub fn register(env: Env, collector: Address, name: String, contact: String) {
 - Only admin can change status
 
 **Edge Cases**:
-- ✅ Updating status to same value: Allowed (idempotent)
-- ✅ Banned collector attempting operations: Blocked by other contracts
-- ❌ Re-activating after ban: Possible (consider permanent ban flag)
+- **+** Updating status to same value: Allowed (idempotent)
+- **+** Banned collector attempting operations: Blocked by other contracts
+- **−** Re-activating after ban: Possible (consider permanent ban flag)
 
 #### `update_profile(env, collector, name, contact)`
 **Purpose**: Update collector profile information  
@@ -100,12 +100,12 @@ pub fn register(env: Env, collector: Address, name: String, contact: String) {
 **Security Level**: **LOW**
 
 **Security Controls**:
-- ✅ Owner or admin authorization
-- ✅ Input validation: length limits
-- ✅ Cannot update other users' profiles
+- Owner or admin authorization
+- Input validation: length limits
+- Cannot update other users' profiles
 
 **Vulnerabilities**:
-- ⚠️ **PII Exposure**: Names and contact info stored on-chain (public)
+- **PII Exposure**: Names and contact info stored on-chain (public)
 
 **Recommendation**: Consider storing sensitive PII off-chain with hash verification.
 
@@ -138,13 +138,13 @@ Banned → Suspended (admin)
 
 | Edge Case | Behavior | Security Impact |
 |-----------|----------|-----------------|
-| Register with existing address | Panics (duplicate) | ✅ Protected |
-| Update non-existent collector | Panics | ✅ Protected |
-| Banned collector registers again | Blocked by storage check | ✅ Protected |
-| Admin bans self | Allowed (risky!) | ⚠️ Admin lock-out possible |
-| Empty name/contact | Allowed (validation may need tightening) | ⚠️ Data quality issue |
-| Max string length exceeded | Panics | ✅ Protected |
-| Concurrent registrations | Serial execution | ✅ No race condition |
+| Register with existing address | Panics (duplicate) | Done Protected |
+| Update non-existent collector | Panics | Done Protected |
+| Banned collector registers again | Blocked by storage check | Done Protected |
+| Admin bans self | Allowed (risky!) | Warning Admin lock-out possible |
+| Empty name/contact | Allowed (validation may need tightening) | Warning Data quality issue |
+| Max string length exceeded | Panics | Done Protected |
+| Concurrent registrations | Serial execution | Done No race condition |
 
 ### 1.5 Integration Security
 
@@ -154,9 +154,9 @@ Banned → Suspended (admin)
 - PaymentDistribution: Validates payment recipient
 
 **Security Concerns**:
-- ✅ Status checks are atomic
-- ✅ No callback vulnerabilities (Soroban prevents reentrancy)
-- ⚠️ Banned collectors' past transactions remain valid
+- **+** Status checks are atomic
+- **+** No callback vulnerabilities (Soroban prevents reentrancy)
+- **!** Banned collectors' past transactions remain valid
 
 **Recommendation**: Implement status change notifications to dependent contracts.
 
@@ -180,12 +180,12 @@ Records waste collection transactions, manages verification workflow, tracks tra
 **Security Level**: **CRITICAL**
 
 **Security Controls**:
-- ✅ **Fraud Detection**: Risk score check (blocks if ≥800)
-- ✅ **Rate Limiting**: 20 transactions per hour per collector
-- ✅ **Duplicate Detection**: 5-minute window, weight+material+collector match
-- ✅ **Weight Validation**: Must be positive and within bounds
-- ✅ **Price Validation**: Must be positive
-- ✅ **Fraud Tracking**: Records velocity, weight anomalies
+- **Fraud Detection**: Risk score check (blocks if ≥800)
+- **Rate Limiting**: 20 transactions per hour per collector
+- **Duplicate Detection**: 5-minute window, weight+material+collector match
+- **Weight Validation**: Must be positive and within bounds
+- **Price Validation**: Must be positive
+- **Fraud Tracking**: Records velocity, weight anomalies
 
 **Attack Vectors**:
 1. **Weight Inflation**: Submit inflated weights for higher payment
@@ -209,15 +209,15 @@ Records waste collection transactions, manages verification workflow, tracks tra
 pub fn record_collection(...) -> u64 {
     // 1. Critical risk check
     FraudDetection::require_not_critical(&env, &collector)?;
-    
+
     // 2. Rate limit: 20/hour
     RateLimit::check_per_hour(&env, "record_collection", &collector, 20)?;
-    
+
     // 3. Duplicate detection: 5 min window
     DuplicateDetection::require_not_duplicate(
         &env, &collector, weight, material_type as u32, 300
     )?;
-    
+
     // 4. Record for fraud tracking
     FraudDetection::record_transaction(&env, &collector);
     FraudDetection::record_weight(&env, &collector, weight);
@@ -236,22 +236,22 @@ pub fn record_collection(...) -> u64 {
 **Security Level**: **CRITICAL**
 
 **Security Controls**:
-- ✅ Admin-only authorization
-- ✅ Transaction existence check
-- ✅ Cannot verify already-verified transaction
-- ✅ Updates fraud detection (records successful verification)
-- ✅ Status change logged
+- Admin-only authorization
+- Transaction existence check
+- Cannot verify already-verified transaction
+- Updates fraud detection (records successful verification)
+- Status change logged
 
 **Vulnerabilities**:
-- ⚠️ **Admin Collusion**: Compromised admin can verify fraudulent transactions
-- ⚠️ **No Multi-Sig**: Single admin approval (no consensus mechanism)
-- ⚠️ **Irreversible**: Once verified, cannot be disputed (consider reversal mechanism)
+- **Admin Collusion**: Compromised admin can verify fraudulent transactions
+- **No Multi-Sig**: Single admin approval (no consensus mechanism)
+- **Irreversible**: Once verified, cannot be disputed (consider reversal mechanism)
 
 **Edge Cases**:
-- ✅ Verify non-existent transaction: Panics
-- ✅ Verify already-verified: Panics (idempotency)
-- ✅ Verify disputed transaction: Allowed (admin override)
-- ❌ Batch verification: Not implemented (consider for efficiency)
+- **+** Verify non-existent transaction: Panics
+- **+** Verify already-verified: Panics (idempotency)
+- **+** Verify disputed transaction: Allowed (admin override)
+- **−** Batch verification: Not implemented (consider for efficiency)
 
 **Recommendation**: Implement multi-sig verification for high-value transactions.
 
@@ -261,10 +261,10 @@ pub fn record_collection(...) -> u64 {
 **Security Level**: **HIGH**
 
 **Security Controls**:
-- ✅ Admin-only authorization
-- ✅ Status validation
-- ✅ Updates fraud statistics (rejected transactions)
-- ✅ Cannot change from Completed (verified transactions immutable)
+- Admin-only authorization
+- Status validation
+- Updates fraud statistics (rejected transactions)
+- Cannot change from Completed (verified transactions immutable)
 
 **State Transitions**:
 ```
@@ -278,8 +278,8 @@ Completed → [FINAL STATE]
 ```
 
 **Invariant Violations**:
-- ❌ Completed → Disputed: Should not be allowed (consider)
-- ❌ No timeout: Pending transactions can stay forever
+- Completed → Disputed: Should not be allowed (consider)
+- No timeout: Pending transactions can stay forever
 
 **Recommendation**: Implement transaction expiry (e.g., 30-day timeout).
 
@@ -307,15 +307,15 @@ DISPUTED → CANCELLED (update_status)
 
 | Edge Case | Behavior | Security Impact |
 |-----------|----------|-----------------|
-| **Weight = 0** | Panics (validation) | ✅ Protected |
-| **Weight = MAX_U64** | Overflow in calculation | ⚠️ Risk: Saturating mul used |
-| **Price = 0** | Allowed (zero-value transaction) | ⚠️ Consider rejecting |
-| **Price = MAX_I128** | Overflow in total_amount | ⚠️ Risk: Saturating mul used |
-| **Duplicate exact submission** | Blocked (duplicate detection) | ✅ Protected |
-| **Duplicate with +1g weight** | Allowed (evasion possible) | ⚠️ Simple evasion |
-| **21st transaction in hour** | Blocked (rate limit) | ✅ Protected |
-| **Verify after 1 year** | Allowed (no expiry) | ⚠️ Stale data |
-| **Banned collector transaction** | Not automatically blocked | ⚠️ Consider status check |
+| **Weight = 0**| Panics (validation) | Done Protected |
+| **Weight = MAX_U64**| Overflow in calculation | Warning Risk: Saturating mul used |
+| **Price = 0**| Allowed (zero-value transaction) | Warning Consider rejecting |
+| **Price = MAX_I128**| Overflow in total_amount | Warning Risk: Saturating mul used |
+| **Duplicate exact submission**| Blocked (duplicate detection) | Done Protected |
+| **Duplicate with +1g weight**| Allowed (evasion possible) | Warning Simple evasion |
+| **21st transaction in hour**| Blocked (rate limit) | Done Protected |
+| **Verify after 1 year**| Allowed (no expiry) | Warning Stale data |
+| **Banned collector transaction**| Not automatically blocked | Warning Consider status check |
 
 ### 2.5 Fraud Detection Integration
 
@@ -333,10 +333,10 @@ DISPUTED → CANCELLED (update_status)
 - Rejection stats: Persistent storage (total, rejected counts)
 
 **Security Properties**:
-- ✅ Multi-factor prevents single-indicator evasion
-- ✅ Temporary storage auto-expires (prevents bloat)
-- ⚠️ Static thresholds (no machine learning)
-- ⚠️ No cross-collector pattern detection
+- **+** Multi-factor prevents single-indicator evasion
+- **+** Temporary storage auto-expires (prevents bloat)
+- **!** Static thresholds (no machine learning)
+- **!** No cross-collector pattern detection
 
 ### 2.6 Integration Security
 
@@ -349,10 +349,10 @@ DISPUTED → CANCELLED (update_status)
 - Reputation: `get_transaction_status()` (score calculation)
 
 **Security Concerns**:
-- ✅ Circuit breakers not yet implemented for external calls
-- ✅ Price data validation (bounds checking)
-- ⚠️ No verification of collection_point existence
-- ⚠️ No verification of collector status (should check Active)
+- **+** Circuit breakers not yet implemented for external calls
+- **+** Price data validation (bounds checking)
+- **!** No verification of collection_point existence
+- **!** No verification of collector status (should check Active)
 
 **Recommendations**:
 1. Add collector status check (must be Active)
@@ -380,17 +380,17 @@ Processes payments for verified transactions, distributes rewards to collectors,
 **Security Level**: **CRITICAL**
 
 **Security Controls**:
-- ✅ Admin-only authorization
-- ✅ Amount validation (must be positive)
-- ✅ Payment record creation
-- ✅ Idempotency tracking (one payment per transaction)
-- ✅ Event logging
+- Admin-only authorization
+- Amount validation (must be positive)
+- Payment record creation
+- Idempotency tracking (one payment per transaction)
+- Event logging
 
 **Vulnerabilities**:
-- ⚠️ **Double Payment**: No explicit check for existing payment (relies on external tracking)
-- ⚠️ **Arithmetic Overflow**: Uses saturating_mul (silent overflow)
-- ⚠️ **No Transaction Validation**: Doesn't verify transaction is Completed
-- ⚠️ **Admin Key Compromise**: Attacker can drain funds
+- **Double Payment**: No explicit check for existing payment (relies on external tracking)
+- **Arithmetic Overflow**: Uses saturating_mul (silent overflow)
+- **No Transaction Validation**: Doesn't verify transaction is Completed
+- **Admin Key Compromise**: Attacker can drain funds
 
 **Code Reference**:
 ```rust
@@ -398,15 +398,15 @@ pub fn process_payment(env: Env, transaction_id: u64, recipient: Address, amount
     // Admin check
     let admin = AccessControl::get_admin(&env)?;
     AccessControl::require_admin(&env, &admin)?;
-    
+
     // Amount validation
     if amount <= 0 {
         panic!("Amount must be positive");
     }
-    
-    // ⚠️ Missing: Check if payment already processed for this transaction
-    // ⚠️ Missing: Verify transaction is Completed status
-    
+
+    // Warning Missing: Check if payment already processed for this transaction
+    // Warning Missing: Verify transaction is Completed status
+
     // Create payment record
     let payment = Payment {
         id: payment_id,
@@ -442,20 +442,20 @@ pub fn process_payment(env: Env, transaction_id: u64, recipient: Address, amount
 **Security Level**: **CRITICAL**
 
 **Security Controls**:
-- ✅ Admin-only authorization
-- ✅ Payment existence check
-- ✅ Status transition (Pending → Completed)
-- ✅ Calls WasteToken::mint()
+- Admin-only authorization
+- Payment existence check
+- Status transition (Pending → Completed)
+- Calls WasteToken::mint()
 
 **Vulnerabilities**:
-- ⚠️ **No Balance Check**: Doesn't verify token contract can mint
-- ⚠️ **No Mint Confirmation**: Assumes mint succeeds
-- ⚠️ **State Before Call**: Updates payment status before minting (non-atomic)
+- **No Balance Check**: Doesn't verify token contract can mint
+- **No Mint Confirmation**: Assumes mint succeeds
+- **State Before Call**: Updates payment status before minting (non-atomic)
 
 **Edge Cases**:
-- ✅ Distribute already-distributed: Blocked by status check
-- ❌ Mint fails but status updated: Possible inconsistency
-- ❌ Recipient is zero address: Token contract should reject (not checked here)
+- **+** Distribute already-distributed: Blocked by status check
+- **−** Mint fails but status updated: Possible inconsistency
+- **−** Recipient is zero address: Token contract should reject (not checked here)
 
 **Recommendation**: Use checks-effects-interactions pattern.
 
@@ -479,13 +479,13 @@ PENDING → FAILED (if distribution fails, not implemented)
 
 | Edge Case | Behavior | Security Impact |
 |-----------|----------|-----------------|
-| **Amount = 0** | Panics | ✅ Protected |
-| **Amount = MAX_I128** | Accepted (overflow risk) | ⚠️ Risk in minting |
-| **Duplicate transaction_id** | Allowed (CRITICAL BUG) | ❌ Double payment |
-| **Non-existent transaction** | Allowed (no validation) | ❌ Payment for fake TX |
-| **Mint fails** | Status already updated | ❌ Inconsistent state |
-| **Recipient is banned** | Allowed (no status check) | ⚠️ Pay banned users |
-| **Concurrent process_payment** | Serial execution | ✅ No race condition |
+| **Amount = 0**| Panics | Done Protected |
+| **Amount = MAX_I128**| Accepted (overflow risk) | Warning Risk in minting |
+| **Duplicate transaction_id**| Allowed (CRITICAL BUG) | Not done Double payment |
+| **Non-existent transaction**| Allowed (no validation) | Not done Payment for fake TX |
+| **Mint fails**| Status already updated | Not done Inconsistent state |
+| **Recipient is banned**| Allowed (no status check) | Warning Pay banned users |
+| **Concurrent process_payment**| Serial execution | Done No race condition |
 
 ### 3.5 Integration Security
 
@@ -497,10 +497,10 @@ PENDING → FAILED (if distribution fails, not implemented)
 - External (off-chain): Admin triggers payment processing
 
 **Security Concerns**:
-- ❌ **Missing Cross-Contract Validation**: Doesn't verify transaction status
-- ❌ **No Circuit Breaker**: Token mint failures not handled
-- ❌ **No Idempotency**: Can pay same transaction multiple times
-- ⚠️ **Trust Token Contract**: Assumes WasteToken is correct
+- **−** **Missing Cross-Contract Validation**: Doesn't verify transaction status
+- **−** **No Circuit Breaker**: Token mint failures not handled
+- **−** **No Idempotency**: Can pay same transaction multiple times
+- **!** **Trust Token Contract**: Assumes WasteToken is correct
 
 **Critical Recommendations**:
 1. **MUST FIX**: Add transaction_id → payment_id mapping to prevent double payments
@@ -529,16 +529,16 @@ Manages pricing data for different waste materials, provides oracle functionalit
 **Security Level**: **HIGH**
 
 **Security Controls**:
-- ✅ Operator-only authorization
-- ✅ Price bounds validation (min/max)
-- ✅ Timestamp tracking (last updated)
-- ✅ Event logging (price updates)
+- Operator-only authorization
+- Price bounds validation (min/max)
+- Timestamp tracking (last updated)
+- Event logging (price updates)
 
 **Vulnerabilities**:
-- ⚠️ **Price Manipulation**: Compromised operator can set extreme prices
-- ⚠️ **No Rate Limiting**: Operator can update prices unlimited times
-- ⚠️ **No Multi-Source Validation**: Single operator, no consensus
-- ⚠️ **Manual Updates**: No automated oracle, stale price risk
+- **Price Manipulation**: Compromised operator can set extreme prices
+- **No Rate Limiting**: Operator can update prices unlimited times
+- **No Multi-Source Validation**: Single operator, no consensus
+- **Manual Updates**: No automated oracle, stale price risk
 
 **Price Bounds**:
 - Minimum: 0 (or configured min_price)
@@ -550,14 +550,14 @@ pub fn update_price(env: Env, material_type: MaterialType, price_per_kg: i128) {
     // Operator check
     let operator = AccessControl::get_operator(&env)?;
     AccessControl::require_operator(&env, &operator)?;
-    
+
     // Price bounds validation
     let min_price = get_min_price(&env);
     let max_price = get_max_price(&env);
     if price_per_kg < min_price || price_per_kg > max_price {
         panic!("Price out of bounds");
     }
-    
+
     // Update price and timestamp
     set_price(&env, material_type, price_per_kg);
     set_last_updated(&env, material_type, env.ledger().timestamp());
@@ -583,14 +583,14 @@ pub fn update_price(env: Env, material_type: MaterialType, price_per_kg: i128) {
 **Security Level**: **LOW**
 
 **Security Controls**:
-- ✅ Read-only operation
-- ✅ Returns default price if not set
-- ✅ No authorization required
+- Read-only operation
+- Returns default price if not set
+- No authorization required
 
 **Edge Cases**:
-- ✅ Price never set: Returns default (e.g., 0 or configured default)
-- ✅ Material type invalid: Returns default
-- ⚠️ Price is stale: No warning (consider expiry check)
+- **+** Price never set: Returns default (e.g., 0 or configured default)
+- **+** Material type invalid: Returns default
+- **!** Price is stale: No warning (consider expiry check)
 
 ### 4.3 State Machine Invariants
 
@@ -610,13 +610,13 @@ SET → SET (update_price, price change)
 
 | Edge Case | Behavior | Security Impact |
 |-----------|----------|-----------------|
-| **Price = 0** | Allowed (free waste) | ⚠️ Consider minimum |
-| **Price = MAX_I128** | Blocked by bounds | ✅ Protected |
-| **Price < 0** | Blocked by validation | ✅ Protected |
-| **Price never updated** | Returns default | ⚠️ Stale data |
-| **Rapid price updates** | Allowed (no rate limit) | ⚠️ Manipulation risk |
-| **Invalid material type** | Returns default | ⚠️ No error |
-| **Concurrent updates** | Serial execution | ✅ No race condition |
+| **Price = 0**| Allowed (free waste) | Warning Consider minimum |
+| **Price = MAX_I128**| Blocked by bounds | Done Protected |
+| **Price < 0**| Blocked by validation | Done Protected |
+| **Price never updated**| Returns default | Warning Stale data |
+| **Rapid price updates**| Allowed (no rate limit) | Warning Manipulation risk |
+| **Invalid material type**| Returns default | Warning No error |
+| **Concurrent updates**| Serial execution | Done No race condition |
 
 ### 4.5 Integration Security
 
@@ -625,9 +625,9 @@ SET → SET (update_price, price change)
 - PaymentDistribution: `get_current_price()` (verification)
 
 **Security Concerns**:
-- ⚠️ **No Staleness Detection**: Callers don't know if price is old
-- ⚠️ **No Circuit Breaker**: If pricing fails, transactions can't proceed
-- ⚠️ **Trust Assumption**: All contracts trust pricing data
+- **No Staleness Detection**: Callers don't know if price is old
+- **No Circuit Breaker**: If pricing fails, transactions can't proceed
+- **Trust Assumption**: All contracts trust pricing data
 
 **Recommendations**:
 1. Add `get_price_with_timestamp()` method
@@ -655,15 +655,15 @@ Tracks reputation scores for collectors and collection points based on transacti
 **Security Level**: **MEDIUM**
 
 **Security Controls**:
-- ✅ Admin-only authorization
-- ✅ Score bounds (0-1000)
-- ✅ Adjustment validation
-- ✅ History tracking
+- Admin-only authorization
+- Score bounds (0-1000)
+- Adjustment validation
+- History tracking
 
 **Vulnerabilities**:
-- ⚠️ **Score Manipulation**: Admin can arbitrarily inflate/deflate scores
-- ⚠️ **No Decay Mechanism**: Scores don't decrease over time (old reputation persists)
-- ⚠️ **Gaming**: Collectors can build reputation with small transactions, then commit fraud
+- **Score Manipulation**: Admin can arbitrarily inflate/deflate scores
+- **No Decay Mechanism**: Scores don't decrease over time (old reputation persists)
+- **Gaming**: Collectors can build reputation with small transactions, then commit fraud
 
 **Score Calculation**:
 ```
@@ -676,9 +676,9 @@ Range: [0, 1000]
 ```
 
 **Edge Cases**:
-- ✅ Score > 1000: Capped at 1000
-- ✅ Score < 0: Capped at 0
-- ⚠️ No time-based decay (consider)
+- **+** Score > 1000: Capped at 1000
+- **+** Score < 0: Capped at 0
+- **!** No time-based decay (consider)
 
 #### `calculate_reputation(env, address)`
 **Purpose**: Calculate current reputation based on history  
@@ -686,12 +686,12 @@ Range: [0, 1000]
 **Security Level**: **LOW**
 
 **Security Controls**:
-- ✅ Read-only operation
-- ✅ Algorithm-based calculation (not direct input)
+- Read-only operation
+- Algorithm-based calculation (not direct input)
 
 **Vulnerabilities**:
-- ⚠️ **No Recency Weighting**: Old transactions count equally with recent
-- ⚠️ **Linear Scoring**: No diminishing returns for additional transactions
+- **No Recency Weighting**: Old transactions count equally with recent
+- **Linear Scoring**: No diminishing returns for additional transactions
 
 ### 5.3 State Machine Invariants
 
@@ -711,12 +711,12 @@ INITIAL → UPDATED (subsequent updates)
 
 | Edge Case | Behavior | Security Impact |
 |-----------|----------|-----------------|
-| **Adjustment = +1000** | Score capped at 1000 | ✅ Protected |
-| **Adjustment = -1000** | Score capped at 0 | ✅ Protected |
-| **Never transacted** | Score = 500 (neutral) | ✅ Reasonable default |
-| **1000 successful TXs** | High reputation | ⚠️ Can be gamed |
-| **Dormant for 1 year** | Score unchanged | ⚠️ No decay |
-| **Admin manipulation** | Score arbitrary | ⚠️ Trust required |
+| **Adjustment = +1000**| Score capped at 1000 | Done Protected |
+| **Adjustment = -1000**| Score capped at 0 | Done Protected |
+| **Never transacted**| Score = 500 (neutral) | Done Reasonable default |
+| **1000 successful TXs**| High reputation | Warning Can be gamed |
+| **Dormant for 1 year**| Score unchanged | Warning No decay |
+| **Admin manipulation**| Score arbitrary | Warning Trust required |
 
 ### 5.5 Integration Security
 
@@ -725,8 +725,8 @@ INITIAL → UPDATED (subsequent updates)
 - CollectorRegistry: `get_reputation()` (display purposes)
 
 **Security Concerns**:
-- ⚠️ **No Automated Updates**: Relies on other contracts calling
-- ⚠️ **No Verification**: Trusts calling contract's judgment
+- **No Automated Updates**: Relies on other contracts calling
+- **No Verification**: Trusts calling contract's judgment
 
 **Recommendations**:
 1. Implement time-based decay (e.g., 5% per month)
@@ -754,16 +754,16 @@ ERC-20 style reward token with minting, transfer, and burn functionality. Used t
 **Security Level**: **CRITICAL**
 
 **Security Controls**:
-- ✅ Admin-only authorization
-- ✅ Amount validation (positive)
-- ✅ Balance update (checked add)
-- ✅ Total supply tracking
-- ✅ Mint event logging
+- Admin-only authorization
+- Amount validation (positive)
+- Balance update (checked add)
+- Total supply tracking
+- Mint event logging
 
 **Vulnerabilities**:
-- ⚠️ **No Supply Cap**: Unlimited minting possible (inflation risk)
-- ⚠️ **Admin Key Compromise**: Attacker can mint infinite tokens
-- ⚠️ **No Rate Limiting**: Can mint any amount at once
+- **No Supply Cap**: Unlimited minting possible (inflation risk)
+- **Admin Key Compromise**: Attacker can mint infinite tokens
+- **No Rate Limiting**: Can mint any amount at once
 
 **Code Reference**:
 ```rust
@@ -771,23 +771,23 @@ pub fn mint(env: Env, to: Address, amount: i128) {
     // Admin check
     let admin = AccessControl::get_admin(&env)?;
     AccessControl::require_admin(&env, &admin)?;
-    
+
     // Amount validation
     if amount <= 0 {
         panic!("Amount must be positive");
     }
-    
+
     // Update balance (checked arithmetic)
     let balance = get_balance(&env, &to);
     let new_balance = balance.checked_add(amount).expect("Balance overflow");
     set_balance(&env, &to, new_balance);
-    
+
     // Update total supply (checked arithmetic)
     let supply = get_total_supply(&env);
     let new_supply = supply.checked_add(amount).expect("Supply overflow");
     set_total_supply(&env, new_supply);
-    
-    // ⚠️ Missing: Supply cap check
+
+    // Warning Missing: Supply cap check
 }
 ```
 
@@ -808,20 +808,20 @@ pub fn mint(env: Env, to: Address, amount: i128) {
 **Security Level**: **HIGH**
 
 **Security Controls**:
-- ✅ Soroban authorization (sender must sign)
-- ✅ Balance validation (sufficient funds)
-- ✅ Checked arithmetic (no overflow)
-- ✅ Transfer event logging
+- Soroban authorization (sender must sign)
+- Balance validation (sufficient funds)
+- Checked arithmetic (no overflow)
+- Transfer event logging
 
 **Vulnerabilities**:
-- ⚠️ **No Recipient Validation**: Can transfer to zero address (tokens lost)
-- ⚠️ **No Blacklist**: Cannot block banned users from receiving tokens
+- **No Recipient Validation**: Can transfer to zero address (tokens lost)
+- **No Blacklist**: Cannot block banned users from receiving tokens
 
 **Edge Cases**:
-- ✅ Transfer amount = 0: Allowed (no-op)
-- ✅ Transfer to self: Allowed
-- ✅ Insufficient balance: Panics
-- ❌ Transfer to zero address: Should reject (tokens lost forever)
+- **+** Transfer amount = 0: Allowed (no-op)
+- **+** Transfer to self: Allowed
+- **+** Insufficient balance: Panics
+- **−** Transfer to zero address: Should reject (tokens lost forever)
 
 #### `burn(env, from, amount)`
 **Purpose**: Destroy tokens (deflationary mechanism)  
@@ -829,19 +829,19 @@ pub fn mint(env: Env, to: Address, amount: i128) {
 **Security Level**: **MEDIUM**
 
 **Security Controls**:
-- ✅ Owner or admin authorization
-- ✅ Balance validation
-- ✅ Total supply reduction
-- ✅ Burn event logging
+- Owner or admin authorization
+- Balance validation
+- Total supply reduction
+- Burn event logging
 
 **Vulnerabilities**:
-- ⚠️ **Admin Can Burn Any User's Tokens**: Destructive admin power
-- ⚠️ **No Burn Limit**: Can burn all tokens at once
+- **Admin Can Burn Any User's Tokens**: Destructive admin power
+- **No Burn Limit**: Can burn all tokens at once
 
 **Edge Cases**:
-- ✅ Burn more than balance: Panics
-- ✅ Burn amount = 0: Allowed (no-op)
-- ⚠️ Admin burns user tokens without consent: Allowed (consider restricting)
+- **+** Burn more than balance: Panics
+- **+** Burn amount = 0: Allowed (no-op)
+- **!** Admin burns user tokens without consent: Allowed (consider restricting)
 
 ### 6.3 State Machine Invariants
 
@@ -863,13 +863,13 @@ SET → UPDATED (transfer, mint, burn)
 
 | Edge Case | Behavior | Security Impact |
 |-----------|----------|-----------------|
-| **Mint MAX_I128** | Would overflow | ✅ Protected (checked_add) |
-| **Transfer to zero address** | Tokens lost | ❌ Should reject |
-| **Total supply overflow** | Panics | ✅ Protected |
-| **Burn all supply** | total_supply = 0 | ✅ Allowed |
-| **Transfer 0 tokens** | No-op | ✅ Harmless |
-| **Concurrent transfers** | Serial execution | ✅ No race condition |
-| **Admin mints to self** | Allowed | ⚠️ Centralization risk |
+| **Mint MAX_I128**| Would overflow | Done Protected (checked_add) |
+| **Transfer to zero address**| Tokens lost | Not done Should reject |
+| **Total supply overflow**| Panics | Done Protected |
+| **Burn all supply**| total_supply = 0 | Done Allowed |
+| **Transfer 0 tokens**| No-op | Done Harmless |
+| **Concurrent transfers**| Serial execution | Done No race condition |
+| **Admin mints to self**| Allowed | Warning Centralization risk |
 
 ### 6.5 Integration Security
 
@@ -878,9 +878,9 @@ SET → UPDATED (transfer, mint, burn)
 - Users: `transfer()`, `burn()` (token management)
 
 **Security Concerns**:
-- ⚠️ **Trust PaymentDistribution**: Assumes valid mint requests
-- ⚠️ **No Mint Rate Limiting**: PaymentDistribution can mint unlimited tokens
-- ✅ **Soroban Authorization**: Prevents unauthorized transfers
+- **!** **Trust PaymentDistribution**: Assumes valid mint requests
+- **!** **No Mint Rate Limiting**: PaymentDistribution can mint unlimited tokens
+- **+** **Soroban Authorization**: Prevents unauthorized transfers
 
 **Recommendations**:
 1. **CRITICAL**: Add max supply cap (e.g., 1 billion tokens)
@@ -909,15 +909,15 @@ Manages collection point registry, verification status, and operational paramete
 **Security Level**: **MEDIUM**
 
 **Security Controls**:
-- ✅ Admin-only authorization (prevents spam)
-- ✅ Input validation (name, location)
-- ✅ Address validation
-- ✅ Duplicate prevention
+- Admin-only authorization (prevents spam)
+- Input validation (name, location)
+- Address validation
+- Duplicate prevention
 
 **Vulnerabilities**:
-- ⚠️ **Centralized Registration**: Only admin can add points (scaling bottleneck)
-- ⚠️ **No Geographic Validation**: Location is string, not verified
-- ⚠️ **Operator Trust**: Operator can act on behalf of point
+- **Centralized Registration**: Only admin can add points (scaling bottleneck)
+- **No Geographic Validation**: Location is string, not verified
+- **Operator Trust**: Operator can act on behalf of point
 
 #### `verify_collection(env, point, transaction_id)`
 **Purpose**: Collection point confirms transaction occurred  
@@ -925,15 +925,15 @@ Manages collection point registry, verification status, and operational paramete
 **Security Level**: **HIGH**
 
 **Security Controls**:
-- ✅ Operator authorization
-- ✅ Point must be Active status
-- ✅ Transaction existence check (should check)
-- ✅ Verification event logging
+- Operator authorization
+- Point must be Active status
+- Transaction existence check (should check)
+- Verification event logging
 
 **Vulnerabilities**:
-- ⚠️ **Operator Collusion**: Point operator can verify fake collections
-- ⚠️ **No Physical Proof**: Verification is trust-based
-- ⚠️ **No Reversal**: Once verified by point, cannot undo
+- **Operator Collusion**: Point operator can verify fake collections
+- **No Physical Proof**: Verification is trust-based
+- **No Reversal**: Once verified by point, cannot undo
 
 **Attack Scenario**:
 - Malicious point operator colludes with collector
@@ -962,11 +962,11 @@ SUSPENDED → ACTIVE (admin)
 
 | Edge Case | Behavior | Security Impact |
 |-----------|----------|-----------------|
-| **Banned point verifies** | Blocked by status check | ✅ Protected |
-| **Non-operator verifies** | Blocked by auth check | ✅ Protected |
-| **Verify non-existent TX** | Should reject (may not check) | ⚠️ Verify implementation |
-| **Concurrent verifications** | Serial execution | ✅ No race condition |
-| **Admin bans point** | Existing verifications remain valid | ⚠️ Consider impact |
+| **Banned point verifies**| Blocked by status check | Done Protected |
+| **Non-operator verifies**| Blocked by auth check | Done Protected |
+| **Verify non-existent TX**| Should reject (may not check) | Warning Verify implementation |
+| **Concurrent verifications**| Serial execution | Done No race condition |
+| **Admin bans point**| Existing verifications remain valid | Warning Consider impact |
 
 ### 7.5 Integration Security
 
@@ -975,9 +975,9 @@ SUSPENDED → ACTIVE (admin)
 - Reputation: Updates point reputation
 
 **Security Concerns**:
-- ⚠️ **No Automated Verification**: Trust-based system
-- ⚠️ **Collusion Risk**: Point + collector can defraud
-- ⚠️ **No Performance Metrics**: No tracking of verification quality
+- **No Automated Verification**: Trust-based system
+- **Collusion Risk**: Point + collector can defraud
+- **No Performance Metrics**: No tracking of verification quality
 
 **Recommendations**:
 1. Add verification quality scoring
@@ -997,19 +997,19 @@ SUSPENDED → ACTIVE (admin)
 └────────┬────────┘
          │ (validates collector)
          │
-         ▼
+
 ┌─────────────────┐         ┌──────────────────┐
-│ WasteTransaction│────────▶│ MaterialPricing  │
+│ WasteTransaction│────────│ MaterialPricing │
 └────────┬────────┘         └──────────────────┘
          │                    (queries price)
          │
-         ▼
+
 ┌─────────────────┐         ┌──────────────────┐
-│PaymentDistribution│───────▶│   WasteToken     │
+│PaymentDistribution│───────│ WasteToken │
 └────────┬────────┘         └──────────────────┘
          │                    (mints rewards)
          │
-         ▼
+
 ┌─────────────────┐
 │   Reputation    │
 └─────────────────┘
@@ -1062,13 +1062,13 @@ SUSPENDED → ACTIVE (admin)
 **Soroban Protection**: Stellar Soroban prevents traditional reentrancy attacks through deterministic execution.
 
 **Cross-Contract Call Safety**:
-- ✅ No callbacks from external contracts
-- ✅ Call stack is linear (no recursion back)
-- ✅ State is committed after each contract execution
+- No callbacks from external contracts
+- Call stack is linear (no recursion back)
+- State is committed after each contract execution
 
 **Residual Risks**:
-- ⚠️ **Logical Reentrancy**: Multiple calls in sequence can create inconsistent state
-- ⚠️ **MEV**: Front-running not possible in Soroban's model
+- **Logical Reentrancy**: Multiple calls in sequence can create inconsistent state
+- **MEV**: Front-running not possible in Soroban's model
 
 **Conclusion**: Reentrancy risk is **LOW** due to platform design.
 
@@ -1082,7 +1082,7 @@ SUSPENDED → ACTIVE (admin)
 3. WasteToken mint fails
 4. Result: Inconsistent state (TX completed, but no payment)
 
-**Mitigation**: 
+**Mitigation**:
 - Use checks-effects-interactions pattern
 - Add rollback mechanisms
 - Implement idempotency checks
@@ -1166,16 +1166,16 @@ SUSPENDED → ACTIVE (admin)
 The WasteFi smart contracts demonstrate **strong security foundations** with comprehensive fraud detection, access control, and input validation. However, several **critical and high-severity issues** must be addressed before mainnet deployment:
 
 **Strengths**:
-- ✅ Multi-layered fraud detection
-- ✅ Comprehensive input validation
-- ✅ Strong access control
-- ✅ Extensive event logging
+- Multi-layered fraud detection
+- Comprehensive input validation
+- Strong access control
+- Extensive event logging
 
 **Critical Gaps**:
-- ❌ No double-payment prevention
-- ❌ No token supply cap
-- ❌ Missing cross-contract validations
-- ❌ Single admin key (no multi-sig)
+- No double-payment prevention
+- No token supply cap
+- Missing cross-contract validations
+- Single admin key (no multi-sig)
 
 **Recommendation**: Address all Critical and High findings before mainnet launch. Medium findings should be documented as known limitations if not fixed.
 

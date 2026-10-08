@@ -112,7 +112,7 @@ soroban keys show mainnet-admin
 # Transfer from exchange or existing funded account
 ```
 
-**⚠️ SECURITY WARNING**: 
+**Warning SECURITY WARNING**:
 - **NEVER** share or commit private keys
 - Use hardware wallets for mainnet admin keys
 - Enable multi-signature for mainnet (strongly recommended)
@@ -135,17 +135,17 @@ soroban keys show mainnet-admin
 ### 1.4 Access Requirements
 
 **For Testnet**:
-- ✅ Testnet account with 10,000+ XLM
-- ✅ Internet access to https://soroban-testnet.stellar.org
+- Testnet account with 10,000+ XLM
+- Internet access to https://soroban-testnet.stellar.org
 
 **For Mainnet**:
-- ✅ Mainnet account with 100+ XLM (deployment costs ~10-20 XLM)
-- ✅ Security audit completed and approved
-- ✅ Legal/compliance clearance
-- ✅ Multi-sig admin setup (strongly recommended)
-- ✅ Monitoring infrastructure ready
-- ✅ Emergency response team on standby
-- ✅ Insurance coverage (optional but recommended)
+- Mainnet account with 100+ XLM (deployment costs ~10-20 XLM)
+- Security audit completed and approved
+- Legal/compliance clearance
+- Multi-sig admin setup (strongly recommended)
+- Monitoring infrastructure ready
+- Emergency response team on standby
+- Insurance coverage (optional but recommended)
 
 ---
 
@@ -155,7 +155,7 @@ soroban keys show mainnet-admin
 
 ```bash
 # Clone the repository
-git clone https://github.com/wastefi-africa/wastefi-contracts.git
+git clone https://github.com/WASTEFI-AFRICA/wastefi-contracts.git
 cd wastefi-contracts
 
 # Verify branch (use main for production)
@@ -269,7 +269,7 @@ nano config/mainnet.json
 # Complete deployment checklist in config file
 ```
 
-**⚠️ CRITICAL**: Never commit `mainnet.json` with real addresses/keys to git!
+**Warning CRITICAL**: Never commit `mainnet.json` with real addresses/keys to git!
 
 ```bash
 # Add to .gitignore (already done in template)
@@ -560,31 +560,31 @@ After successful deployment, you should see:
 ╚═══════════════════════════════════════════════════════════╝
 
 [INFO] Checking prerequisites...
-[SUCCESS] ✓ Soroban CLI found: soroban 20.0.0
-[SUCCESS] ✓ Rust found: rustc 1.74.0
-[SUCCESS] ✓ wasm32-unknown-unknown target available
-[SUCCESS] ✓ Config file found: config/testnet-deploy.json
+[SUCCESS] Done Soroban CLI found: soroban 20.0.0
+[SUCCESS] Done Rust found: rustc 1.74.0
+[SUCCESS] Done wasm32-unknown-unknown target available
+[SUCCESS] Done Config file found: config/testnet-deploy.json
 
 [INFO] Building contracts...
-[SUCCESS] ✓ All contracts built successfully
+[SUCCESS] Done All contracts built successfully
 
 [INFO] Deploying contracts to testnet...
-[SUCCESS] ✓ WasteToken deployed: CCXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
-[SUCCESS] ✓ CollectorRegistry deployed: CDXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
-[SUCCESS] ✓ CollectionPoint deployed: CEXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
-[SUCCESS] ✓ MaterialPricing deployed: CFXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
-[SUCCESS] ✓ Reputation deployed: CGXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
-[SUCCESS] ✓ WasteTransaction deployed: CHXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
-[SUCCESS] ✓ PaymentDistribution deployed: CIXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+[SUCCESS] Done WasteToken deployed: CCXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+[SUCCESS] Done CollectorRegistry deployed: CDXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+[SUCCESS] Done CollectionPoint deployed: CEXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+[SUCCESS] Done MaterialPricing deployed: CFXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+[SUCCESS] Done Reputation deployed: CGXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+[SUCCESS] Done WasteTransaction deployed: CHXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+[SUCCESS] Done PaymentDistribution deployed: CIXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 
 [INFO] Initializing contracts...
-[SUCCESS] ✓ All contracts initialized
+[SUCCESS] Done All contracts initialized
 
 [INFO] Setting cross-contract references...
-[SUCCESS] ✓ Cross-contract references set
+[SUCCESS] Done Cross-contract references set
 
 [INFO] Verifying deployment...
-[SUCCESS] ✓ All contracts verified
+[SUCCESS] Done All contracts verified
 
 [SUCCESS] Deployment completed successfully!
 [INFO] Contract addresses saved to: deployed_addresses_testnet.json
@@ -598,7 +598,7 @@ After successful deployment, you should see:
 
 ### 5.1 Final Pre-Deployment Review
 
-**⚠️ CRITICAL REVIEW POINTS**:
+**Warning CRITICAL REVIEW POINTS**:
 
 1. **Security Audit**: All findings resolved (especially Critical/High)
 2. **Testnet Testing**: Minimum 1 week of continuous testing
@@ -611,7 +611,7 @@ After successful deployment, you should see:
 9. **Legal**: All legal/regulatory requirements met
 10. **Insurance**: Coverage for smart contract vulnerabilities (optional)
 
-**⚠️ STOP**: If ANY critical item is incomplete, DO NOT proceed with mainnet deployment!
+**Warning STOP**: If ANY critical item is incomplete, DO NOT proceed with mainnet deployment!
 
 ---
 
@@ -656,7 +656,7 @@ cp -r . backups/pre-mainnet-deploy-$(date +%Y%m%d_%H%M%S)
 
 **Deployment Duration**: 20-40 minutes
 
-**⚠️ MONITORING**: Have your entire team monitoring during deployment!
+**Warning MONITORING**: Have your entire team monitoring during deployment!
 
 ---
 
@@ -699,7 +699,7 @@ cat deployed_addresses_mainnet.json
 for contract in waste_token collector_registry collection_point material_pricing reputation waste_transaction payment_distribution; do
   CONTRACT_ID=$(jq -r ".contracts.$contract" deployed_addresses_testnet.json)
   echo "Checking $contract: $CONTRACT_ID"
-  
+
   soroban contract invoke \
     --id $CONTRACT_ID \
     --source deployer \
@@ -723,9 +723,9 @@ for contract in waste_token collector_registry collection_point material_pricing
     --network testnet \
     -- \
     get_admin)
-  
+
   echo "$contract admin: $ADMIN"
-  
+
   # Verify admin matches expected
   EXPECTED_ADMIN=$(soroban keys address deployer)
   if [ "$ADMIN" != "$EXPECTED_ADMIN" ]; then
@@ -870,7 +870,7 @@ REP_SCORE=$(soroban contract invoke \
 echo "Reputation score: $REP_SCORE"
 # Expected: 500 (initial score)
 
-echo "✓ All functional tests passed!"
+echo "Done All functional tests passed!"
 ```
 
 ---
@@ -890,10 +890,10 @@ config/
 ```
 
 **Security Rules**:
-- ✅ Commit templates to git
-- ❌ NEVER commit files with real addresses/keys
-- ✅ Use `.gitignore` to exclude deployment configs
-- ✅ Store mainnet configs in secure vault only
+- **+** Commit templates to git
+- **−** NEVER commit files with real addresses/keys
+- **+** Use `.gitignore` to exclude deployment configs
+- **+** Store mainnet configs in secure vault only
 
 ---
 
@@ -907,12 +907,12 @@ jq . config/testnet-deploy.json
 jq '.network, .admin, .contracts' config/testnet-deploy.json
 
 # Verify no placeholder values (for mainnet)
-grep -i "REPLACE_WITH" config/mainnet.json || echo "✓ No placeholders found"
+grep -i "REPLACE_WITH" config/mainnet.json || echo "Done No placeholders found"
 
 # Validate Stellar addresses
 ADMIN=$(jq -r '.admin' config/testnet-deploy.json)
 if [[ $ADMIN =~ ^G[A-Z0-9]{55}$ ]]; then
-  echo "✓ Admin address format valid"
+  echo "Done Admin address format valid"
 else
   echo "ERROR: Invalid admin address format"
 fi
@@ -1240,7 +1240,7 @@ wasm-opt --version  # If available
 **Resources**:
 - **Stellar Soroban Docs**: https://soroban.stellar.org/docs
 - **Soroban Discord**: https://discord.gg/stellar
-- **GitHub Issues**: https://github.com/wastefi-africa/wastefi-contracts/issues
+- **GitHub Issues**: https://github.com/WASTEFI-AFRICA/wastefi-contracts/issues
 - **Security Issues**: security@wastefi.io (DO NOT publicly disclose)
 
 **When Reporting Issues**:
@@ -1286,7 +1286,7 @@ wasm-opt --version  # If available
 # Shutdown all contracts immediately
 for contract in waste_token collector_registry collection_point material_pricing reputation waste_transaction payment_distribution; do
   CONTRACT_ID=$(jq -r ".contracts.$contract" deployed_addresses_mainnet.json)
-  
+
   echo "Shutting down $contract..."
   soroban contract invoke \
     --id $CONTRACT_ID \
@@ -1306,7 +1306,7 @@ for contract in waste_token collector_registry collection_point material_pricing
     --network mainnet \
     -- \
     get_emergency_level)
-  
+
   echo "$contract: $LEVEL"
 done
 

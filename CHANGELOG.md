@@ -51,7 +51,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - Updated README with comprehensive project information
-- Updated PROJECT_STATUS.md to reflect 86% completion
+- Documented project status and remaining pre-mainnet work
 
 ### Security
 - Documented all known security issues in SECURITY_CONSIDERATIONS.md
@@ -391,7 +391,7 @@ None at this time.
 
 ## Links
 
-- **Repository**: https://github.com/wastefi-africa/wastefi-contracts
+- **Repository**: https://github.com/WASTEFI-AFRICA/wastefi-contracts
 - **Documentation**: https://docs.wastefi.io (TBD)
 - **Website**: https://www.wastefi.io (TBD)
 - **Discord**: https://discord.gg/wastefi (TBD)

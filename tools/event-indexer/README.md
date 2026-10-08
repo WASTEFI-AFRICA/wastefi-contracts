@@ -8,13 +8,13 @@ This event indexer polls Soroban RPC for contract events, processes them, and st
 
 ## Features
 
-- ✅ Real-time event polling from Soroban RPC
-- ✅ Event deduplication
-- ✅ Retry logic for failed events
-- ✅ PostgreSQL storage with optimized indexes
-- ✅ REST API for querying indexed events
-- ✅ Prometheus metrics
-- ✅ Docker support
+- Real-time event polling from Soroban RPC
+- Event deduplication
+- Retry logic for failed events
+- PostgreSQL storage with optimized indexes
+- REST API for querying indexed events
+- Prometheus metrics
+- Docker support
 
 ## Architecture
 
@@ -26,28 +26,28 @@ This event indexer polls Soroban RPC for contract events, processes them, and st
          │
          │ Poll events every 5s
          │
-┌────────▼────────┐
+┌────────────────┐
 │   Event Poller  │
 │   (TypeScript)  │
 └────────┬────────┘
          │
          │ Parse & validate
          │
-┌────────▼────────┐
+┌────────────────┐
 │Event Processor  │
 │  (Handlers)     │
 └────────┬────────┘
          │
          │ Store
          │
-┌────────▼────────┐
+┌────────────────┐
 │   PostgreSQL    │
 │    Database     │
 └────────┬────────┘
          │
          │ Query
          │
-┌────────▼────────┐
+┌────────────────┐
 │   REST API      │
 │  (Express.js)   │
 └─────────────────┘

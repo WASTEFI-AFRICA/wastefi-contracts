@@ -1,5 +1,5 @@
 #![no_std]
-use soroban_sdk::{contract, contractimpl, Address, Env, Vec};
+use soroban_sdk::{contract, contractimpl, Address, Env, IntoVal, Vec};
 
 mod storage;
 use common::types::*;

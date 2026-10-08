@@ -35,12 +35,12 @@ This guide provides developers with comprehensive information about the WasteFi 
 │  (Web App, Mobile App, Admin Dashboard)                 │
 └────────────────────┬────────────────────────────────────┘
                      │ HTTPS/WebSocket
-┌────────────────────▼────────────────────────────────────┐
+┌────────────────────────────────────────────────────────┐
 │                  Backend Services                        │
 │  (API Gateway, Payment Processor, Monitoring)           │
 └────────────────────┬────────────────────────────────────┘
                      │ Soroban SDK
-┌────────────────────▼────────────────────────────────────┐
+┌────────────────────────────────────────────────────────┐
 │              Stellar Soroban Network                     │
 │                                                           │
 │  ┌─────────────┐  ┌──────────────┐  ┌───────────────┐  │
@@ -50,14 +50,14 @@ This guide provides developers with comprehensive information about the WasteFi 
 │         │                 │                   │           │
 │         └─────────────────┼───────────────────┘          │
 │                           │                               │
-│  ┌─────────────┐  ┌──────▼──────┐  ┌───────────────┐  │
+│ ┌─────────────┐ ┌────────────┐ ┌───────────────┐ │
 │  │   Payment   │  │  Material   │  │  Reputation   │  │
 │  │Distribution │  │   Pricing   │  │    System     │  │
 │  └──────┬──────┘  └──────┬──────┘  └───────┬───────┘  │
 │         │                 │                   │           │
 │         └─────────────────┼───────────────────┘          │
 │                           │                               │
-│                  ┌────────▼────────┐                     │
+│ ┌────────────────┐ │
 │                  │  Waste Token    │                     │
 │                  │   (Rewards)     │                     │
 │                  └─────────────────┘                     │
@@ -216,7 +216,7 @@ cargo install cargo-watch
 
 ```bash
 # Clone repository
-git clone https://github.com/wastefi-africa/wastefi-contracts.git
+git clone https://github.com/WASTEFI-AFRICA/wastefi-contracts.git
 cd wastefi-contracts
 
 # Build all contracts
@@ -388,17 +388,17 @@ impl ContractName {
     pub fn initialize(env: Env, admin: Address) {
         // Setup logic
     }
-    
+
     // Core functionality
     pub fn some_method(env: Env, param: Type) -> ReturnType {
         // Implementation
     }
-    
+
     // Admin operations
     pub fn admin_method(env: Env) {
         // Admin-only logic
     }
-    
+
     // Query operations
     pub fn get_something(env: Env, id: u64) -> Data {
         // Read-only query
@@ -409,7 +409,7 @@ impl ContractName {
 #[cfg(test)]
 mod test {
     use super::*;
-    
+
     #[test]
     fn test_something() {
         // Test implementation
@@ -432,7 +432,7 @@ use soroban_sdk::{Address, Env, IntoVal};
 
 fn get_material_price(env: &Env, material_type: MaterialType) -> i128 {
     let pricing_contract: Address = /* get from storage */;
-    
+
     // Call MaterialPricing.get_price()
     let price: i128 = env.invoke_contract(
         &pricing_contract,
@@ -442,7 +442,7 @@ fn get_material_price(env: &Env, material_type: MaterialType) -> i128 {
             material_type.into_val(env)
         ]
     );
-    
+
     price
 }
 ```
@@ -472,9 +472,9 @@ pub struct CollectionRecorded {
 // Emit event
 pub fn record_collection(env: Env, /* params */) -> u64 {
     let tx_id = generate_id(&env);
-    
+
     // ... business logic ...
-    
+
     // Emit event
     env.events().publish((
         symbol_short!("rec_coll"),  // Topic
@@ -485,7 +485,7 @@ pub fn record_collection(env: Env, /* params */) -> u64 {
         weight,
         amount,
     });
-    
+
     tx_id
 }
 ```
@@ -511,13 +511,13 @@ const COLLECTOR_COUNT: Symbol = symbol_short!("col_count");
 
 // Store collector data
 pub fn store_collector(env: &Env, collector: &Address, data: &Collector) {
-    let mut collectors: Map<Address, Collector> = 
+    let mut collectors: Map<Address, Collector> =
         env.storage().persistent().get(&COLLECTORS)
             .unwrap_or(Map::new(env));
-    
+
     collectors.set(collector.clone(), data.clone());
     env.storage().persistent().set(&COLLECTORS, &collectors);
-    
+
     // Update count
     let count: u64 = env.storage().persistent()
         .get(&COLLECTOR_COUNT).unwrap_or(0);
@@ -526,9 +526,9 @@ pub fn store_collector(env: &Env, collector: &Address, data: &Collector) {
 
 // Retrieve collector data
 pub fn get_collector(env: &Env, collector: &Address) -> Option<Collector> {
-    let collectors: Map<Address, Collector> = 
+    let collectors: Map<Address, Collector> =
         env.storage().persistent().get(&COLLECTORS)?;
-    
+
     collectors.get(collector.clone())
 }
 ```
@@ -548,16 +548,16 @@ use soroban_sdk::auth::{Context, CustomAccountInterface};
 pub fn protected_operation(env: Env, caller: Address) {
     // Verify caller authorization
     caller.require_auth();
-    
+
     // ... perform operation ...
 }
 
 pub fn admin_only_operation(env: Env) {
     let admin: Address = get_admin(&env);
-    
+
     // Verify admin
     admin.require_auth();
-    
+
     // ... perform admin operation ...
 }
 ```
@@ -574,30 +574,30 @@ pub fn admin_only_operation(env: Env) {
 mod test {
     use super::*;
     use soroban_sdk::testutils::Address as _;
-    
+
     #[test]
     fn test_collector_registration() {
         let env = Env::default();
         let contract_id = env.register_contract(None, CollectorRegistry);
         let client = CollectorRegistryClient::new(&env, &contract_id);
-        
+
         // Setup
         let admin = Address::generate(&env);
         let collector = Address::generate(&env);
-        
+
         // Initialize
         client.initialize(&admin);
-        
+
         // Test registration
-        client.register(&collector, &String::from_str(&env, "John"), 
+        client.register(&collector, &String::from_str(&env, "John"),
                        &String::from_str(&env, "+1234567890"));
-        
+
         // Assertions
         let data = client.get_collector(&collector);
         assert_eq!(data.name, String::from_str(&env, "John"));
         assert_eq!(data.status, CollectorStatus::Active);
     }
-    
+
     #[test]
     #[should_panic(expected = "AlreadyRegistered")]
     fn test_duplicate_registration() {
@@ -635,7 +635,7 @@ cargo tarpaulin --workspace --out Html
 #[test]
 fn test_complete_workflow() {
     let env = Env::default();
-    
+
     // Deploy all contracts
     let registry = deploy_collector_registry(&env);
     let transaction = deploy_waste_transaction(&env);
@@ -643,30 +643,30 @@ fn test_complete_workflow() {
     let token = deploy_waste_token(&env);
     let pricing = deploy_material_pricing(&env);
     let reputation = deploy_reputation(&env);
-    
+
     // Setup cross-contract references
     transaction.set_pricing_contract(&pricing.address);
     transaction.set_reputation_contract(&reputation.address);
     payment.set_token_contract(&token.address);
-    
+
     // Test workflow
     let collector = Address::generate(&env);
     let point = Address::generate(&env);
-    
+
     // 1. Register collector
     registry.register(&collector, &"John", &"+1234567890");
-    
+
     // 2. Record collection
     let tx_id = transaction.record_collection(
         &collector, &point, &MaterialType::Plastic, &5000, &100
     );
-    
+
     // 3. Verify transaction
     transaction.verify_transaction(&tx_id);
-    
+
     // 4. Process payment
     payment.process_payment(&tx_id);
-    
+
     // 5. Verify token balance
     let balance = token.balance(&collector);
     assert!(balance > 0);
@@ -726,7 +726,7 @@ async function registerCollector(
   phone: string
 ) {
   const account = await server.getAccount(userKeypair.publicKey());
-  
+
   const transaction = new TransactionBuilder(account, {
     fee: '100',
     networkPassphrase: Networks.TESTNET
@@ -741,9 +741,9 @@ async function registerCollector(
     )
     .setTimeout(30)
     .build();
-  
+
   transaction.sign(userKeypair);
-  
+
   const result = await server.sendTransaction(transaction);
   return result;
 }
@@ -770,10 +770,10 @@ contract_id = 'CC...'
 # Call contract
 def get_collector(collector_address: str):
     source = Keypair.from_secret('S...')  # Admin keypair
-    
+
     # Build transaction
     source_account = server.load_account(source.public_key)
-    
+
     tx = (
         TransactionBuilder(
             source_account=source_account,
@@ -790,14 +790,14 @@ def get_collector(collector_address: str):
         .set_timeout(30)
         .build()
     )
-    
+
     # Simulate first
     sim_response = server.simulate_transaction(tx)
-    
+
     # Send transaction
     tx.sign(source)
     response = server.send_transaction(tx)
-    
+
     return response
 ```
 
@@ -817,16 +817,16 @@ class WasteFiSDK {
     wasteTransaction: string;
     // ...
   };
-  
+
   constructor(network: 'testnet' | 'mainnet') {
     const rpcUrl = network === 'testnet'
       ? 'https://soroban-testnet.stellar.org'
       : 'https://soroban-mainnet.stellar.org';
-    
+
     this.server = new SorobanClient.Server(rpcUrl);
     this.contractIds = loadContractIds(network);
   }
-  
+
   async registerCollector(
     userKeypair: Keypair,
     name: string,
@@ -834,7 +834,7 @@ class WasteFiSDK {
   ): Promise<void> {
     // Implementation
   }
-  
+
   async recordCollection(
     userKeypair: Keypair,
     collectionPoint: string,
@@ -843,7 +843,7 @@ class WasteFiSDK {
   ): Promise<string> {
     // Returns transaction ID
   }
-  
+
   async getBalance(address: string): Promise<number> {
     // Get WASTE token balance
   }
@@ -1056,12 +1056,12 @@ pub fn record_collection(
     if weight == 0 || weight > MAX_WEIGHT {
         panic_with_error!(&env, WasteFiError::InvalidWeight);
     }
-    
+
     // Validate price
     if unit_price < MIN_PRICE || unit_price > MAX_PRICE {
         panic_with_error!(&env, WasteFiError::InvalidPrice);
     }
-    
+
     // Proceed with logic
 }
 ```
@@ -1076,9 +1076,9 @@ pub fn update_price(env: Env, material: MaterialType, price: i128) {
     // Check admin authorization
     let admin: Address = env.storage().instance().get(&ADMIN)
         .expect("Admin not set");
-    
+
     admin.require_auth();
-    
+
     // Perform update
 }
 ```
@@ -1094,16 +1094,16 @@ pub fn process_payment(env: Env, transaction_id: u64) -> u64 {
     if is_payment_processed(&env, transaction_id) {
         panic_with_error!(&env, WasteFiError::PaymentAlreadyProcessed);
     }
-    
+
     // Mark as processing BEFORE external call
     mark_payment_processing(&env, transaction_id);
-    
+
     // External call (to token contract)
     mint_tokens(&env, recipient, amount);
-    
+
     // Finalize
     mark_payment_completed(&env, transaction_id);
-    
+
     payment_id
 }
 ```
@@ -1202,7 +1202,7 @@ cargo tarpaulin --workspace --out Html
 - Rust: https://doc.rust-lang.org
 
 **WasteFi Resources**:
-- GitHub: https://github.com/wastefi-africa/wastefi-contracts
+- GitHub: https://github.com/WASTEFI-AFRICA/wastefi-contracts
 - Documentation: https://docs.wastefi.io (TBD)
 - Discord: https://discord.gg/wastefi (TBD)
 

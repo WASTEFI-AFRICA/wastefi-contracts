@@ -10,14 +10,14 @@ This guide documents gas optimization strategies and storage efficiency patterns
 
 #### Minimize Storage Reads
 ```rust
-// ❌ Bad: Multiple reads of same data
+// Not done Bad: Multiple reads of same data
 let count = read_count(&env);
 if count > 0 {
     let count_again = read_count(&env); // Unnecessary second read
     process(count_again);
 }
 
-// ✅ Good: Read once, use multiple times
+// Done Good: Read once, use multiple times
 let count = read_count(&env);
 if count > 0 {
     process(count);
@@ -26,12 +26,12 @@ if count > 0 {
 
 #### Batch Storage Operations
 ```rust
-// ❌ Bad: Multiple individual writes
+// Not done Bad: Multiple individual writes
 for collector in collectors {
     write_collector(&env, &collector);
 }
 
-// ✅ Good: Batch write operation
+// Done Good: Batch write operation
 write_collectors_batch(&env, collectors);
 ```
 
@@ -52,16 +52,16 @@ env.storage().temporary().extend_ttl(&key, min_ttl, max_ttl);
 
 #### Early Exit Pattern
 ```rust
-// ✅ Check lightweight conditions first
+// Done Check lightweight conditions first
 pub fn process_transaction(env: &Env, tx_id: u64) {
     // Fast checks first
     if tx_id == 0 {
         return Err(WasteFiError::InvalidInput);
     }
-    
+
     // Then storage reads
     let tx = read_transaction(env, tx_id)?;
-    
+
     // Finally expensive operations
     verify_signatures(&tx)?;
     update_reputation(&tx.collector)?;
@@ -70,14 +70,14 @@ pub fn process_transaction(env: &Env, tx_id: u64) {
 
 #### Avoid Redundant Calculations
 ```rust
-// ❌ Bad: Recalculate same value
+// Not done Bad: Recalculate same value
 for i in 0..items.len() {
     if i < items.len() / 2 {  // Division on every iteration
         // ...
     }
 }
 
-// ✅ Good: Calculate once
+// Done Good: Calculate once
 let half = items.len() / 2;
 for i in 0..items.len() {
     if i < half {
@@ -88,11 +88,11 @@ for i in 0..items.len() {
 
 #### Use Efficient Data Structures
 ```rust
-// ✅ Vec for ordered data
+// Done Vec for ordered data
 let mut collectors = Vec::new(&env);
 collectors.push_back(collector);
 
-// ✅ Map for key-value lookups
+// Done Map for key-value lookups
 env.storage().instance().set(&key, &value);
 ```
 
@@ -100,16 +100,16 @@ env.storage().instance().set(&key, &value);
 
 #### Minimize Event Data
 ```rust
-// ❌ Bad: Emit entire struct
+// Not done Bad: Emit entire struct
 events::publish(&env, "CollectorUpdate", collector_data); // Large payload
 
-// ✅ Good: Emit only essential fields
+// Done Good: Emit only essential fields
 events::publish(&env, "CollectorUpdate", (collector_id, new_status)); // Minimal
 ```
 
 #### Batch Events
 ```rust
-// ✅ Emit summary event instead of many individual events
+// Done Emit summary event instead of many individual events
 pub fn batch_process(env: &Env, items: Vec<Item>) {
     let mut processed = 0;
     for item in items {
@@ -128,7 +128,7 @@ pub fn batch_process(env: &Env, items: Vec<Item>) {
 
 #### Pack Related Data
 ```rust
-// ✅ Good: Single storage entry
+// Done Good: Single storage entry
 pub struct Collector {
     pub address: Address,
     pub status: CollectorStatus,
@@ -145,7 +145,7 @@ write_collector(&env, &address, &collector);
 
 #### Use Compact Data Types
 ```rust
-// ✅ Use smallest type that fits
+// Done Use smallest type that fits
 pub struct Stats {
     pub count: u32,      // Not u64 if max is < 4B
     pub score: u16,      // 0-1000 fits in u16
@@ -155,14 +155,14 @@ pub struct Stats {
 
 #### Avoid Storing Derived Data
 ```rust
-// ❌ Bad: Store calculated value
+// Not done Bad: Store calculated value
 pub struct Transaction {
     pub weight: u64,
     pub price_per_kg: i128,
     pub total_amount: i128,  // Can be calculated
 }
 
-// ✅ Good: Calculate on demand
+// Done Good: Calculate on demand
 pub fn get_total_amount(weight: u64, price_per_kg: i128) -> i128 {
     (weight as i128 / 1000) * price_per_kg
 }
@@ -172,10 +172,10 @@ pub fn get_total_amount(weight: u64, price_per_kg: i128) -> i128 {
 
 #### Use Efficient Indexes
 ```rust
-// ✅ Direct address lookup (O(1))
+// Done Direct address lookup (O(1))
 let collector = read_collector(&env, &address);
 
-// ✅ Counter for pagination
+// Done Counter for pagination
 let count = read_collector_count(&env);
 for i in start..start + limit {
     let address = get_collector_address(&env, i);
@@ -184,7 +184,7 @@ for i in start..start + limit {
 
 #### Avoid Full Scans
 ```rust
-// ❌ Bad: Iterate all entries
+// Not done Bad: Iterate all entries
 for i in 0..total_count {
     let item = read_item(&env, i);
     if item.status == target_status {
@@ -192,7 +192,7 @@ for i in 0..total_count {
     }
 }
 
-// ✅ Good: Use status index
+// Done Good: Use status index
 let items = read_items_by_status(&env, target_status, limit);
 ```
 
@@ -200,7 +200,7 @@ let items = read_items_by_status(&env, target_status, limit);
 
 #### Use Temporary Storage for Short-Lived Data
 ```rust
-// ✅ Transaction velocity tracking (auto-expires)
+// Done Transaction velocity tracking (auto-expires)
 let key = ("TxVelocity", collector.clone());
 env.storage().temporary().set(&key, &timestamps);
 env.storage().temporary().extend_ttl(&key, 0, 86400); // 24h TTL
@@ -208,10 +208,10 @@ env.storage().temporary().extend_ttl(&key, 0, 86400); // 24h TTL
 
 #### Implement Data Pruning
 ```rust
-// ✅ Keep only recent data
+// Done Keep only recent data
 pub fn record_attempt(env: &Env, attempts: &mut Vec<u64>) {
     attempts.push_back(env.ledger().timestamp());
-    
+
     // Keep only last 100
     while attempts.len() > 100 {
         attempts.remove(0);
@@ -221,11 +221,11 @@ pub fn record_attempt(env: &Env, attempts: &mut Vec<u64>) {
 
 #### Clean Up Obsolete Data
 ```rust
-// ✅ Remove old entries
+// Done Remove old entries
 pub fn cleanup_expired(env: &Env) {
     let current_time = env.ledger().timestamp();
     let cutoff = current_time - 2592000; // 30 days
-    
+
     // Remove entries older than cutoff
     // Implementation depends on data structure
 }
@@ -285,7 +285,7 @@ pub fn calculate_risk_score(env: &Env, collector: &Address) -> u32 {
             return cached.score;
         }
     }
-    
+
     // Slow path: Calculate and cache
     let score = compute_risk_score(env, collector);
     cache_score(env, collector, score);
@@ -297,7 +297,7 @@ pub fn calculate_risk_score(env: &Env, collector: &Address) -> u32 {
 
 #### Transaction Events
 ```rust
-// ✅ Minimal event data
+// Done Minimal event data
 common::TransactionEvents::recorded(
     &env,
     transaction_id,  // u64
@@ -378,12 +378,12 @@ common::TransactionEvents::recorded(
 ### Example 1: Optimized Collector Lookup
 
 ```rust
-// ✅ O(1) direct lookup
+// Done O(1) direct lookup
 pub fn get_collector(env: &Env, address: &Address) -> Option<Collector> {
     read_collector(env, address)
 }
 
-// ✅ O(1) per collector for batch
+// Done O(1) per collector for batch
 pub fn get_collectors_batch(
     env: &Env,
     addresses: Vec<Address>,
@@ -399,7 +399,7 @@ pub fn get_collectors_batch(
 ### Example 2: Efficient Pagination
 
 ```rust
-// ✅ Efficient pagination with counter
+// Done Efficient pagination with counter
 pub fn get_collectors_page(
     env: &Env,
     start: u64,
@@ -407,7 +407,7 @@ pub fn get_collectors_page(
 ) -> Vec<Collector> {
     let max_limit = limit.min(50); // Cap for safety
     let mut collectors = Vec::new(env);
-    
+
     for i in start..(start + max_limit) {
         if let Some(addr) = get_collector_address(env, i) {
             if let Some(collector) = read_collector(env, &addr) {
@@ -415,7 +415,7 @@ pub fn get_collectors_page(
             }
         }
     }
-    
+
     collectors
 }
 ```
@@ -425,18 +425,18 @@ pub fn get_collectors_page(
 ```rust
 pub fn get_risk_score(env: &Env, collector: &Address) -> u32 {
     let cache_key = ("RiskScore", collector.clone());
-    
+
     // Check cache (instance storage - cheap read)
     if let Some(score) = env.storage().instance().get(&cache_key) {
         return score;
     }
-    
+
     // Calculate (expensive)
     let score = FraudDetection::calculate_risk_score(env, collector);
-    
+
     // Cache result
     env.storage().instance().set(&cache_key, &score);
-    
+
     score
 }
 ```
@@ -451,14 +451,14 @@ impl WasteTransaction {
     pub fn set_pricing_contract(env: &Env, address: Address) {
         env.storage().instance().set(&"PricingContract", &address);
     }
-    
+
     // Persistent storage: Transaction records
     pub fn record_transaction(env: &Env, tx: &WasteRecord) {
         let key = ("Transaction", tx.id);
         env.storage().persistent().set(&key, tx, 518400, 31536000);
         // min_ttl: 6 days, max_ttl: 1 year
     }
-    
+
     // Temporary storage: Rate limiting
     pub fn track_velocity(env: &Env, collector: &Address) {
         let key = ("Velocity", collector.clone());
@@ -472,15 +472,15 @@ impl WasteTransaction {
 
 ## Common Anti-Patterns to Avoid
 
-### ❌ Anti-Pattern 1: Storage in Loops
+### Not done Anti-Pattern 1: Storage in Loops
 ```rust
-// ❌ Bad: Write storage in every iteration
+// Not done Bad: Write storage in every iteration
 for collector in collectors {
     write_collector(&env, &collector);
     update_index(&env, &collector); // Storage write
 }
 
-// ✅ Good: Accumulate changes, write once
+// Done Good: Accumulate changes, write once
 let mut changes = Vec::new(&env);
 for collector in collectors {
     changes.push_back(collector);
@@ -488,55 +488,55 @@ for collector in collectors {
 write_collectors_batch(&env, changes);
 ```
 
-### ❌ Anti-Pattern 2: Redundant Checks
+### Not done Anti-Pattern 2: Redundant Checks
 ```rust
-// ❌ Bad: Check same condition multiple times
+// Not done Bad: Check same condition multiple times
 if is_admin(&env, &caller) {
     if is_admin(&env, &caller) { // Redundant
         // ...
     }
 }
 
-// ✅ Good: Check once
+// Done Good: Check once
 if is_admin(&env, &caller) {
     // ...
 }
 ```
 
-### ❌ Anti-Pattern 3: Large Event Payloads
+### Not done Anti-Pattern 3: Large Event Payloads
 ```rust
-// ❌ Bad: Emit entire struct
+// Not done Bad: Emit entire struct
 events::publish(&env, "Update", full_collector_data); // 200+ bytes
 
-// ✅ Good: Emit ID and summary
+// Done Good: Emit ID and summary
 events::publish(&env, "Update", (collector_id, status)); // ~40 bytes
 ```
 
-### ❌ Anti-Pattern 4: Unbounded Collections
+### Not done Anti-Pattern 4: Unbounded Collections
 ```rust
-// ❌ Bad: Unlimited growth
+// Not done Bad: Unlimited growth
 pub fn add_item(env: &Env, item: Item) {
     let mut items = read_all_items(env);
     items.push_back(item);
     write_all_items(env, items); // Grows forever
 }
 
-// ✅ Good: Bounded with pruning
+// Done Good: Bounded with pruning
 pub fn add_item(env: &Env, item: Item) {
     let mut items = read_all_items(env);
     items.push_back(item);
-    
+
     while items.len() > MAX_ITEMS {
         items.remove(0); // Keep only recent
     }
-    
+
     write_all_items(env, items);
 }
 ```
 
 ## Gas Optimization Roadmap
 
-### Phase 1: Implemented ✅
+### Phase 1: Implemented Done
 - Batch operations for common workflows
 - Appropriate storage type selection
 - Early exit patterns

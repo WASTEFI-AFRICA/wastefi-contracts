@@ -52,7 +52,7 @@ jobs:
         run: cargo check --workspace
 
   test:
-    name: Test
+    name: Test (known broken)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -72,9 +72,14 @@ jobs:
             target
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
       
-      - name: Run tests
-        run: echo "Tests temporarily disabled due to soroban-sdk ed25519-dalek compatibility issue. Will be re-enabled after SDK update."
-        # run: cargo test --workspace
+      # The suite does not currently compile: soroban-env-host 21.2.1's testutils
+      # fails against the ed25519-dalek version that resolves under soroban-sdk
+      # 21.7.7. Run it anyway rather than skipping, so the real error is visible
+      # in the log instead of a stub that reports success. Remove
+      # continue-on-error once the SDK upgrade lands.
+      - name: Run tests (known broken, does not block)
+        continue-on-error: true
+        run: cargo test --workspace
 
   build:
     name: Build WASM
@@ -97,8 +102,21 @@ jobs:
             target
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
       
+      # --workspace is required: the repository root is itself a package (it
+      # holds the integration tests), so without it cargo builds only that
+      # package and emits no contract wasm at all.
       - name: Build WASM contracts
-        run: cargo build --target wasm32-unknown-unknown --release
+        run: cargo build --workspace --target wasm32-unknown-unknown --release
+
+      - name: Verify every contract produced a wasm artifact
+        run: |
+          count=$(ls -1 target/wasm32-unknown-unknown/release/*.wasm | wc -l)
+          echo "Built $count contract(s):"
+          ls -1sh target/wasm32-unknown-unknown/release/*.wasm
+          if [ "$count" -ne 7 ]; then
+            echo "::error::Expected 7 contract wasm files, found $count"
+            exit 1
+          fi
       
       - name: Upload WASM artifacts
         uses: actions/upload-artifact@v4

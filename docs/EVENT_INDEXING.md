@@ -140,21 +140,21 @@ WasteFi smart contracts emit events for all significant state changes. This guid
        │
        │ Poll every N seconds
        │
-┌──────▼──────┐
+┌────────────┐
 │   Indexer   │ ← getEvents()
 │   Service   │
 └──────┬──────┘
        │
        │ Store events
        │
-┌──────▼──────┐
+┌────────────┐
 │  Database   │
 │ (PostgreSQL)│
 └──────┬──────┘
        │
        │ Query indexed data
        │
-┌──────▼──────┐
+┌────────────┐
 │ Application │
 │   Backend   │
 └─────────────┘
@@ -180,21 +180,21 @@ WasteFi smart contracts emit events for all significant state changes. This guid
        │
        │ Emit events
        │
-┌──────▼──────┐
+┌────────────┐
 │   Stellar   │
 │   Network   │
 └──────┬──────┘
        │
        │ Subscribe to events
        │
-┌──────▼──────┐
+┌────────────┐
 │   Apache    │
 │    Kafka    │
 └──────┬──────┘
        │
        ├─────────────┬─────────────┬─────────────┐
        │             │             │             │
-┌──────▼──────┐ ┌───▼────┐ ┌─────▼────┐ ┌──────▼──────┐
+┌────────────┐ ┌───────┐ ┌─────────┐ ┌────────────┐
 │  Analytics  │ │ Alerts │ │Dashboard │ │  Webhooks   │
 │   Engine    │ │Service │ │ Backend  │ │   Service   │
 └─────────────┘ └────────┘ └──────────┘ └─────────────┘
@@ -220,14 +220,14 @@ WasteFi smart contracts emit events for all significant state changes. This guid
        │
        │ Webhook/Stream
        │
-┌──────▼──────────┐
+┌────────────────┐
 │ Cloud Functions │
 │  (AWS Lambda)   │
 └──────┬──────────┘
        │
        ├─────────────┬─────────────┬─────────────┐
        │             │             │             │
-┌──────▼──────┐ ┌───▼────┐ ┌─────▼────┐ ┌──────▼──────┐
+┌────────────┐ ┌───────┐ ┌─────────┐ ┌────────────┐
 │   DynamoDB  │ │  SNS   │ │   SQS    │ │    S3       │
 │   Storage   │ │Notifs  │ │  Queue   │ │  Archive    │
 └─────────────┘ └────────┘ └──────────┘ └─────────────┘
@@ -253,18 +253,18 @@ WasteFi smart contracts emit events for all significant state changes. This guid
 // Pseudo-code for real-time indexer
 async function indexEvents() {
   let lastLedger = await getLastIndexedLedger();
-  
+
   while (true) {
     const newEvents = await rpc.getEvents({
       startLedger: lastLedger + 1,
       contractIds: WASTEFI_CONTRACTS
     });
-    
+
     for (const event of newEvents) {
       await processEvent(event);
       await db.saveEvent(event);
     }
-    
+
     lastLedger = newEvents.lastLedger;
     await sleep(POLL_INTERVAL);
   }
@@ -286,16 +286,16 @@ async function indexEvents() {
 async function batchIndexEvents() {
   const startLedger = await getLastIndexedLedger();
   const endLedger = await getCurrentLedger();
-  
+
   const BATCH_SIZE = 1000;
-  
+
   for (let i = startLedger; i < endLedger; i += BATCH_SIZE) {
     const events = await rpc.getEvents({
       startLedger: i,
       endLedger: Math.min(i + BATCH_SIZE, endLedger),
       contractIds: WASTEFI_CONTRACTS
     });
-    
+
     await db.bulkInsert(events);
     await updateLastIndexedLedger(i + BATCH_SIZE);
   }
@@ -363,7 +363,7 @@ CREATE INDEX idx_data_gin ON events USING gin(data);
 
 -- Transaction events view
 CREATE VIEW transaction_events AS
-SELECT 
+SELECT
   id,
   ledger_sequence,
   timestamp,
@@ -376,7 +376,7 @@ WHERE event_type = 'tx_rec';
 
 -- Collector statistics materialized view
 CREATE MATERIALIZED VIEW collector_stats AS
-SELECT 
+SELECT
   data->>'collector' as collector,
   COUNT(*) as total_transactions,
   SUM((data->>'weight')::numeric) as total_weight,
@@ -444,22 +444,22 @@ interface TransactionEvent {
 async function processTransactionEvent(event: TransactionEvent) {
   // Store in database
   await db.transactions.insert(event);
-  
+
   // Update real-time dashboard
   await dashboardService.updateTransactionCount();
-  
+
   // Check for milestones
   const total = await db.transactions.count({
     collector: event.collector
   });
-  
+
   if (total === 10 || total === 50 || total === 100) {
     await notificationService.sendMilestone(
       event.collector,
       `Congratulations on ${total} collections!`
     );
   }
-  
+
   // Update leaderboard
   await leaderboardService.recalculate();
 }
@@ -481,7 +481,7 @@ async function processPaymentEvent(event: PaymentEvent) {
       event.recipient,
       `Payment ${event.payment_id} failed`
     );
-    
+
     // Notify admin
     await adminNotification(
       `Payment failure for ${event.recipient}`
@@ -495,7 +495,7 @@ async function processPaymentEvent(event: PaymentEvent) {
 ```typescript
 async function processReputationEvent(event: ReputationEvent) {
   const { collector, old_score, new_score } = event.data;
-  
+
   // Store history
   await db.reputationHistory.insert({
     collector,
@@ -504,22 +504,22 @@ async function processReputationEvent(event: ReputationEvent) {
     change: new_score - old_score,
     timestamp: event.timestamp
   });
-  
+
   // Check for tier changes
   const oldTier = getReputationTier(old_score);
   const newTier = getReputationTier(new_score);
-  
+
   if (newTier > oldTier) {
     // Tier upgrade!
     await notificationService.sendTierUpgrade(
       collector,
       getTierName(newTier)
     );
-    
+
     // Update collector badge
     await profileService.updateTier(collector, newTier);
   }
-  
+
   // Alert if score drops significantly
   if (new_score < old_score - 50) {
     await alertService.send(
@@ -536,16 +536,16 @@ async function processReputationEvent(event: ReputationEvent) {
 ```typescript
 async function processEvent(event: Event) {
   const eventId = `${event.ledger}_${event.transaction_hash}_${event.index}`;
-  
+
   // Check if already processed
   if (await db.processedEvents.exists(eventId)) {
     console.log(`Event ${eventId} already processed, skipping`);
     return;
   }
-  
+
   // Process event
   await handleEvent(event);
-  
+
   // Mark as processed
   await db.processedEvents.insert(eventId);
 }
@@ -558,7 +558,7 @@ async function safeProcessEvent(event: Event) {
     await processEvent(event);
   } catch (error) {
     console.error(`Failed to process event:`, error);
-    
+
     // Store failed event for retry
     await db.failedEvents.insert({
       event,
@@ -574,19 +574,19 @@ async function safeProcessEvent(event: Event) {
 ```typescript
 async function backfillEvents(startLedger: number, endLedger: number) {
   const BATCH_SIZE = 100;
-  
+
   for (let i = startLedger; i <= endLedger; i += BATCH_SIZE) {
     console.log(`Backfilling ledgers ${i} to ${i + BATCH_SIZE}`);
-    
+
     const events = await rpc.getEvents({
       startLedger: i,
       endLedger: Math.min(i + BATCH_SIZE, endLedger)
     });
-    
+
     for (const event of events) {
       await processEvent(event);
     }
-    
+
     // Rate limiting
     await sleep(1000);
   }
@@ -606,7 +606,7 @@ interface IndexerMetrics {
 async function trackMetrics() {
   const currentLedger = await rpc.getLatestLedger();
   const lastIndexed = await db.getLastIndexedLedger();
-  
+
   const metrics: IndexerMetrics = {
     eventsProcessed: await db.events.count(),
     eventsPerSecond: await calculateEventsPerSecond(),
@@ -614,9 +614,9 @@ async function trackMetrics() {
     indexingLag: (currentLedger - lastIndexed) * 5, // ~5 seconds per ledger
     errorRate: await calculateErrorRate()
   };
-  
+
   await metricsService.record(metrics);
-  
+
   // Alert if lag is too high
   if (metrics.indexingLag > 300) {
     await alertService.send('Indexer is lagging behind by 5+ minutes');

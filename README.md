@@ -1,317 +1,201 @@
-# WasteFi Smart Contracts
+# WasteFi — Contracts
 
-**Financial Inclusion Through Waste Collection - Powered by Stellar Soroban**
+Soroban smart contracts for WasteFi, a platform that pays waste collectors in
+emerging markets for verified recyclable material drop-offs on Stellar.
 
-[![Build Status](https://github.com/wastefi-africa/wastefi-contracts/workflows/CI/badge.svg)](https://github.com/wastefi-africa/wastefi-contracts/actions)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Soroban](https://img.shields.io/badge/Soroban-v20.0.0+-blue)](https://soroban.stellar.org)
-[![Rust](https://img.shields.io/badge/rust-1.74.0%2B-orange)](https://www.rust-lang.org)
+A collector registers once and delivers sorted material to a collection point.
+The delivery is recorded on-chain, verified, and then paid out in reward tokens,
+with the collector's reputation score tracking their verified history. The
+contracts are at an early stage: the intended trust model puts verification in
+the hands of collection points, but as deployed it is the platform admin that
+verifies deliveries and sets payout amounts. See
+[how a collection becomes a payment](#how-a-collection-becomes-a-payment) for
+what is actually wired up today.
 
-## Overview
+For the HTTP API and indexer that sit in front of these contracts, see
+[wastefi-backend](https://github.com/WASTEFI-AFRICA/wastefi-backend).
 
-WasteFi is a blockchain-powered waste management platform that incentivizes proper waste collection and recycling through tokenized rewards. Built on Stellar Soroban, these smart contracts enable transparent, secure, and automated waste collection transactions across emerging markets.
+## Contracts
 
-**Key Features**:
-- 🌍 **Sustainable Impact**: Turn waste into rewards while helping the environment
-- 💰 **Automated Payments**: Instant token rewards for verified collections
-- 📊 **Reputation System**: Build reputation, earn more rewards
-- 🔒 **Secure & Transparent**: Blockchain-based audit trail
-- 🚀 **Production-Ready**: Comprehensive security features and testing
+| Crate | Responsibility |
+| --- | --- |
+| `common` | Shared types, errors, events, access control, and validation used by every other crate |
+| `collector_registry` | Collector identity, registration status, and profile data |
+| `collection_point` | Registry of collection points; identity only, not yet the authority that verifies |
+| `waste_transaction` | Records a delivery and moves it through pending, verified, and completed |
+| `material_pricing` | Per-material price oracle, written by an operator role |
+| `payment_distribution` | Records a payout against a transaction id; the amount is supplied by the caller |
+| `reputation` | Integer reputation scoring derived from verified delivery history |
+| `waste_token` | The reward token: mint, burn, transfer and balances. Allowance storage exists but no `approve`/`transfer_from` entry points are exposed yet |
 
-## Project Structure
+`common` is a library rather than a deployed contract. The other seven each
+build to their own wasm.
 
-```
-wastefi-contracts/
-├── contracts/
-│   ├── common/               # Shared types, errors, and interfaces
-│   ├── waste_token/          # Reward tokenomics
-│   ├── collector_registry/   # Collector identity management
-│   ├── collection_point/     # Collection point verification
-│   ├── waste_transaction/    # Waste transaction recording
-│   ├── payment_distribution/ # Payment and escrow
-│   ├── reputation/           # Reputation scoring
-│   └── material_pricing/     # Material pricing oracle
-└── Cargo.toml
-```
+## How a collection becomes a payment
 
-## Quick Start
+The contracts are split by concern, but the current wiring routes almost every
+state change through the platform admin rather than through the collection point
+that physically received the material:
 
-### Prerequisites
+1. `collector_registry::register` records a collector.
+2. `waste_transaction::record_collection` (or `record_with_price_lookup`, which
+   additionally calls `collector_registry::is_active` to reject inactive
+   collectors) records a delivery as pending.
+3. `waste_transaction::verify_transaction` marks the delivery verified and
+   completed. **This call requires the contract admin**, not the collection
+   point. Collection-point identity is registered in `collection_point` but is
+   not yet what authorizes a verification.
+4. `payment_distribution::process_payment` records what is owed. It also
+   requires admin, and it takes `amount` as a caller-supplied argument — it does
+   not read the verified transaction or price it against `material_pricing`.
+5. `waste_token` mints against that record, gated on the minter role.
+6. `reputation::update_score` folds the result into the collector's score.
 
-- **Rust**: 1.74.0 or higher
-- **Soroban CLI**: v20.0.0 or higher
-- **wasm32 target**: For contract compilation
+Two cross-contract links are stubbed rather than implemented:
+`record_with_price_lookup` resolves the `material_pricing` address but still
+carries a `TODO` instead of calling `get_price`, and `verify_transaction` has a
+`TODO` where it should notify `reputation`. Both currently require the caller to
+pass the value in or the admin to make a second call.
 
-### Installation
+The practical consequence is that the admin key is trusted for verification,
+payout amounts, and minting. Reducing that trust — deriving amounts on-chain,
+authorizing verification from `collection_point`, and splitting the admin into a
+multisig — is the main item in
+[docs/SECURITY_ROADMAP.md](docs/SECURITY_ROADMAP.md).
 
-```bash
-# Install Rust
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+## Release profile
 
-# Install Soroban CLI
-cargo install --locked soroban-cli --features opt
+The workspace `Cargo.toml` sets a non-default `[profile.release]`. Soroban
+charges per byte of deployed wasm and per CPU instruction executed, so profile
+choices here translate directly into what every call costs:
 
-# Add wasm32 target
-rustup target add wasm32-unknown-unknown
+| Setting | Value | Why |
+| --- | --- | --- |
+| `opt-level` | `"z"` | Optimize for size; wasm size drives upload and storage fees. |
+| `lto` | `true` | Whole-program optimization, trimming dead code across crates. |
+| `codegen-units` | `1` | Gives the optimizer the whole crate at once, trading build time for a smaller artifact. |
+| `panic` | `"abort"` | Drops unwinding tables; Soroban traps on panic and cannot unwind across the host boundary. |
+| `strip` | `"symbols"` | Symbol and debug info is pure size cost on-chain. |
+| `debug` | `0` | Same rationale as `strip`. |
+| `overflow-checks` | `true` | Kept **on**, against the Rust release default. These contracts move token balances, and a silently wrapped `i128` is far worse than a checked add. |
 
-# Clone repository
-git clone https://github.com/wastefi-africa/wastefi-contracts.git
-cd wastefi-contracts
-```
+A second profile, `release-with-logs`, inherits from `release` but re-enables
+debug assertions for diagnosing a build without changing the release settings.
 
-### Build
+Relaxing `opt-level`, `lto`, or `strip` grows the deployed wasm and raises fees.
+Turning `overflow-checks` off would let balance arithmetic wrap silently.
 
-```bash
-# Build all contracts
-cargo build --target wasm32-unknown-unknown --release
+## Build
 
-# Run tests
-cargo test --workspace
+Requires Rust 1.79.0 or later. The toolchain, components, and wasm target are
+pinned in [`rust-toolchain.toml`](rust-toolchain.toml), so `rustup` provisions
+them on first build.
 
-# Check code quality
-cargo clippy --workspace -- -D warnings
-cargo fmt --all --check
-```
-
-### Deploy to Testnet
-
-```bash
-# Configure testnet
-soroban network add \
-  --rpc-url https://soroban-testnet.stellar.org:443 \
-  --network-passphrase "Test SDF Network ; September 2015" \
-  testnet
-
-# Generate keypair and fund account
-soroban keys generate deployer --network testnet
-curl "https://friendbot.stellar.org?addr=$(soroban keys address deployer)"
-
-# Run deployment script
-./scripts/deploy.sh testnet config/testnet.json
-```
-
-For detailed deployment instructions, see [DEPLOYMENT.md](docs/DEPLOYMENT.md).
-
-## Architecture
-
-### System Overview
-
-```
-┌─────────────────────────────────────────────────────────┐
-│                 WasteFi Platform                         │
-└────────────────────┬─────────────────────────────────────┘
-                     │
-      ┌──────────────┼──────────────┐
-      │              │              │
-┌─────▼─────┐  ┌────▼────┐  ┌─────▼──────┐
-│ Collector │  │Collection│  │   Waste    │
-│ Registry  │  │  Point   │  │Transaction │
-└─────┬─────┘  └────┬────┘  └─────┬──────┘
-      │              │              │
-      └──────────────┼──────────────┘
-                     │
-      ┌──────────────┼──────────────┐
-      │              │              │
-┌─────▼─────┐  ┌────▼────┐  ┌─────▼──────┐
-│  Payment  │  │Material │  │ Reputation │
-│Distribution│ │ Pricing │  │   System   │
-└─────┬─────┘  └────┬────┘  └─────┬──────┘
-      │              │              │
-      └──────────────┼──────────────┘
-                     │
-              ┌──────▼──────┐
-              │ Waste Token │
-              │  (Rewards)  │
-              └─────────────┘
+```sh
+make build          # cargo build --target wasm32-unknown-unknown --release
+make test           # cargo test --workspace
+make lint           # cargo clippy --all-targets -- -D warnings
+make fmt            # cargo fmt --all
+make check          # fmt, lint, test, build
 ```
 
-### Smart Contracts
-
-| Contract | Purpose | Lines of Code |
-|----------|---------|---------------|
-| **CollectorRegistry** | Manages collector profiles and status | ~600 |
-| **CollectionPoint** | Collection point registry and verification | ~500 |
-| **WasteTransaction** | Records waste collection transactions | ~800 |
-| **PaymentDistribution** | Calculates and distributes rewards | ~700 |
-| **MaterialPricing** | Manages material pricing oracle | ~500 |
-| **Reputation** | Tracks collector reputation scores | ~600 |
-| **WasteToken** | ERC-20 style reward token | ~400 |
-| **Common Library** | Shared utilities and security features | ~4,000 |
-| **Total** | | **~8,100** |
-
-### Data Flow
-
-1. **Registration**: Collector registers via `CollectorRegistry`
-2. **Collection**: Waste collected and recorded via `WasteTransaction`
-3. **Pricing**: System queries `MaterialPricing` for current rates
-4. **Verification**: Collection point verifies transaction
-5. **Payment**: `PaymentDistribution` mints tokens via `WasteToken`
-6. **Reputation**: `Reputation` scores updated based on performance
-
-For detailed architecture, see [DEVELOPER.md](docs/DEVELOPER.md).
-
-## Security Features
-
-✅ **Access Control**: Multi-role authorization (admin, operator, user)  
-✅ **Emergency Response**: 4-level emergency system with circuit breakers  
-✅ **Fraud Detection**: Multi-factor risk scoring (0-1000 scale)  
-✅ **Rate Limiting**: Multi-tier rate limits (per-minute, per-hour, per-day)  
-✅ **Duplicate Prevention**: Transaction deduplication with configurable tolerance  
-✅ **Contract Upgradeability**: Version management with data migration  
-✅ **Gas Optimization**: Efficient storage and batch operations  
-✅ **Audit Trail**: Comprehensive event logging for all actions  
-
-**Security Documentation**:
-- [Security Audit Guide](docs/SECURITY_AUDIT.md)
-- [Threat Model](docs/THREAT_MODEL.md)
-- [Security Checklist](docs/SECURITY_CHECKLIST.md)
-- [Incident Response Plan](docs/INCIDENT_RESPONSE.md)
-
-**Test Coverage**: >85% (135+ unit tests, 55+ integration tests)
-
-## Documentation
-
-### For Users
-- 📖 [User Guide](docs/USER_GUIDE.md) - How to use WasteFi as a collector or collection point
-
-### For Developers
-- 🔧 [Developer Guide](docs/DEVELOPER.md) - Architecture, setup, and contribution guidelines
-- 📚 [API Reference](docs/API.md) - Complete API documentation for all contracts
-- 🧪 [Testing Guide](docs/TESTING.md) - Testing strategy and coverage
-
-### For Operators
-- 🚀 [Deployment Guide](docs/DEPLOYMENT.md) - Step-by-step deployment instructions
-- 🔄 [Operations Runbook](docs/OPERATIONS.md) - Daily operations and maintenance
-- 🚨 [Incident Response](docs/INCIDENT_RESPONSE.md) - Emergency procedures
-
-### Security Documentation
-- 🔒 [Security Audit](docs/SECURITY_AUDIT.md) - Audit preparation guide
-- 🛡️ [Threat Model](docs/THREAT_MODEL.md) - Security threat analysis
-- ✅ [Security Checklist](docs/SECURITY_CHECKLIST.md) - Pre-deployment verification
-- 📋 [Security Considerations](docs/SECURITY_CONSIDERATIONS.md) - Per-contract security analysis
-
-## Contract Addresses
-
-### Testnet
-*Deployment in progress - addresses will be published here*
-
-### Mainnet
-*Mainnet deployment pending security audit completion*
-
-## Project Status
-
-**Current Phase**: Phase 5 (Testing & Deployment) - 86% Complete
-
-**Completed**:
-- ✅ Phase 1: Project Setup (Commits 1-5)
-- ✅ Phase 2: Core Contracts (Commits 6-12)
-- ✅ Phase 3: Advanced Features (Commits 13-18)
-- ✅ Phase 4: Security & Optimization (Commits 19-23)
-- ✅ Phase 5: Testing Infrastructure (Commit 24)
-- 🔄 Phase 5: Deployment & Documentation (Commit 25) - In Progress
-
-**Next Steps**:
-1. Complete testnet deployment
-2. Security audit
-3. Mainnet deployment
-
-See [PROJECT_STATUS.md](PROJECT_STATUS.md) for detailed progress.
-
-## Contributing
-
-We welcome contributions from the community! Please read our [Contributing Guidelines](docs/DEVELOPER.md#7-contributing-guidelines) before submitting pull requests.
-
-### Development Workflow
-
-1. Fork the repository
-2. Create a feature branch: `git checkout -b feature/my-feature`
-3. Make your changes and add tests
-4. Run tests: `cargo test --workspace`
-5. Run linters: `cargo clippy && cargo fmt`
-6. Commit with descriptive message: `git commit -m "feat: Add feature description"`
-7. Push and create a Pull Request
-
-### Code Standards
-
-- Follow Rust conventions (enforced by `rustfmt` and `clippy`)
-- Write tests for new features
-- Update documentation
-- Ensure CI/CD pipeline passes
+Built artifacts land in `target/wasm32-unknown-unknown/release/`.
 
 ## Testing
 
-### Run All Tests
-```bash
-cargo test --workspace
+```sh
+cargo test --workspace          # all unit tests
+cargo test -p payment_distribution    # one crate
+cargo test --test integration_e2e     # end-to-end scenarios
+cargo test --test stress_tests        # high-volume scenarios
 ```
 
-### Run Specific Test Suites
-```bash
-# Unit tests
-cargo test -p collector_registry
+The suite is 146 unit tests across the eight crates plus 58 integration tests
+in [`tests/`](tests). Coverage is uneven: `common` carries 54 of the unit tests,
+while `waste_transaction` has none of its own and is exercised only through the
+integration tests.
 
-# Integration tests
-cargo test --test integration_e2e
+**The test suite does not currently compile.** The wasm release build is fine,
+but building for the host target pulls in `soroban-sdk`'s `testutils`, and
+`soroban-env-host` 21.2.1 fails against the `ed25519-dalek` version that now
+resolves. The CI test job is a stub that echoes a message instead of running
+`cargo test`, so CI reports green while executing none of these tests. Fixing
+this means moving off `soroban-sdk` 21.7.7, which is many major versions behind;
+see the open Dependabot pull requests. Until then, treat the test counts above
+as tests that exist, not tests that pass.
 
-# Stress tests
-cargo test --test stress_tests
+CI ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) runs
+`cargo fmt --check`, `cargo clippy -D warnings`, `cargo check`, a release wasm
+build, and `cargo audit` on every push and pull request.
 
-# Security tests
-cargo test --test security_tests
+## Deployment
+
+Network configuration lives in [`config/`](config); see
+[config/README.md](config/README.md) for the shape of those files.
+
+```sh
+soroban network add testnet \
+  --rpc-url https://soroban-testnet.stellar.org:443 \
+  --network-passphrase "Test SDF Network ; September 2015"
+
+soroban keys generate deployer --network testnet
+curl "https://friendbot.stellar.org?addr=$(soroban keys address deployer)"
+
+./scripts/deploy.sh testnet config/testnet.json
 ```
 
-### Generate Coverage Report
-```bash
-cargo install cargo-tarpaulin
-cargo tarpaulin --workspace --out Html
-```
+Full instructions, including initialization order and the operator role grants
+each contract needs, are in [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md). Day-to-day
+operational procedures are in [docs/OPERATIONS.md](docs/OPERATIONS.md).
 
-**Current Test Coverage**: >85% (135+ unit tests, 55+ integration tests)
+### Deployed addresses
 
-See [TESTING.md](docs/TESTING.md) for detailed testing guidelines.
+Current testnet addresses are in
+[`deployed_addresses_testnet.json`](deployed_addresses_testnet.json). There is
+no mainnet deployment; see the audit status below.
 
-## Support & Community
+## Security
 
-### Get Help
-- 📧 **Email**: support@wastefi.io
-- 💬 **Discord**: [Join our community](#) (link TBD)
-- 🐛 **Issues**: [GitHub Issues](https://github.com/wastefi-africa/wastefi-contracts/issues)
-- 📖 **Documentation**: [docs.wastefi.io](#) (link TBD)
+These contracts have **not** been audited and are **not** deployed to mainnet.
+Do not use them to hold real value in their present state.
 
-### Stay Updated
-- 🐦 **Twitter**: [@WasteFiAfrica](#) (link TBD)
-- 📘 **Facebook**: [WasteFi Africa](#) (link TBD)
-- 💼 **LinkedIn**: [WasteFi](#) (link TBD)
+Known gaps that must close before a mainnet deployment are tracked in
+[docs/SECURITY_ROADMAP.md](docs/SECURITY_ROADMAP.md). It lists, in its own
+priority order: no double-payment prevention in `payment_distribution`, no
+supply cap in `waste_token`, a single admin key where a multisig belongs,
+incomplete collector-status validation, and weak rate limiting.
 
-## Known Issues
+- [docs/THREAT_MODEL.md](docs/THREAT_MODEL.md) — who these contracts defend against and what the admin can do
+- [docs/SECURITY_CONSIDERATIONS.md](docs/SECURITY_CONSIDERATIONS.md) — per-contract analysis
+- [docs/AUDIT_SCOPE.md](docs/AUDIT_SCOPE.md) — what an external audit should cover
+- [docs/INCIDENT_RESPONSE.md](docs/INCIDENT_RESPONSE.md) — emergency procedures
 
-**Critical** (Must fix before mainnet):
-1. **No double-payment prevention** in PaymentDistribution
-2. **No token supply cap** in WasteToken
-3. **Single admin key** (multi-sig recommended)
+To report a vulnerability, see [SECURITY.md](SECURITY.md). Please do not open a
+public issue for one.
 
-See [SECURITY_CONSIDERATIONS.md](docs/SECURITY_CONSIDERATIONS.md) for complete list.
+## Documentation
+
+- [docs/DEVELOPER.md](docs/DEVELOPER.md) — architecture and internals
+- [docs/API.md](docs/API.md) — every contract entry point, argument, and error
+- [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) — local environment setup
+- [docs/WRITING_TESTS.md](docs/WRITING_TESTS.md) — how to write tests for this workspace
+- [docs/TESTING.md](docs/TESTING.md) — test strategy and coverage
+- [docs/EVENT_INDEXING.md](docs/EVENT_INDEXING.md) — events emitted, for indexer authors
+- [docs/GAS_OPTIMIZATION.md](docs/GAS_OPTIMIZATION.md) — storage and fee notes
+- [docs/UPGRADE_GUIDE.md](docs/UPGRADE_GUIDE.md) — contract upgrade and migration
+- [docs/USER_GUIDE.md](docs/USER_GUIDE.md) — collector and collection-point walkthrough
+
+## Related repositories
+
+- [wastefi-backend](https://github.com/WASTEFI-AFRICA/wastefi-backend) — REST API, indexer, and mobile money integration
+- [wastefi-frontend](https://github.com/WASTEFI-AFRICA/wastefi-frontend) — collector and operator progressive web app
+- [wastefi-docs](https://github.com/WASTEFI-AFRICA/wastefi-docs) — platform documentation site
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md). Pull requests need `cargo fmt`,
+`cargo clippy -D warnings`, and `cargo test --workspace` to pass.
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## Acknowledgments
-
-- **Stellar Foundation** for the Soroban platform
-- **Security Auditors** (pending)
-- **Community Contributors**
-- **WasteFi Development Team**
-
-## About WasteFi
-
-WasteFi is building financial inclusion infrastructure through waste management. By rewarding proper waste collection and recycling with blockchain-based incentives, we're creating sustainable livelihoods while addressing environmental challenges in emerging markets.
-
-**Website**: [www.wastefi.io](#) (link TBD)  
-**GitHub**: [github.com/wastefi-africa](https://github.com/wastefi-africa)
-
----
-
-**Made with ♻️ by the WasteFi Team**
-
-*For questions or partnership inquiries: info@wastefi.io*
+MIT. See [LICENSE](LICENSE).

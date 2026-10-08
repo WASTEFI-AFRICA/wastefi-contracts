@@ -16,11 +16,11 @@ This document provides a comprehensive threat analysis for the WasteFi smart con
 The WasteFi platform manages valuable digital assets (tokens, payments) and critical reputation data for waste collectors and collection points. The threat landscape includes malicious users attempting fraud, compromised administrators, external attackers, and system design vulnerabilities.
 
 **Key Security Posture**:
-- ✅ Multi-layered defense with fraud detection, rate limiting, and access control
-- ✅ Emergency response capability for incident management
-- ✅ Comprehensive audit trail for forensics
-- ⚠️ Single admin model presents centralization risk (multi-sig planned)
-- ⚠️ Manual price oracles could be manipulation vector
+- **+** Multi-layered defense with fraud detection, rate limiting, and access control
+- **+** Emergency response capability for incident management
+- **+** Comprehensive audit trail for forensics
+- **!** Single admin model presents centralization risk (multi-sig planned)
+- **!** Manual price oracles could be manipulation vector
 
 ---
 
@@ -41,10 +41,10 @@ The WasteFi platform manages valuable digital assets (tokens, payments) and crit
 - Burn authorization bypass
 
 **Controls**:
-- ✅ Admin-only minting
-- ✅ Transfer authorization checks
-- ✅ Supply tracking
-- ⚠️ No supply cap (unlimited minting possible)
+- **+** Admin-only minting
+- **+** Transfer authorization checks
+- **+** Supply tracking
+- **!** No supply cap (unlimited minting possible)
 
 #### Payment Funds (High Value)
 - **Description**: XLM or other tokens held for payment distribution
@@ -59,10 +59,10 @@ The WasteFi platform manages valuable digital assets (tokens, payments) and crit
 - Emergency withdrawal abuse
 
 **Controls**:
-- ✅ Admin-only payment processing
-- ✅ Payment amount validation
-- ✅ Transaction verification requirement
-- ❓ Emergency withdrawal not fully implemented
+- Admin-only payment processing
+- Payment amount validation
+- Transaction verification requirement
+- Emergency withdrawal not fully implemented
 
 ### 2.2 User Data
 
@@ -79,10 +79,10 @@ The WasteFi platform manages valuable digital assets (tokens, payments) and crit
 - Identity theft
 
 **Controls**:
-- ✅ Owner-only profile updates
-- ✅ Admin-only status changes
-- ✅ Access control on all methods
-- ✅ Event logging for auditing
+- Owner-only profile updates
+- Admin-only status changes
+- Access control on all methods
+- Event logging for auditing
 
 #### Transaction Records (Medium Value)
 - **Description**: Waste collection transaction history
@@ -97,10 +97,10 @@ The WasteFi platform manages valuable digital assets (tokens, payments) and crit
 - Data deletion
 
 **Controls**:
-- ✅ Immutable transaction records (no delete)
-- ✅ Admin-only verification
-- ✅ Admin-only status updates
-- ✅ Complete event trail
+- Immutable transaction records (no delete)
+- Admin-only verification
+- Admin-only status updates
+- Complete event trail
 
 ### 2.3 System Integrity
 
@@ -117,10 +117,10 @@ The WasteFi platform manages valuable digital assets (tokens, payments) and crit
 - Review bombing
 
 **Controls**:
-- ✅ Algorithm-based score calculation
-- ✅ Multiple factors considered
-- ✅ Admin oversight capability
-- ⚠️ No decay mechanism (reputation doesn't decrease over time)
+- **+** Algorithm-based score calculation
+- **+** Multiple factors considered
+- **+** Admin oversight capability
+- **!** No decay mechanism (reputation doesn't decrease over time)
 
 #### Material Pricing (Medium Value)
 - **Description**: Pricing data for waste materials
@@ -135,10 +135,10 @@ The WasteFi platform manages valuable digital assets (tokens, payments) and crit
 - Extreme price attacks
 
 **Controls**:
-- ✅ Operator-only price updates
-- ✅ Price bounds validation (min/max)
-- ✅ Update timestamp tracking
-- ⚠️ Manual updates (no automated oracle)
+- **+** Operator-only price updates
+- **+** Price bounds validation (min/max)
+- **+** Update timestamp tracking
+- **!** Manual updates (no automated oracle)
 
 #### Contract Code (Critical Asset)
 - **Description**: Smart contract WASM binaries
@@ -153,10 +153,10 @@ The WasteFi platform manages valuable digital assets (tokens, payments) and crit
 - Logic bugs
 
 **Controls**:
-- ✅ Admin-only upgrades
-- ✅ Version management
-- ✅ WASM hash verification
-- ✅ Upgrade event logging
+- Admin-only upgrades
+- Version management
+- WASM hash verification
+- Upgrade event logging
 
 ---
 
@@ -256,12 +256,12 @@ The WasteFi platform manages valuable digital assets (tokens, payments) and crit
 **Impact**: **HIGH** - Direct financial loss, system integrity
 
 **Mitigations**:
-- ✅ Fraud detection (risk scoring 0-1000)
-- ✅ Weight anomaly detection
-- ✅ Duplicate transaction prevention
-- ✅ Rate limiting (20 transactions/hour)
-- ✅ Admin verification requirement
-- ⚠️ No identity verification (planned for v2)
+- **+** Fraud detection (risk scoring 0-1000)
+- **+** Weight anomaly detection
+- **+** Duplicate transaction prevention
+- **+** Rate limiting (20 transactions/hour)
+- **+** Admin verification requirement
+- **!** No identity verification (planned for v2)
 
 ### 4.2 Compromised Administrators
 
@@ -283,11 +283,11 @@ The WasteFi platform manages valuable digital assets (tokens, payments) and crit
 **Impact**: **CRITICAL** - Complete system compromise
 
 **Mitigations**:
-- ✅ All admin actions logged
-- ✅ Event-based monitoring possible
-- ⚠️ Single admin key (single point of failure)
-- ⏳ Multi-sig planned for mainnet
-- ⏳ Time-lock upgrades planned
+- **+** All admin actions logged
+- **+** Event-based monitoring possible
+- **!** Single admin key (single point of failure)
+- **!** Multi-sig planned for mainnet
+- **!** Time-lock upgrades planned
 
 ### 4.3 External Attackers
 
@@ -310,12 +310,12 @@ The WasteFi platform manages valuable digital assets (tokens, payments) and crit
 **Impact**: **HIGH** - System downtime, financial loss
 
 **Mitigations**:
-- ✅ Rate limiting (per-user)
-- ✅ Circuit breakers
-- ✅ Emergency shutdown capability
-- ✅ Input validation
-- ✅ Gas optimization (DOS resistance)
-- ✅ Soroban's deterministic execution (no traditional front-running)
+- Rate limiting (per-user)
+- Circuit breakers
+- Emergency shutdown capability
+- Input validation
+- Gas optimization (DOS resistance)
+- Soroban's deterministic execution (no traditional front-running)
 
 ### 4.4 Malicious Collection Points
 
@@ -336,11 +336,11 @@ The WasteFi platform manages valuable digital assets (tokens, payments) and crit
 **Impact**: **MEDIUM** - Fraud facilitation, unfair practices
 
 **Mitigations**:
-- ✅ Collection point verification
-- ✅ Reputation system for points
-- ✅ Admin oversight of verifications
-- ✅ Event logging for auditing
-- ⚠️ No automated anomaly detection for points
+- **+** Collection point verification
+- **+** Reputation system for points
+- **+** Admin oversight of verifications
+- **+** Event logging for auditing
+- **!** No automated anomaly detection for points
 
 ### 4.5 Sybil Attackers
 
@@ -361,11 +361,11 @@ The WasteFi platform manages valuable digital assets (tokens, payments) and crit
 **Impact**: **MEDIUM** - System gaming, reputation pollution
 
 **Mitigations**:
-- ✅ Per-address rate limiting
-- ✅ Fraud detection per identity
-- ✅ Registration throttling
-- ⚠️ No identity verification (planned)
-- ⚠️ No stake requirement for registration
+- **+** Per-address rate limiting
+- **+** Fraud detection per identity
+- **+** Registration throttling
+- **!** No identity verification (planned)
+- **!** No stake requirement for registration
 
 ---
 
@@ -385,9 +385,9 @@ The WasteFi platform manages valuable digital assets (tokens, payments) and crit
 2. Attempts to set status to Active
 
 **Mitigations**:
-- ✅ Admin-only status updates
-- ✅ Authorization check: `AccessControl::require_admin()`
-- ✅ Event logging: StatusChanged event
+- Admin-only status updates
+- Authorization check: `AccessControl::require_admin()`
+- Event logging: StatusChanged event
 
 **Residual Risk**: **LOW** - Requires admin key compromise
 
@@ -403,9 +403,9 @@ The WasteFi platform manages valuable digital assets (tokens, payments) and crit
 2. Floods system with fake registrations
 
 **Mitigations**:
-- ✅ Rate limiting: 3 registrations per day per address
-- ✅ Operation throttling in emergency module
-- ✅ Storage optimization with pruning
+- Rate limiting: 3 registrations per day per address
+- Operation throttling in emergency module
+- Storage optimization with pruning
 
 **Residual Risk**: **LOW** - Rate limiting effective
 
@@ -421,9 +421,9 @@ The WasteFi platform manages valuable digital assets (tokens, payments) and crit
 2. Attempts to change victim's data
 
 **Mitigations**:
-- ✅ Owner-only profile updates
-- ✅ Authorization check: `require_owner()` or `require_admin()`
-- ✅ Address validation
+- Owner-only profile updates
+- Authorization check: `require_owner()` or `require_admin()`
+- Address validation
 
 **Residual Risk**: **LOW** - Authorization enforced
 
@@ -441,10 +441,10 @@ The WasteFi platform manages valuable digital assets (tokens, payments) and crit
 2. Attempts to get verified for inflated payment
 
 **Mitigations**:
-- ✅ Weight anomaly detection (tracks historical average)
-- ✅ Risk score increases (up to 200 points for 3x+ weight)
-- ✅ Admin verification requirement
-- ✅ Fraud flagging system
+- Weight anomaly detection (tracks historical average)
+- Risk score increases (up to 200 points for 3x+ weight)
+- Admin verification requirement
+- Fraud flagging system
 
 **Residual Risk**: **MEDIUM** - Requires admin vigilance
 
@@ -461,10 +461,10 @@ The WasteFi platform manages valuable digital assets (tokens, payments) and crit
 3. Attempts to get both verified
 
 **Mitigations**:
-- ✅ Duplicate detection (weight + material + collector + time)
-- ✅ 5-minute tolerance window
-- ✅ Temporary storage tracking (20 recent transactions)
-- ✅ Automatic blocking: `DuplicateDetection::require_not_duplicate()`
+- Duplicate detection (weight + material + collector + time)
+- 5-minute tolerance window
+- Temporary storage tracking (20 recent transactions)
+- Automatic blocking: `DuplicateDetection::require_not_duplicate()`
 
 **Residual Risk**: **LOW** - Duplicate detection effective
 
@@ -480,10 +480,10 @@ The WasteFi platform manages valuable digital assets (tokens, payments) and crit
 2. Attempts to overwhelm system
 
 **Mitigations**:
-- ✅ Rate limiting: 20 transactions per hour per collector
-- ✅ Transaction velocity tracking
-- ✅ Risk score increase (up to 300 points for 30+/hour)
-- ✅ Critical risk auto-block (risk ≥ 800)
+- Rate limiting: 20 transactions per hour per collector
+- Transaction velocity tracking
+- Risk score increase (up to 300 points for 30+/hour)
+- Critical risk auto-block (risk ≥ 800)
 
 **Residual Risk**: **LOW** - Multi-layered protection
 
@@ -500,9 +500,9 @@ The WasteFi platform manages valuable digital assets (tokens, payments) and crit
 3. Attempts to receive payment without admin review
 
 **Mitigations**:
-- ✅ Admin-only verification
-- ✅ Authorization check: `AccessControl::require_admin()`
-- ✅ Transaction ID validation
+- Admin-only verification
+- Authorization check: `AccessControl::require_admin()`
+- Transaction ID validation
 
 **Residual Risk**: **LOW** - Authorization enforced
 
@@ -519,10 +519,10 @@ The WasteFi platform manages valuable digital assets (tokens, payments) and crit
 3. Avoids reputation penalty
 
 **Mitigations**:
-- ✅ Admin-only status updates
-- ✅ Authorization check: `AccessControl::require_admin()`
-- ✅ Status change event logging
-- ✅ Immutable transaction history
+- Admin-only status updates
+- Authorization check: `AccessControl::require_admin()`
+- Status change event logging
+- Immutable transaction history
 
 **Residual Risk**: **LOW** - Admin-only control
 
@@ -541,10 +541,10 @@ The WasteFi platform manages valuable digital assets (tokens, payments) and crit
 3. Receives inflated payment
 
 **Mitigations**:
-- ✅ Rust checked arithmetic (panics on overflow)
-- ✅ Payment amount validation
-- ✅ Price bounds checking
-- ❓ Rounding error accumulation not fully analyzed
+- Rust checked arithmetic (panics on overflow)
+- Payment amount validation
+- Price bounds checking
+- Rounding error accumulation not fully analyzed
 
 **Residual Risk**: **LOW** - Rust safety features
 
@@ -561,10 +561,10 @@ The WasteFi platform manages valuable digital assets (tokens, payments) and crit
 3. Attempts second payment
 
 **Mitigations**:
-- ✅ Payment status tracking
-- ✅ Idempotency checks (one payment per transaction)
-- ✅ Transaction verification requirement
-- ✅ Event logging
+- Payment status tracking
+- Idempotency checks (one payment per transaction)
+- Transaction verification requirement
+- Event logging
 
 **Residual Risk**: **LOW** - Idempotency enforced
 
@@ -580,9 +580,9 @@ The WasteFi platform manages valuable digital assets (tokens, payments) and crit
 2. Attempts to trigger payments without authorization
 
 **Mitigations**:
-- ✅ Admin-only payment functions
-- ✅ Authorization check: `AccessControl::require_admin()`
-- ✅ Payment event logging
+- Admin-only payment functions
+- Authorization check: `AccessControl::require_admin()`
+- Payment event logging
 
 **Residual Risk**: **LOW** - Authorization enforced
 
@@ -601,11 +601,11 @@ The WasteFi platform manages valuable digital assets (tokens, payments) and crit
 3. Colludes with collectors to exploit pricing
 
 **Mitigations**:
-- ✅ Operator-only price updates
-- ✅ Price bounds validation (min/max enforcement)
-- ✅ Price update event logging
-- ✅ Update timestamp tracking
-- ⚠️ Manual updates (no automated oracle)
+- **+** Operator-only price updates
+- **+** Price bounds validation (min/max enforcement)
+- **+** Price update event logging
+- **+** Update timestamp tracking
+- **!** Manual updates (no automated oracle)
 
 **Residual Risk**: **MEDIUM** - Operator compromise risk
 
@@ -622,10 +622,10 @@ The WasteFi platform manages valuable digital assets (tokens, payments) and crit
 3. Collector exploits stale on-chain price
 
 **Mitigations**:
-- ✅ Update timestamp tracking
-- ✅ Query method shows last update time
-- ⚠️ No automated staleness detection
-- ⚠️ No price expiry mechanism
+- **+** Update timestamp tracking
+- **+** Query method shows last update time
+- **!** No automated staleness detection
+- **!** No price expiry mechanism
 
 **Residual Risk**: **MEDIUM** - Requires operational discipline
 
@@ -644,10 +644,10 @@ The WasteFi platform manages valuable digital assets (tokens, payments) and crit
 3. Uses reputation to commit large fraud
 
 **Mitigations**:
-- ✅ Algorithm-based score calculation
-- ✅ Multiple factors considered
-- ✅ Admin oversight capability
-- ⚠️ No reputation decay mechanism
+- **+** Algorithm-based score calculation
+- **+** Multiple factors considered
+- **+** Admin oversight capability
+- **!** No reputation decay mechanism
 
 **Residual Risk**: **MEDIUM** - Long-term gaming possible
 
@@ -664,10 +664,10 @@ The WasteFi platform manages valuable digital assets (tokens, payments) and crit
 3. Victim gets banned or restricted
 
 **Mitigations**:
-- ✅ Algorithm-based scoring (not direct reviews)
-- ✅ Admin review of disputed transactions
-- ✅ Fraud detection on attacker accounts
-- ✅ Manual flag clearing capability
+- Algorithm-based scoring (not direct reviews)
+- Admin review of disputed transactions
+- Fraud detection on attacker accounts
+- Manual flag clearing capability
 
 **Residual Risk**: **LOW** - Not review-based system
 
@@ -685,10 +685,10 @@ The WasteFi platform manages valuable digital assets (tokens, payments) and crit
 2. Attempts to mint arbitrary amount
 
 **Mitigations**:
-- ✅ Admin-only minting
-- ✅ Authorization check: `AccessControl::require_admin()`
-- ✅ Mint event logging
-- ⚠️ No supply cap (unlimited minting possible)
+- **+** Admin-only minting
+- **+** Authorization check: `AccessControl::require_admin()`
+- **+** Mint event logging
+- **!** No supply cap (unlimited minting possible)
 
 **Residual Risk**: **LOW** - Requires admin compromise
 
@@ -704,10 +704,10 @@ The WasteFi platform manages valuable digital assets (tokens, payments) and crit
 2. Attempts to transfer victim's tokens to attacker
 
 **Mitigations**:
-- ✅ Sender authorization checks
-- ✅ Balance validation
-- ✅ Soroban's built-in authorization
-- ✅ Transfer event logging
+- Sender authorization checks
+- Balance validation
+- Soroban's built-in authorization
+- Transfer event logging
 
 **Residual Risk**: **LOW** - Soroban authorization enforced
 
@@ -723,9 +723,9 @@ The WasteFi platform manages valuable digital assets (tokens, payments) and crit
 2. Destroys victim's balance
 
 **Mitigations**:
-- ✅ Owner or admin authorization required
-- ✅ Balance validation
-- ✅ Burn event logging
+- Owner or admin authorization required
+- Balance validation
+- Burn event logging
 
 **Residual Risk**: **LOW** - Authorization enforced
 
@@ -744,11 +744,11 @@ The WasteFi platform manages valuable digital assets (tokens, payments) and crit
 3. Collector receives payment for fake transactions
 
 **Mitigations**:
-- ✅ Collection point verification requirement
-- ✅ Reputation system for points
-- ✅ Admin oversight of verifications
-- ✅ Fraud detection on collectors
-- ⚠️ No automated point anomaly detection
+- **+** Collection point verification requirement
+- **+** Reputation system for points
+- **+** Admin oversight of verifications
+- **+** Fraud detection on collectors
+- **!** No automated point anomaly detection
 
 **Residual Risk**: **MEDIUM** - Requires admin monitoring
 
@@ -761,87 +761,87 @@ The WasteFi platform manages valuable digital assets (tokens, payments) and crit
 **Effectiveness**: **HIGH**
 
 **Coverage**:
-- ✅ Admin-only: Upgrades, emergencies, verifications, role transfers
-- ✅ Operator-only: Price updates, point management
-- ✅ Owner-only: Profile updates
-- ✅ Function-level authorization checks
+- Admin-only: Upgrades, emergencies, verifications, role transfers
+- Operator-only: Price updates, point management
+- Owner-only: Profile updates
+- Function-level authorization checks
 
 **Gaps**:
-- ⚠️ Single admin key (no multi-sig yet)
-- ⚠️ No time-lock on upgrades
-- ⚠️ No role hierarchy (admin can do everything)
+- Single admin key (no multi-sig yet)
+- No time-lock on upgrades
+- No role hierarchy (admin can do everything)
 
 ### 6.2 Fraud Detection
 
 **Effectiveness**: **MEDIUM-HIGH**
 
 **Coverage**:
-- ✅ Transaction velocity (30+/hour = 300 points)
-- ✅ Rejection rate tracking (50%+ = 400 points)
-- ✅ Weight anomalies (3x+ average = 200 points)
-- ✅ Time pattern analysis (rapid submissions = 200 points)
-- ✅ Auto-block at critical risk (≥800)
+- Transaction velocity (30+/hour = 300 points)
+- Rejection rate tracking (50%+ = 400 points)
+- Weight anomalies (3x+ average = 200 points)
+- Time pattern analysis (rapid submissions = 200 points)
+- Auto-block at critical risk (≥800)
 
 **Gaps**:
-- ⚠️ No machine learning (static rules)
-- ⚠️ Sophisticated attackers may evade
-- ⚠️ No cross-collector pattern detection
+- No machine learning (static rules)
+- Sophisticated attackers may evade
+- No cross-collector pattern detection
 
 ### 6.3 Rate Limiting
 
 **Effectiveness**: **HIGH**
 
 **Coverage**:
-- ✅ Per-minute limits (fast operations)
-- ✅ Per-hour limits (transactions: 20/hour)
-- ✅ Per-day limits (registrations: 3/day)
-- ✅ Per-user, per-operation tracking
+- Per-minute limits (fast operations)
+- Per-hour limits (transactions: 20/hour)
+- Per-day limits (registrations: 3/day)
+- Per-user, per-operation tracking
 
 **Gaps**:
-- ⚠️ Cliff reset (not gradual)
-- ⚠️ Sybil attackers can create multiple accounts
+- Cliff reset (not gradual)
+- Sybil attackers can create multiple accounts
 
 ### 6.4 Duplicate Detection
 
 **Effectiveness**: **HIGH**
 
 **Coverage**:
-- ✅ Multi-field matching (collector + weight + material + time)
-- ✅ 5-minute tolerance window
-- ✅ Temporary storage (auto-expiring)
-- ✅ Automatic blocking
+- Multi-field matching (collector + weight + material + time)
+- 5-minute tolerance window
+- Temporary storage (auto-expiring)
+- Automatic blocking
 
 **Gaps**:
-- ⚠️ Simple evasion (change weight slightly)
-- ⚠️ No cross-collector duplicate detection
+- Simple evasion (change weight slightly)
+- No cross-collector duplicate detection
 
 ### 6.5 Emergency Response
 
 **Effectiveness**: **HIGH**
 
 **Coverage**:
-- ✅ 4-level system (Normal, Warning, Critical, Shutdown)
-- ✅ Automatic pause at Critical/Shutdown
-- ✅ Admin-only triggers
-- ✅ Event logging
+- 4-level system (Normal, Warning, Critical, Shutdown)
+- Automatic pause at Critical/Shutdown
+- Admin-only triggers
+- Event logging
 
 **Gaps**:
-- ⚠️ No automated emergency detection
-- ⚠️ Relies on admin responsiveness
+- No automated emergency detection
+- Relies on admin responsiveness
 
 ### 6.6 Input Validation
 
 **Effectiveness**: **HIGH**
 
 **Coverage**:
-- ✅ Address validation (non-zero)
-- ✅ String length limits
-- ✅ Amount validation (non-negative)
-- ✅ Enum validation
+- Address validation (non-zero)
+- String length limits
+- Amount validation (non-negative)
+- Enum validation
 
 **Gaps**:
-- ⚠️ Some edge cases may not be covered
-- ⚠️ No formal specification of valid ranges
+- Some edge cases may not be covered
+- No formal specification of valid ranges
 
 ---
 
@@ -858,18 +858,18 @@ The WasteFi platform manages valuable digital assets (tokens, payments) and crit
 
 | Threat | Likelihood | Impact | Risk Score | Status |
 |--------|------------|--------|------------|--------|
-| **Admin Key Compromise** | Low (2) | Critical (10) | **8/10** | ⚠️ Multi-sig planned |
-| **Weight Inflation** | High (8) | Medium (6) | **7/10** | ✅ Mitigated by fraud detection |
-| **Payment Calculation Exploit** | Low (2) | Critical (10) | **6/10** | ✅ Rust safety, needs audit |
-| **Unauthorized Minting** | Low (2) | Critical (10) | **6/10** | ✅ Admin-only, needs audit |
-| **Price Oracle Manipulation** | Medium (5) | High (7) | **6/10** | ⚠️ Manual updates, bounds |
-| **DOS via Spam** | Medium (5) | Medium (5) | **5/10** | ✅ Rate limiting |
-| **Duplicate Transactions** | Medium (4) | High (7) | **5/10** | ✅ Duplicate detection |
-| **Reputation Gaming** | Medium (5) | Low (4) | **4/10** | ⚠️ No decay mechanism |
-| **Status Manipulation** | Low (2) | Medium (5) | **3/10** | ✅ Admin-only |
-| **Collection Point Collusion** | Low (3) | Medium (6) | **4/10** | ⚠️ Requires monitoring |
-| **Stale Pricing** | Low (3) | Medium (5) | **4/10** | ⚠️ Operational discipline |
-| **Cross-Contract Reentrancy** | Very Low (1) | Critical (10) | **2/10** | ✅ Soroban prevents |
+| **Admin Key Compromise**| Low (2) | Critical (10) | **8/10**| Warning Multi-sig planned |
+| **Weight Inflation**| High (8) | Medium (6) | **7/10**| Done Mitigated by fraud detection |
+| **Payment Calculation Exploit**| Low (2) | Critical (10) | **6/10**| Done Rust safety, needs audit |
+| **Unauthorized Minting**| Low (2) | Critical (10) | **6/10**| Done Admin-only, needs audit |
+| **Price Oracle Manipulation**| Medium (5) | High (7) | **6/10**| Warning Manual updates, bounds |
+| **DOS via Spam**| Medium (5) | Medium (5) | **5/10**| Done Rate limiting |
+| **Duplicate Transactions**| Medium (4) | High (7) | **5/10**| Done Duplicate detection |
+| **Reputation Gaming**| Medium (5) | Low (4) | **4/10**| Warning No decay mechanism |
+| **Status Manipulation**| Low (2) | Medium (5) | **3/10**| Done Admin-only |
+| **Collection Point Collusion**| Low (3) | Medium (6) | **4/10**| Warning Requires monitoring |
+| **Stale Pricing**| Low (3) | Medium (5) | **4/10**| Warning Operational discipline |
+| **Cross-Contract Reentrancy**| Very Low (1) | Critical (10) | **2/10**| Done Soroban prevents |
 
 ### High-Risk Items Requiring Attention
 
@@ -965,17 +965,17 @@ Based on this threat model, auditors should prioritize:
 The WasteFi platform has implemented **comprehensive security controls** across multiple layers:
 
 **Strengths**:
-- ✅ Multi-factor fraud detection
-- ✅ Robust access control
-- ✅ Rate limiting and DOS protection
-- ✅ Emergency response capability
-- ✅ Comprehensive audit logging
+- Multi-factor fraud detection
+- Robust access control
+- Rate limiting and DOS protection
+- Emergency response capability
+- Comprehensive audit logging
 
 **Areas for Improvement**:
-- ⚠️ Single admin key (multi-sig needed)
-- ⚠️ Manual price oracle (automation needed)
-- ⚠️ No identity verification (planned)
-- ⚠️ Reputation gaming potential
+- Single admin key (multi-sig needed)
+- Manual price oracle (automation needed)
+- No identity verification (planned)
+- Reputation gaming potential
 
 **Overall Security Posture**: **STRONG** for pre-mainnet phase, with clear roadmap for remaining improvements.
 

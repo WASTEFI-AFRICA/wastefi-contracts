@@ -10,25 +10,5 @@
     "reputation": "CBS5M43AO77OFUQ4DUMMSGWNW3XQK3ETCIDTZBY5XVDMCUBWKDJZJXN6",
     "waste_transaction": "CBMAAHILLEQCRUUPBJSIM2KQGDC7RJDAKQH6II7DLUIET4EAMMW2LFMI",
     "payment_distribution": "CDY6RAZ2PR63FQBUCUTT5CIZF7EHLQINWYAYLIMCWGW7RLVSXE6DN62U"
-  },
-  "deployment_status": "COMPLETE",
-  "deployed_contracts": 7,
-  "failed_contracts": 0,
-  "notes": [
-    "ALL 7 contracts successfully deployed to Stellar testnet",
-    "Reputation contract fixed: floating-point operations replaced with integer math",
-    "All contracts functional and ready for testing",
-    "Platform 100% deployed and operational"
-  ],
-  "fixes_applied": [
-    {
-      "contract": "reputation",
-      "issue": "Floating-point operations in score calculation",
-      "fix": "Replaced f64 division with integer math using basis points",
-      "locations": [
-        "calculate_score_internal: success rate calculation",
-        "get_success_rate: percentage calculation"
-      ]
-    }
-  ]
+  }
 }

@@ -1,7 +1,9 @@
 # Rust
 target/
 **/*.rs.bk
-Cargo.lock
+# Cargo.lock is tracked: these contracts are deployed artifacts, so the
+# dependency graph must be reproducible.
+# Cargo.lock
 
 # IDE
 .vscode/

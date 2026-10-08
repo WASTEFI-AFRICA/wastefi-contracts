@@ -23,10 +23,10 @@ Write-Host "[1/8] Checking contracts..." -ForegroundColor Blue
 $WasmPath = "target\wasm32-unknown-unknown\release"
 
 if (-not (Test-Path "$WasmPath\waste_token.wasm")) {
-    Write-Host "❌ Contracts not built. Building now..." -ForegroundColor Red
+    Write-Host "Contracts not built. Building now..." -ForegroundColor Red
     cargo build --target wasm32-unknown-unknown --release
 } else {
-    Write-Host "✅ Contracts found" -ForegroundColor Green
+    Write-Host "Contracts found" -ForegroundColor Green
 }
 
 Write-Host ""
@@ -37,7 +37,7 @@ try {
         --source $Identity `
         --network $Network 2>&1 | Select-Object -Last 1
     
-    Write-Host "✅ WasteToken deployed: $WASTE_TOKEN" -ForegroundColor Green
+    Write-Host "WasteToken deployed: $WASTE_TOKEN" -ForegroundColor Green
     
     # Initialize
     stellar contract invoke `
@@ -47,9 +47,9 @@ try {
         -- initialize `
         --admin $DeployerAddress
     
-    Write-Host "✅ WasteToken initialized" -ForegroundColor Green
+    Write-Host "WasteToken initialized" -ForegroundColor Green
 } catch {
-    Write-Host "❌ Failed to deploy WasteToken: $_" -ForegroundColor Red
+    Write-Host "Failed to deploy WasteToken: $_" -ForegroundColor Red
     exit 1
 }
 
@@ -61,7 +61,7 @@ try {
         --source $Identity `
         --network $Network 2>&1 | Select-Object -Last 1
     
-    Write-Host "✅ CollectorRegistry deployed: $COLLECTOR_REGISTRY" -ForegroundColor Green
+    Write-Host "CollectorRegistry deployed: $COLLECTOR_REGISTRY" -ForegroundColor Green
     
     # Initialize
     stellar contract invoke `
@@ -71,9 +71,9 @@ try {
         -- initialize `
         --admin $DeployerAddress
     
-    Write-Host "✅ CollectorRegistry initialized" -ForegroundColor Green
+    Write-Host "CollectorRegistry initialized" -ForegroundColor Green
 } catch {
-    Write-Host "❌ Failed to deploy CollectorRegistry: $_" -ForegroundColor Red
+    Write-Host "Failed to deploy CollectorRegistry: $_" -ForegroundColor Red
     exit 1
 }
 
@@ -85,7 +85,7 @@ try {
         --source $Identity `
         --network $Network 2>&1 | Select-Object -Last 1
     
-    Write-Host "✅ CollectionPoint deployed: $COLLECTION_POINT" -ForegroundColor Green
+    Write-Host "CollectionPoint deployed: $COLLECTION_POINT" -ForegroundColor Green
     
     # Initialize
     stellar contract invoke `
@@ -95,9 +95,9 @@ try {
         -- initialize `
         --admin $DeployerAddress
     
-    Write-Host "✅ CollectionPoint initialized" -ForegroundColor Green
+    Write-Host "CollectionPoint initialized" -ForegroundColor Green
 } catch {
-    Write-Host "❌ Failed to deploy CollectionPoint: $_" -ForegroundColor Red
+    Write-Host "Failed to deploy CollectionPoint: $_" -ForegroundColor Red
     exit 1
 }
 
@@ -109,7 +109,7 @@ try {
         --source $Identity `
         --network $Network 2>&1 | Select-Object -Last 1
     
-    Write-Host "✅ MaterialPricing deployed: $MATERIAL_PRICING" -ForegroundColor Green
+    Write-Host "MaterialPricing deployed: $MATERIAL_PRICING" -ForegroundColor Green
     
     # Initialize
     stellar contract invoke `
@@ -119,9 +119,9 @@ try {
         -- initialize `
         --admin $DeployerAddress
     
-    Write-Host "✅ MaterialPricing initialized" -ForegroundColor Green
+    Write-Host "MaterialPricing initialized" -ForegroundColor Green
 } catch {
-    Write-Host "❌ Failed to deploy MaterialPricing: $_" -ForegroundColor Red
+    Write-Host "Failed to deploy MaterialPricing: $_" -ForegroundColor Red
     exit 1
 }
 
@@ -133,7 +133,7 @@ try {
         --source $Identity `
         --network $Network 2>&1 | Select-Object -Last 1
     
-    Write-Host "✅ Reputation deployed: $REPUTATION" -ForegroundColor Green
+    Write-Host "Reputation deployed: $REPUTATION" -ForegroundColor Green
     
     # Initialize
     stellar contract invoke `
@@ -143,9 +143,9 @@ try {
         -- initialize `
         --admin $DeployerAddress
     
-    Write-Host "✅ Reputation initialized" -ForegroundColor Green
+    Write-Host "Reputation initialized" -ForegroundColor Green
 } catch {
-    Write-Host "❌ Failed to deploy Reputation: $_" -ForegroundColor Red
+    Write-Host "Failed to deploy Reputation: $_" -ForegroundColor Red
     exit 1
 }
 
@@ -157,7 +157,7 @@ try {
         --source $Identity `
         --network $Network 2>&1 | Select-Object -Last 1
     
-    Write-Host "✅ WasteTransaction deployed: $WASTE_TRANSACTION" -ForegroundColor Green
+    Write-Host "WasteTransaction deployed: $WASTE_TRANSACTION" -ForegroundColor Green
     
     # Initialize
     stellar contract invoke `
@@ -167,9 +167,9 @@ try {
         -- initialize `
         --admin $DeployerAddress
     
-    Write-Host "✅ WasteTransaction initialized" -ForegroundColor Green
+    Write-Host "WasteTransaction initialized" -ForegroundColor Green
 } catch {
-    Write-Host "❌ Failed to deploy WasteTransaction: $_" -ForegroundColor Red
+    Write-Host "Failed to deploy WasteTransaction: $_" -ForegroundColor Red
     exit 1
 }
 
@@ -181,7 +181,7 @@ try {
         --source $Identity `
         --network $Network 2>&1 | Select-Object -Last 1
     
-    Write-Host "✅ PaymentDistribution deployed: $PAYMENT_DISTRIBUTION" -ForegroundColor Green
+    Write-Host "PaymentDistribution deployed: $PAYMENT_DISTRIBUTION" -ForegroundColor Green
     
     # Initialize
     stellar contract invoke `
@@ -191,9 +191,9 @@ try {
         -- initialize `
         --admin $DeployerAddress
     
-    Write-Host "✅ PaymentDistribution initialized" -ForegroundColor Green
+    Write-Host "PaymentDistribution initialized" -ForegroundColor Green
 } catch {
-    Write-Host "❌ Failed to deploy PaymentDistribution: $_" -ForegroundColor Red
+    Write-Host "Failed to deploy PaymentDistribution: $_" -ForegroundColor Red
     exit 1
 }
 
@@ -218,11 +218,11 @@ $Addresses = @{
 
 $Addresses | ConvertTo-Json -Depth 10 | Set-Content "deployed_addresses_testnet.json"
 
-Write-Host "✅ Addresses saved to deployed_addresses_testnet.json" -ForegroundColor Green
+Write-Host "Addresses saved to deployed_addresses_testnet.json" -ForegroundColor Green
 
 Write-Host ""
 Write-Host "================================" -ForegroundColor Cyan
-Write-Host "✅ DEPLOYMENT SUCCESSFUL!" -ForegroundColor Green
+Write-Host "DEPLOYMENT SUCCESSFUL!" -ForegroundColor Green
 Write-Host "================================" -ForegroundColor Cyan
 Write-Host ""
 Write-Host "Contract Addresses:" -ForegroundColor Yellow

@@ -8,13 +8,13 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m'
 
-echo -e "${BLUE}🔧 WasteFi Contract Interaction Tool${NC}\n"
+echo -e "${BLUE}WasteFi Contract Interaction Tool${NC}\n"
 
 # Load contract addresses from .env
 if [ -f .env ]; then
     source .env
 else
-    echo -e "${YELLOW}⚠️  .env file not found. Using placeholder addresses.${NC}\n"
+    echo -e "${YELLOW}.env file not found. Using placeholder addresses.${NC}\n"
 fi
 
 # Menu
@@ -46,7 +46,7 @@ case $choice in
             --name "$name" \
             --phone "$phone"
         
-        echo -e "${GREEN}✓ Collector registered${NC}"
+        echo -e "${GREEN}Collector registered${NC}"
         ;;
     
     2)
@@ -54,7 +54,7 @@ case $choice in
         read -p "Enter collection point name: " name
         read -p "Enter location: " location
         
-        echo -e "${GREEN}✓ Collection point registered${NC}"
+        echo -e "${GREEN}Collection point registered${NC}"
         ;;
     
     3)
@@ -63,7 +63,7 @@ case $choice in
         read -p "Enter material type (0-9): " material
         read -p "Enter weight in grams: " weight
         
-        echo -e "${GREEN}✓ Waste collection recorded${NC}"
+        echo -e "${GREEN}Waste collection recorded${NC}"
         ;;
     
     4)
@@ -94,11 +94,11 @@ case $choice in
         echo -e "\n${YELLOW}Processing payment...${NC}"
         read -p "Enter transaction ID: " tx_id
         
-        echo -e "${GREEN}✓ Payment processed${NC}"
+        echo -e "${GREEN}Payment processed${NC}"
         ;;
     
     8)
-        echo -e "${BLUE}Goodbye! 👋${NC}"
+        echo -e "${BLUE}Goodbye! ${NC}"
         exit 0
         ;;
     

@@ -325,7 +325,7 @@ cargo build --timings
 - [Soroban Documentation](https://soroban.stellar.org/docs)
 - [Stellar Developer Portal](https://developers.stellar.org/)
 - [Rust Book](https://doc.rust-lang.org/book/)
-- [WasteFi Project](https://github.com/wastefi)
+- [WasteFi Project](https://github.com/WASTEFI-AFRICA)
 
 ## Getting Help
 

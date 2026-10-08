@@ -1683,7 +1683,7 @@ soroban contract invoke \
   --materials '["Plastic", "Paper", "Metal", "Glass", "Organic"]' \
   --prices '[120, 85, 160, 65, 45]'
 
-echo "✓ Prices updated"
+echo "Done Prices updated"
 ```
 
 ---
@@ -1695,21 +1695,21 @@ echo "✓ Prices updated"
 async function fetchDashboardData() {
   // Global statistics
   const totalCollectors = await collectorRegistry.getCollectorCount();
-  const [totalTx, totalWeight, totalValue] = 
+  const [totalTx, totalWeight, totalValue] =
     await wasteTransaction.getGlobalTxStatistics();
-  
+
   // Material breakdown
   const materials = ['Plastic', 'Paper', 'Metal', 'Glass', 'Organic'];
   const materialStats = await Promise.all(
     materials.map(m => wasteTransaction.getMaterialStatistics(m))
   );
-  
+
   // Recent transactions
   const recentTx = await wasteTransaction.getRecentTransactions(10);
-  
+
   // Top collectors
   const topCollectors = await collectorRegistry.getTopCollectorsByWeight(10);
-  
+
   return {
     totalCollectors,
     totalTransactions: totalTx,
@@ -1738,32 +1738,32 @@ async function recordCollection(params) {
   } catch (error) {
     // Parse Soroban error
     const errorCode = parseErrorCode(error);
-    
+
     switch (errorCode) {
       case 12: // CollectorNotActive
         return {
           success: false,
           error: 'Collector account is not active. Please contact support.'
         };
-      
+
       case 93: // OperationThrottled
         return {
           success: false,
           error: 'Rate limit exceeded. Please wait before submitting more transactions.'
         };
-      
+
       case 95: // FraudDetected
         return {
           success: false,
           error: 'Transaction flagged for fraud review. Please contact support.'
         };
-      
+
       case 96: // DuplicateTransaction
         return {
           success: false,
           error: 'This appears to be a duplicate submission. Please check your transaction history.'
         };
-      
+
       default:
         return {
           success: false,
@@ -1785,17 +1785,17 @@ async function recordWithRetry(params, maxRetries = 3) {
       return await wasteTransaction.recordCollection(params);
     } catch (error) {
       const errorCode = parseErrorCode(error);
-      
+
       // Don't retry on client errors
       if ([4, 12, 95, 96].includes(errorCode)) {
         throw error;
       }
-      
+
       // Retry on network/server errors
       if (attempt === maxRetries) {
         throw error;
       }
-      
+
       // Exponential backoff
       await sleep(Math.pow(2, attempt) * 1000);
     }

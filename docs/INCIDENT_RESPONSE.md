@@ -241,12 +241,12 @@ This document defines procedures for detecting, responding to, and recovering fr
 **Tool**: [Event monitoring service]
 
 **Alerts**:
-- ✅ Emergency triggers (any level)
-- ✅ Admin role changes
-- ✅ Fraud flags (risk >800)
-- ✅ Large token mints (>100k tokens)
-- ✅ Payment anomalies (>3x average)
-- ✅ Circuit breaker trips
+- Emergency triggers (any level)
+- Admin role changes
+- Fraud flags (risk >800)
+- Large token mints (>100k tokens)
+- Payment anomalies (>3x average)
+- Circuit breaker trips
 
 **Channels**: PagerDuty, Slack #alerts, Email
 
@@ -256,11 +256,11 @@ This document defines procedures for detecting, responding to, and recovering fr
 **Tool**: [Blockchain explorer API + custom scripts]
 
 **Alerts**:
-- ✅ Transaction volume spikes (>50% increase)
-- ✅ Failed transaction rate (>10%)
-- ✅ Unusual transaction patterns
-- ✅ Admin transactions from new addresses
-- ✅ Contract upgrade events
+- Transaction volume spikes (>50% increase)
+- Failed transaction rate (>10%)
+- Unusual transaction patterns
+- Admin transactions from new addresses
+- Contract upgrade events
 
 **Channels**: Slack #monitoring, Email
 
@@ -270,11 +270,11 @@ This document defines procedures for detecting, responding to, and recovering fr
 **Tool**: [Custom dashboard]
 
 **Alerts**:
-- ✅ 5+ critical risk collectors in 1 hour
-- ✅ Average risk score >400
-- ✅ Duplicate attempts >20/hour
-- ✅ Rate limit hits >100/hour
-- ✅ Weight anomaly frequency increase
+- 5+ critical risk collectors in 1 hour
+- Average risk score >400
+- Duplicate attempts >20/hour
+- Rate limit hits >100/hour
+- Weight anomaly frequency increase
 
 **Channels**: Slack #fraud-alerts
 
@@ -284,10 +284,10 @@ This document defines procedures for detecting, responding to, and recovering fr
 **Tool**: [Price monitoring service]
 
 **Alerts**:
-- ✅ Price change >30% in 1 hour
-- ✅ Price staleness >24 hours
-- ✅ Price outside bounds (min/max)
-- ✅ Operator changes
+- Price change >30% in 1 hour
+- Price staleness >24 hours
+- Price outside bounds (min/max)
+- Operator changes
 
 **Channels**: Slack #pricing, Email
 
@@ -300,17 +300,17 @@ This document defines procedures for detecting, responding to, and recovering fr
 │   Events    │
 └──────┬──────┘
        │
-       ▼
+
 ┌─────────────┐
 │  Severity   │
 │ Classifier  │
 └──────┬──────┘
        │
-       ├─── P0 ────▶ PagerDuty (all team) + SMS
-       ├─── P1 ────▶ PagerDuty (on-call) + Slack
-       ├─── P2 ────▶ Slack + Email
-       ├─── P3 ────▶ Slack only
-       └─── P4 ────▶ Dashboard only
+       ├─── P0 ──── PagerDuty (all team) + SMS
+       ├─── P1 ──── PagerDuty (on-call) + Slack
+       ├─── P2 ──── Slack + Email
+       ├─── P3 ──── Slack only
+       └─── P4 ──── Dashboard only
 ```
 
 ---
@@ -349,7 +349,7 @@ This document defines procedures for detecting, responding to, and recovering fr
 
 **Status Update Template**:
 ```
-🚨 INCIDENT ALERT
+ INCIDENT ALERT
 
 We've detected a security issue and have paused the WasteFi platform as a precaution.
 
@@ -391,7 +391,7 @@ Investigation underway. Thank you for your patience.
 
 **Resolution Template**:
 ```
-✅ INCIDENT RESOLVED
+Done INCIDENT RESOLVED
 
 The security issue has been resolved and the platform is fully operational.
 
@@ -503,7 +503,7 @@ Thank you for your patience and trust.
   - Timeline posted every 30 minutes
 
 #### Status Updates
-- **Frequency**: 
+- **Frequency**:
   - P0: Every 30 minutes
   - P1: Every 1 hour
   - P2: Every 4 hours
@@ -519,7 +519,7 @@ Thank you for your patience and trust.
 
 **Initial Post** (within 30 min):
 ```
-🚨 We've detected a security issue and paused operations as a precaution.
+ We've detected a security issue and paused operations as a precaution.
 - All contracts safe
 - Funds secure
 - Updates every 30 min
@@ -528,7 +528,7 @@ Thank you for your patience and trust.
 
 **Update Posts** (every 30 min):
 ```
-⏱️ INCIDENT UPDATE [HH:MM]
+ INCIDENT UPDATE [HH:MM]
 
 Status: Investigating/Fixing/Testing/Resolving
 Progress: [Brief update]
@@ -539,7 +539,7 @@ Thank you for your patience.
 
 **Resolution Post**:
 ```
-✅ INCIDENT RESOLVED
+Done INCIDENT RESOLVED
 
 Operations restored. Full details: [link to post-mortem]
 Thank you for your patience and trust.
@@ -586,10 +586,10 @@ Questions? security@wastefi.io
 
 | Severity | Twitter | Discord | Email | Blog Post | Post-Mortem |
 |----------|---------|---------|-------|-----------|-------------|
-| P0 | ✅ Real-time | ✅ Real-time | ✅ After resolution | ✅ Required | ✅ Within 7 days |
-| P1 | ⚠️ If user-facing | ✅ Real-time | ⚠️ If major impact | ⚠️ Optional | ✅ Within 14 days |
-| P2 | ❌ No | ⚠️ Optional | ❌ No | ❌ No | ⚠️ Internal only |
-| P3/P4 | ❌ No | ❌ No | ❌ No | ❌ No | ❌ No |
+| P0 | Done Real-time | Done Real-time | Done After resolution | Done Required | Done Within 7 days |
+| P1 | Warning If user-facing | Done Real-time | Warning If major impact | Warning Optional | Done Within 14 days |
+| P2 | Not done No | Warning Optional | Not done No | Not done No | Warning Internal only |
+| P3/P4 | Not done No | Not done No | Not done No | Not done No | Not done No |
 
 ---
 
@@ -676,7 +676,7 @@ Questions? security@wastefi.io
 **Key Holders**: [Names]  
 **Emergency Recovery**: [Process]
 
-**⚠️ CRITICAL**: Admin keys must be accessible 24/7 for emergency response
+**Warning CRITICAL**: Admin keys must be accessible 24/7 for emergency response
 
 ---
 
@@ -816,37 +816,37 @@ soroban contract invoke \
 │  Alert Received │
 └────────┬────────┘
          │
-         ▼
+
     ┌────────────┐
-    │ Funds at   │───YES───▶ P0 (CRITICAL)
+    │ Funds at │───YES─── P0 (CRITICAL)
     │ immediate  │
     │ risk?      │
     └────┬───────┘
          │NO
-         ▼
+
     ┌────────────┐
-    │ Active     │───YES───▶ P1 (HIGH)
+    │ Active │───YES─── P1 (HIGH)
     │ exploitation│
     │ or major   │
     │ impact?    │
     └────┬───────┘
          │NO
-         ▼
+
     ┌────────────┐
-    │ Security   │───YES───▶ P2 (MEDIUM)
+    │ Security │───YES─── P2 (MEDIUM)
     │ concern    │
     │ requires   │
     │ attention? │
     └────┬───────┘
          │NO
-         ▼
+
     ┌────────────┐
-    │ Minor      │───YES───▶ P3 (LOW)
+    │ Minor │───YES─── P3 (LOW)
     │ issue or   │
     │ observation│
     └────┬───────┘
          │NO
-         ▼
+
          P4 (INFO)
 ```
 

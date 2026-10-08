@@ -368,7 +368,7 @@ fn test_batch_vs_individual_processing() {
     client1.initialize(&admin, &token_contract);
 
     env.budget().reset_unlimited();
-    
+
     // Process 5 payments individually
     for i in 1..=5 {
         let recipient = Address::generate(&env);
@@ -508,7 +508,7 @@ fn test_batch_process_same_recipient_multiple_times() {
     assert_eq!(recipient_payments.len(), 3);
 
     // Verify total statistics for recipient
-    let (total_payments, total_amount, completed, pending) = 
+    let (total_payments, total_amount, completed, pending) =
         client.get_recipient_statistics(&recipient);
     assert_eq!(total_payments, 3);
     assert_eq!(total_amount, 600_000);

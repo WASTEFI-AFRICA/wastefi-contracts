@@ -39,7 +39,7 @@ jobs:
         run: cargo install --locked soroban-cli
       
       - name: Build contracts
-        run: cargo build --target wasm32-unknown-unknown --release
+        run: cargo build --workspace --target wasm32-unknown-unknown --release
       
       - name: Configure Soroban
         run: |

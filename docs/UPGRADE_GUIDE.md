@@ -38,7 +38,7 @@ soroban contract deploy \
 ```rust
 // Check current version
 let current_version = registry.get_version();
-println!("Current version: {}.{}.{}", 
+println!("Current version: {}.{}.{}",
     current_version.0, current_version.1, current_version.2);
 
 // Check if upgrade is safe
@@ -162,15 +162,15 @@ let log = Migration::get_migration_log(&env);
 ```rust
 pub fn migrate_collectors_v1_to_v2(env: &Env) {
     Migration::record_migration_step(env, "start_collector_migration", true);
-    
+
     let collector_count = read_collector_count(env);
     let mut migrated = 0;
-    
+
     for i in 0..collector_count {
         if let Some(address) = get_collector_address(env, i) {
             // Read old format
             let old_data = read_collector_v1(env, &address);
-            
+
             // Convert to new format
             let new_data = Collector {
                 address: old_data.address,
@@ -185,13 +185,13 @@ pub fn migrate_collectors_v1_to_v2(env: &Env) {
                 // New field in v2
                 verification_level: VerificationLevel::Basic,
             };
-            
+
             // Write new format
             write_collector(env, &address, &new_data);
             migrated += 1;
         }
     }
-    
+
     Migration::record_migration_step(
         env,
         format!("migrated_{}_collectors", migrated),
@@ -237,7 +237,7 @@ Deprecation::mark_deprecated(
 // Check if function is deprecated
 if Deprecation::is_deprecated(&env, "old_register_method") {
     if let Some(removal_version) = Deprecation::get_deprecation_version(&env, "old_register_method") {
-        println!("Warning: This function will be removed in v{}.{}.{}", 
+        println!("Warning: This function will be removed in v{}.{}.{}",
             removal_version.major, removal_version.minor, removal_version.patch);
     }
 }
@@ -259,7 +259,7 @@ pub fn register_collector_v1(
     if Deprecation::is_deprecated(&env, "register_collector_v1") {
         // Log deprecation warning
     }
-    
+
     // Call new API with default values
     register_collector_v2(env, collector, name, String::default(), CollectorType::Individual)
 }
@@ -323,29 +323,29 @@ soroban contract invoke \
 fn test_upgrade_from_v1_to_v2() {
     let env = Env::default();
     let admin = Address::generate(&env);
-    
+
     // Deploy v1
     let contract_v1 = deploy_collector_registry_v1(&env, &admin);
-    
+
     // Add data
     contract_v1.register(collector.clone(), name.clone(), phone.clone());
-    
+
     // Verify v1 data
     let collector_v1 = contract_v1.get_collector(collector.clone());
     assert_eq!(collector_v1.name, name);
-    
+
     // Upgrade to v2
     contract_v1.upgrade(new_wasm_hash);
     contract_v1.complete_upgrade(2, 0, 0);
-    
+
     // Verify version
     let version = contract_v1.get_version();
     assert_eq!(version, (2, 0, 0));
-    
+
     // Verify data preserved
     let collector_v2 = contract_v1.get_collector(collector.clone());
     assert_eq!(collector_v2.name, name);
-    
+
     // Test new v2 features
     contract_v1.enable_feature("new_v2_feature");
     assert!(contract_v1.is_feature_supported("new_v2_feature"));
@@ -457,22 +457,22 @@ assert!(registry.is_feature_supported("core_functionality"));
 ### 5. Upgrade Safety
 
 **DO:**
-- ✅ Test thoroughly on testnet
-- ✅ Have rollback plan ready
-- ✅ Maintain backward compatibility
-- ✅ Use feature flags for new features
-- ✅ Document breaking changes
-- ✅ Provide migration scripts
-- ✅ Monitor post-upgrade
+- Test thoroughly on testnet
+- Have rollback plan ready
+- Maintain backward compatibility
+- Use feature flags for new features
+- Document breaking changes
+- Provide migration scripts
+- Monitor post-upgrade
 
 **DON'T:**
-- ❌ Upgrade directly on mainnet
-- ❌ Skip testing migrations
-- ❌ Change storage formats without migration
-- ❌ Remove features without deprecation period
-- ❌ Upgrade during high traffic
-- ❌ Forget to backup data
-- ❌ Ignore warning signs
+- Upgrade directly on mainnet
+- Skip testing migrations
+- Change storage formats without migration
+- Remove features without deprecation period
+- Upgrade during high traffic
+- Forget to backup data
+- Ignore warning signs
 
 ### 6. Communication
 
@@ -553,7 +553,7 @@ pub fn register_with_verification(
 
 pub fn migrate_to_v2(env: &Env) {
     let current_schema = StorageSchema::get_schema_version(env);
-    
+
     if current_schema == 1 {
         // Migrate each collector
         let count = read_collector_count(env);
@@ -565,7 +565,7 @@ pub fn migrate_to_v2(env: &Env) {
                 write_collector(env, &addr, &collector);
             }
         }
-        
+
         StorageSchema::mark_schema_migrated(env, 2);
         Migration::mark_migration_complete(env, ContractVersion::new(2, 0, 0));
     }
@@ -582,7 +582,7 @@ pub fn migrate_to_v2(env: &Env) {
 if registry.is_upgrading() {
     // Reset upgrade flag
     registry.mark_upgrade_complete(previous_version);
-    
+
     // Rollback if needed
     registry.upgrade(previous_wasm_hash);
 }

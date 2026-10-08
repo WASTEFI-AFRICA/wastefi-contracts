@@ -46,7 +46,7 @@ This runbook provides standard operating procedures for the daily operations and
   ```bash
   # Load contract addresses
   source scripts/load_addresses.sh mainnet
-  
+
   # Check all contract versions
   for contract_id in $WASTE_TOKEN $COLLECTOR_REGISTRY $COLLECTION_POINT \
                      $MATERIAL_PRICING $REPUTATION $WASTE_TRANSACTION \
@@ -272,7 +272,7 @@ scrape_configs:
   - job_name: 'wastefi-contracts'
     static_configs:
       - targets: ['metrics.wastefi.io:9090']
-    
+
 alerting:
   alertmanagers:
     - static_configs:
@@ -298,7 +298,7 @@ groups:
         annotations:
           summary: "High spike in high-risk users"
           description: "{{ $value }} high-risk users detected in last 5 minutes"
-      
+
       - alert: TransactionFailureRateHigh
         expr: (failed_transactions / total_transactions) > 0.05
         for: 10m
@@ -308,7 +308,7 @@ groups:
         annotations:
           summary: "Transaction failure rate exceeded 5%"
           description: "Failure rate: {{ $value | humanizePercentage }}"
-      
+
       - alert: AdminBalanceLow
         expr: admin_xlm_balance < 20
         for: 1m
@@ -330,7 +330,7 @@ groups:
         annotations:
           summary: "Material pricing data is stale"
           description: "Last update was {{ $value | humanizeDuration }} ago"
-      
+
       - alert: RateLimitHitsIncreasing
         expr: rate(rate_limit_hits[1h]) > 200
         labels:
@@ -515,7 +515,7 @@ soroban contract invoke \
   --material "organic" \
   --price 45
 
-echo "✓ All material prices updated"
+echo "Done All material prices updated"
 
 # Verify updates
 for material in plastic paper metal glass organic; do
@@ -850,7 +850,7 @@ for contract in waste_token collector_registry collection_point \
                 material_pricing reputation waste_transaction \
                 payment_distribution; do
   CONTRACT_ID=$(jq -r ".contracts.$contract" deployed_addresses_mainnet.json)
-  
+
   echo "Storage usage for $contract:"
   # Query storage metrics (requires monitoring)
 done
@@ -904,10 +904,10 @@ done
 
 | Metric | Target | Current | Status |
 |--------|--------|---------|--------|
-| **Uptime** | 99.9% | [Track] | 🟢 |
-| **Transaction Success Rate** | >99% | [Track] | 🟢 |
-| **Response Time** | <2s | [Track] | 🟢 |
-| **Alert Response** | <15min | [Track] | 🟢 |
+| **Uptime**| 99.9% | [Track] | Low |
+| **Transaction Success Rate**| >99% | [Track] | Low |
+| **Response Time**| <2s | [Track] | Low |
+| **Alert Response**| <15min | [Track] | Low |
 
 ---
 
