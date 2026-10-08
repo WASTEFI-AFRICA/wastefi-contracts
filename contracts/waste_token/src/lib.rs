@@ -224,90 +224,60 @@ impl WasteToken {
         common::AccessControl::get_admin(&env).expect("Admin not found")
     }
 
-    /// Approve a spender to transfer tokens on behalf of the caller
+    /// Batch burn tokens from multiple accounts
     ///
     /// # Arguments
-    /// * `owner` - Token owner address (must authorize)
-    /// * `spender` - Address authorized to spend tokens
-    /// * `amount` - Maximum amount the spender can transfer
-    pub fn approve(env: Env, owner: Address, spender: Address, amount: i128) {
-        common::Initializable::require_initialized(&env).expect("Not initialized");
-        common::Pausable::require_not_paused(&env).expect("Contract paused");
-
-        // Require authorization from owner
-        owner.require_auth();
-
-        // Validate amount (must be non-negative)
-        if amount < 0 {
-            panic!("Invalid amount");
-        }
-
-        // Store allowance
-        write_allowance(&env, &owner, &spender, amount);
-
-        // Emit approval event
-        common::TokenEvents::approve(&env, owner.clone(), spender.clone(), amount);
-
-        // Bump storage
-        common::bump_instance(&env);
-    }
-
-    /// Transfer tokens from one address to another using allowance
-    ///
-    /// # Arguments
-    /// * `spender` - Address performing the transfer (must have allowance)
-    /// * `from` - Address to transfer from
-    /// * `to` - Address to transfer to
-    /// * `amount` - Amount to transfer
-    pub fn transfer_from(env: Env, spender: Address, from: Address, to: Address, amount: i128) {
-        common::Initializable::require_initialized(&env).expect("Not initialized");
-        common::Pausable::require_not_paused(&env).expect("Contract paused");
-
-        // Require authorization from spender
-        spender.require_auth();
-
-        // Validate amount
-        common::validate_amount(amount).expect("Invalid amount");
-
-        // Check allowance
-        let current_allowance = read_allowance(&env, &from, &spender);
-        if current_allowance < amount {
-            panic!("Insufficient allowance");
-        }
-
-        // Get balances
-        let from_balance = read_balance(&env, &from);
-        let to_balance = read_balance(&env, &to);
-
-        // Check sufficient balance
-        if from_balance < amount {
-            panic!("Insufficient balance");
-        }
-
-        // Update balances
-        write_balance(&env, &from, from_balance - amount);
-        write_balance(&env, &to, to_balance.saturating_add(amount));
-
-        // Update allowance
-        let new_allowance = current_allowance - amount;
-        write_allowance(&env, &from, &spender, new_allowance);
-
-        // Emit transfer event
-        common::TokenEvents::transfer(&env, from.clone(), to.clone(), amount);
-
-        // Bump storage
-        common::bump_instance(&env);
-    }
-
-    /// Get the allowance a spender has for an owner's tokens
-    ///
-    /// # Arguments
-    /// * `owner` - Token owner address
-    /// * `spender` - Spender address
+    /// * `burns` - Vector of (from, amount) tuples
     ///
     /// # Returns
-    /// Allowance amount
-    pub fn allowance(env: Env, owner: Address, spender: Address) -> i128 {
-        read_allowance(&env, &owner, &spender)
+    /// Number of burns successfully completed
+    ///
+    /// # Note
+    /// Each burn operation requires authorization from the respective account
+    pub fn batch_burn(env: Env, burns: soroban_sdk::Vec<(Address, i128)>) -> u32 {
+        common::Initializable::require_initialized(&env).expect("Not initialized");
+        common::Pausable::require_not_paused(&env).expect("Contract paused");
+
+        let mut burn_count = 0u32;
+
+        for i in 0..burns.len() {
+            if let Some((from, amount)) = burns.get(i) {
+                // Require authorization from the account burning
+                from.require_auth();
+
+                // Validate amount
+                if common::validate_amount(amount).is_err() {
+                    continue;
+                }
+
+                // Get current balance
+                let current_balance = read_balance(&env, &from);
+
+                // Check sufficient balance
+                if current_balance < amount {
+                    continue;
+                }
+
+                let new_balance = current_balance - amount;
+
+                // Update balance
+                write_balance(&env, &from, new_balance);
+
+                // Update total supply
+                let total_supply = read_total_supply(&env);
+                let new_total_supply = total_supply - amount;
+                write_total_supply(&env, new_total_supply);
+
+                // Emit event
+                common::TokenEvents::burn(&env, from.clone(), amount);
+
+                burn_count += 1;
+            }
+        }
+
+        // Bump storage
+        common::bump_instance(&env);
+
+        burn_count
     }
 }
