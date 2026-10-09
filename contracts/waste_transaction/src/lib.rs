@@ -122,6 +122,11 @@ impl WasteTransaction {
         common::Initializable::require_initialized(&env).expect("Not initialized");
         common::Pausable::require_not_paused(&env).expect("Contract paused");
 
+        // The collector must authorize their own submission. Without this anyone could
+        // record collections in another collector's name, and the fraud score and rate
+        // limits would then be applied to that collector.
+        collector.require_auth();
+
         // Validate collector status before proceeding
         if let Some(registry_contract) = env
             .storage()
@@ -239,6 +244,11 @@ impl WasteTransaction {
     ) -> u64 {
         common::Initializable::require_initialized(&env).expect("Not initialized");
         common::Pausable::require_not_paused(&env).expect("Contract paused");
+
+        // The collector must authorize their own submission. Without this anyone could
+        // record collections in another collector's name, and the fraud score and rate
+        // limits would then be applied to that collector.
+        collector.require_auth();
 
         // Validate collector status before proceeding
         if let Some(registry_contract) = env
@@ -497,6 +507,9 @@ impl WasteTransaction {
             if let Some((collector, collection_point, material_type, weight, price_per_kg)) =
                 collections.get(i)
             {
+                // Each collector in the batch must authorize their own entry.
+                collector.require_auth();
+
                 // Validate inputs
                 if common::validation::validate_weight_bounds(weight).is_err()
                     || common::validation::validate_price(price_per_kg).is_err()

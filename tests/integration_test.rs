@@ -667,6 +667,35 @@ fn test_transaction_timestamps() {
 // Edge Case Tests
 // ============================================================================
 
+// A collection can only be recorded with the collector's own authorization.
+// Otherwise anyone could submit in another collector's name, and the fraud score
+// and rate limits would be applied to the victim.
+#[test]
+fn test_recording_requires_the_collectors_authorization() {
+    let test_env = WasteFiTestEnv::new();
+
+    let collector = Address::generate(&test_env.env);
+    let point_owner = Address::generate(&test_env.env);
+    test_env.collection_point.register_point(
+        &point_owner,
+        &String::from_str(&test_env.env, "Auth Point"),
+        &String::from_str(&test_env.env, "Auth Location"),
+        &accepted_materials(&test_env.env),
+    );
+
+    // Drop the fixture's blanket authorization: nobody has signed anything.
+    test_env.env.set_auths(&[]);
+
+    let result = test_env.waste_transaction.try_record_collection(
+        &collector,
+        &point_owner,
+        &MaterialType::Plastic,
+        &2000,
+        &8_000_000,
+    );
+    assert!(result.is_err());
+}
+
 #[test]
 #[should_panic(expected = "Invalid weight")]
 fn test_zero_weight_collection_blocked() {
