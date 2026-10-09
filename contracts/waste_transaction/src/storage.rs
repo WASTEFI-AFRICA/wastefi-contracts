@@ -56,9 +56,9 @@ pub fn add_collector_transaction(env: &Env, collector: &Address, transaction_id:
     // Store updated list
     env.storage().persistent().set(&key, &transactions);
 
-    // Bump storage TTL
-    let storage_key = common::StorageKey::TransactionsByCollector(collector.clone(), 0);
-    common::bump_persistent(env, &storage_key);
+    // Bump the TTL of the key that was just written. extend_ttl fails on a
+    // key that does not exist, so it must be the same key passed to set().
+    common::bump_persistent(env, &key);
 }
 
 /// Read collector transactions

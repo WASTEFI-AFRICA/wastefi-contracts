@@ -10,9 +10,9 @@ pub fn write_collector(env: &Env, address: &Address, collector: &Collector) {
     let key = ("Collector", address);
     env.storage().persistent().set(&key, collector);
 
-    // Bump storage TTL
-    let storage_key = common::StorageKey::Collector(address.clone());
-    common::bump_persistent(env, &storage_key);
+    // Bump the TTL of the key that was just written. extend_ttl fails on a
+    // key that does not exist, so it must be the same key passed to set().
+    common::bump_persistent(env, &key);
 
     // Add to list if not exists
     if !is_in_list(env, address) {

@@ -130,7 +130,10 @@ pub fn bump_temporary(env: &Env, key: &StorageKey) {
 }
 
 /// Bump persistent storage
-pub fn bump_persistent(env: &Env, key: &StorageKey) {
+pub fn bump_persistent<K>(env: &Env, key: &K)
+where
+    K: soroban_sdk::IntoVal<Env, soroban_sdk::Val>,
+{
     const DAY_IN_LEDGERS: u32 = 17280;
     const PERSISTENT_LIFETIME_THRESHOLD: u32 = 120 * DAY_IN_LEDGERS; // 120 days
     const PERSISTENT_BUMP_AMOUNT: u32 = 365 * DAY_IN_LEDGERS; // 365 days
