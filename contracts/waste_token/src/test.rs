@@ -484,11 +484,14 @@ fn test_each_transfer_emits_its_own_event() {
     let to = Address::generate(&env);
 
     client.mint(&from, &1_000);
+    // `events().all()` reports only the most recent invocation, so check after
+    // every call that it published exactly one transfer event.
     for _ in 0..3 {
         client.transfer(&from, &to, &100);
+        assert_eq!(count_events(&env, "transfer"), 1);
     }
 
-    assert_eq!(count_events(&env, "transfer"), 3);
+    assert_eq!(client.balance(&to), 300);
 }
 
 #[test]

@@ -1,3 +1,9 @@
+// soroban-sdk deprecated `Events::publish` in favour of the `#[contractevent]`
+// macro. Migrating changes how events are encoded on-chain, which indexers depend
+// on (see docs/EVENT_INDEXING.md), so it is a deliberate change of its own rather
+// than part of the SDK upgrade. The topics and data emitted here are unchanged.
+#![allow(deprecated)]
+
 use crate::types::*;
 use soroban_sdk::{symbol_short, Address, Env, String};
 
