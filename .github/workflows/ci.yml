@@ -52,7 +52,7 @@ jobs:
         run: cargo check --workspace
 
   test:
-    name: Test (known broken)
+    name: Test
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -72,13 +72,7 @@ jobs:
             target
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
       
-      # The suite does not currently compile: soroban-env-host 21.2.1's testutils
-      # fails against the ed25519-dalek version that resolves under soroban-sdk
-      # 21.7.7. Run it anyway rather than skipping, so the real error is visible
-      # in the log instead of a stub that reports success. Remove
-      # continue-on-error once the SDK upgrade lands.
-      - name: Run tests (known broken, does not block)
-        continue-on-error: true
+      - name: Run tests
         run: cargo test --workspace
 
   build:
@@ -102,11 +96,8 @@ jobs:
             target
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
       
-      # --workspace is required: the repository root is itself a package (it
-      # holds the integration tests), so without it cargo builds only that
-      # package and emits no contract wasm at all.
       - name: Build WASM contracts
-        run: cargo build --workspace --target wasm32-unknown-unknown --release
+        run: ./scripts/build-wasm.sh
 
       - name: Verify every contract produced a wasm artifact
         run: |
