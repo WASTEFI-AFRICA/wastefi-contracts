@@ -47,7 +47,7 @@ cargo install --locked soroban-cli
 
 3. **Add wasm32 target**
 ```bash
-rustup target add wasm32-unknown-unknown
+rustup target add wasm32v1-none
 ```
 
 4. **Configure Stellar testnet**
@@ -154,7 +154,7 @@ cargo tarpaulin --workspace
 ### Deploy Single Contract
 ```bash
 soroban contract deploy \
-  --wasm target/wasm32-unknown-unknown/release/waste_token.wasm \
+  --wasm target/wasm32v1-none/release/waste_token.wasm \
   --source deployer \
   --network testnet
 ```
@@ -240,7 +240,7 @@ soroban contract read \
 
 **Error: linker not found**
 ```bash
-rustup target add wasm32-unknown-unknown
+rustup target add wasm32v1-none
 ```
 
 **Error: cargo-audit failed**

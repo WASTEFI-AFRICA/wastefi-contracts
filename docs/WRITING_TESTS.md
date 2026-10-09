@@ -37,7 +37,7 @@ rustup --version
 cargo --version
 
 # wasm32 target for contract compilation
-rustup target add wasm32-unknown-unknown
+rustup target add wasm32v1-none
 ```
 
 ### 1.2 Project Structure
@@ -1049,7 +1049,7 @@ error: could not compile ...
 
 **Solution**: Ensure wasm32 target is installed:
 ```bash
-rustup target add wasm32-unknown-unknown
+rustup target add wasm32v1-none
 ```
 
 ### 10.2 Debugging Tests

@@ -1,5 +1,11 @@
 # WasteFi Deployment Guide
 
+> **Maintained path.** `scripts/deploy-testnet.sh` and `scripts/smoke-test.sh`
+> (see the README) are the tested way to deploy to testnet; they use the Stellar
+> CLI (`stellar`) and the `wastefi-deployer` identity. The older `soroban`
+> commands further down this document predate that CLI and are kept for
+> background only.
+
 ## Document Purpose
 
 This guide provides step-by-step instructions for deploying the WasteFi smart contracts to Stellar Soroban networks (testnet and mainnet). It covers prerequisites, deployment procedures, verification steps, configuration management, and troubleshooting.
@@ -49,11 +55,11 @@ rustc --version
 # Required: 1.74.0 or higher
 
 # Add wasm32 target
-rustup target add wasm32-unknown-unknown
+rustup target add wasm32v1-none
 
 # Verify target
-rustup target list | grep wasm32-unknown-unknown
-# Should show: wasm32-unknown-unknown (installed)
+rustup target list | grep wasm32v1-none
+# Should show: wasm32v1-none (installed)
 ```
 
 #### Additional Tools
@@ -177,7 +183,7 @@ cargo clean
 make build
 
 # Verify all WASM files generated
-ls -lh target/wasm32-unknown-unknown/release/*.wasm
+ls -lh target/wasm32v1-none/release/*.wasm
 
 # Expected output (7 contracts):
 # collector_registry.wasm
@@ -349,7 +355,7 @@ If automated script fails or for learning purposes, follow manual steps:
 ```bash
 # Deploy contract
 WASTE_TOKEN_ID=$(soroban contract deploy \
-  --wasm target/wasm32-unknown-unknown/release/waste_token.wasm \
+  --wasm target/wasm32v1-none/release/waste_token.wasm \
   --source deployer \
   --network testnet)
 
@@ -371,7 +377,7 @@ soroban contract invoke \
 #### Step 2: Deploy CollectorRegistry
 ```bash
 COLLECTOR_REGISTRY_ID=$(soroban contract deploy \
-  --wasm target/wasm32-unknown-unknown/release/collector_registry.wasm \
+  --wasm target/wasm32v1-none/release/collector_registry.wasm \
   --source deployer \
   --network testnet)
 
@@ -390,7 +396,7 @@ soroban contract invoke \
 #### Step 3: Deploy CollectionPoint
 ```bash
 COLLECTION_POINT_ID=$(soroban contract deploy \
-  --wasm target/wasm32-unknown-unknown/release/collection_point.wasm \
+  --wasm target/wasm32v1-none/release/collection_point.wasm \
   --source deployer \
   --network testnet)
 
@@ -409,7 +415,7 @@ soroban contract invoke \
 #### Step 4: Deploy MaterialPricing
 ```bash
 MATERIAL_PRICING_ID=$(soroban contract deploy \
-  --wasm target/wasm32-unknown-unknown/release/material_pricing.wasm \
+  --wasm target/wasm32v1-none/release/material_pricing.wasm \
   --source deployer \
   --network testnet)
 
@@ -428,7 +434,7 @@ soroban contract invoke \
 #### Step 5: Deploy Reputation
 ```bash
 REPUTATION_ID=$(soroban contract deploy \
-  --wasm target/wasm32-unknown-unknown/release/reputation.wasm \
+  --wasm target/wasm32v1-none/release/reputation.wasm \
   --source deployer \
   --network testnet)
 
@@ -448,7 +454,7 @@ soroban contract invoke \
 #### Step 6: Deploy WasteTransaction
 ```bash
 WASTE_TRANSACTION_ID=$(soroban contract deploy \
-  --wasm target/wasm32-unknown-unknown/release/waste_transaction.wasm \
+  --wasm target/wasm32v1-none/release/waste_transaction.wasm \
   --source deployer \
   --network testnet)
 
@@ -467,7 +473,7 @@ soroban contract invoke \
 #### Step 7: Deploy PaymentDistribution
 ```bash
 PAYMENT_DISTRIBUTION_ID=$(soroban contract deploy \
-  --wasm target/wasm32-unknown-unknown/release/payment_distribution.wasm \
+  --wasm target/wasm32v1-none/release/payment_distribution.wasm \
   --source deployer \
   --network testnet)
 
@@ -562,7 +568,7 @@ After successful deployment, you should see:
 [INFO] Checking prerequisites...
 [SUCCESS] Done Soroban CLI found: soroban 20.0.0
 [SUCCESS] Done Rust found: rustc 1.74.0
-[SUCCESS] Done wasm32-unknown-unknown target available
+[SUCCESS] Done wasm32v1-none target available
 [SUCCESS] Done Config file found: config/testnet-deploy.json
 
 [INFO] Building contracts...
@@ -1008,7 +1014,7 @@ make build
 
 # 2. Deploy new version
 NEW_CONTRACT_ID=$(soroban contract deploy \
-  --wasm target/wasm32-unknown-unknown/release/<contract>.wasm \
+  --wasm target/wasm32v1-none/release/<contract>.wasm \
   --source mainnet-admin \
   --network mainnet)
 
@@ -1115,7 +1121,7 @@ Error: Transaction submission timed out
 ```bash
 # Retry with increased timeout
 soroban contract deploy \
-  --wasm target/wasm32-unknown-unknown/release/<contract>.wasm \
+  --wasm target/wasm32v1-none/release/<contract>.wasm \
   --source deployer \
   --network testnet \
   --timeout 120
@@ -1142,16 +1148,16 @@ Error: Contract is already initialized
 
 **Symptoms**:
 ```
-Error: target 'wasm32-unknown-unknown' not found
+Error: target 'wasm32v1-none' not found
 ```
 
 **Solution**:
 ```bash
 # Install wasm32 target
-rustup target add wasm32-unknown-unknown
+rustup target add wasm32v1-none
 
 # Verify installation
-rustup target list | grep wasm32-unknown-unknown
+rustup target list | grep wasm32v1-none
 ```
 
 ---
@@ -1227,7 +1233,7 @@ soroban contract invoke \
 tail -n 100 deployment_testnet_*.log
 
 # Check contract WASM size
-ls -lh target/wasm32-unknown-unknown/release/*.wasm
+ls -lh target/wasm32v1-none/release/*.wasm
 
 # Verify contract bytecode
 wasm-opt --version  # If available

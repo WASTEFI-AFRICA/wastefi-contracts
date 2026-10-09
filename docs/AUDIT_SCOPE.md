@@ -393,8 +393,8 @@ Planned **Frontend Integration**: User interface security review
 
 **Required Software**:
 - Rust 1.79.0 or later
-- Soroban CLI 21.7.7 or later
-- wasm32-unknown-unknown target
+- Stellar CLI 23 or later
+- wasm32v1-none target
 
 **Installation**:
 ```bash
@@ -402,10 +402,10 @@ Planned **Frontend Integration**: User interface security review
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 
 # Install Soroban CLI
-cargo install --locked soroban-cli --version 21.7.7
+cargo install --locked stellar-cli
 
 # Add wasm target
-rustup target add wasm32-unknown-unknown
+rustup target add wasm32v1-none
 ```
 
 ### 6.2 Build and Test
@@ -756,7 +756,7 @@ Done **Public Disclosure**: Transparent reporting
 ### Appendix C: Dependencies
 
 **Direct Dependencies**:
-- `soroban-sdk = "21.7.7"` (only production dependency)
+- `soroban-sdk = "23"` (only production dependency)
 
 **Development Dependencies**:
 - `soroban-sdk` (with testutils)

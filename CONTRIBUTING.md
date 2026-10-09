@@ -5,13 +5,12 @@ Thanks for your interest in contributing.
 ## Getting set up
 
 Requires Rust 1.79.0 or later. The toolchain, `rustfmt`, `clippy` and the
-`wasm32-unknown-unknown` target are pinned in
+`wasm32v1-none` target are pinned in
 [`rust-toolchain.toml`](rust-toolchain.toml), so `rustup` provisions them on
 first build.
 
 ```sh
-make install    # add the wasm target and install soroban-cli
-make setup      # register the testnet network with soroban-cli
+make install    # add the wasm target and install the Stellar CLI
 make build
 ```
 
@@ -21,10 +20,17 @@ make build
 make check      # cargo fmt, clippy -D warnings, test, and a release wasm build
 ```
 
-Note that `cargo test --workspace` does not currently compile against the
-pinned `soroban-sdk` 21.7.7; see the testing section of the
-[README](README.md#testing). If your change touches a crate's tests, say in the
-pull request whether you were able to run them.
+Requires Rust 1.84 or later and the `wasm32v1-none` target (provisioned by
+`rust-toolchain.toml`). Build wasm with `make build`, never a bare `cargo build`;
+the README explains why.
+
+`Cargo.lock` is committed and pins `ed25519-dalek` to 2.2.0. The host-side test
+build in `soroban-env-host` does not compile against 3.x, so if `cargo update`
+brings it back and the tests fail with a `CryptoRng` trait error, restore the pin:
+
+```sh
+cargo update -p ed25519-dalek@3.0.0 --precise 2.2.0
+```
 
 ## Conventions
 

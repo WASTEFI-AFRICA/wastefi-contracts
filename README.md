@@ -87,7 +87,7 @@ Turning `overflow-checks` off would let balance arithmetic wrap silently.
 
 ## Build
 
-Requires Rust 1.79.0 or later. The toolchain, components, and wasm target are
+Requires Rust 1.84.0 or later. The toolchain, components, and wasm target are
 pinned in [`rust-toolchain.toml`](rust-toolchain.toml), so `rustup` provisions
 them on first build.
 
@@ -99,14 +99,17 @@ make fmt            # cargo fmt --all
 make check          # fmt, lint, test, build
 ```
 
-Built artifacts land in `target/wasm32-unknown-unknown/release/`.
+Built artifacts land in `target/wasm32v1-none/release/`.
 
 Always build wasm through `make build` or `scripts/build-wasm.sh`, not a bare
-`cargo build`. The workspace root is itself a package, so a bare build emits no
-contract wasm, and `Cargo.toml` lists both `lib` (so the integration tests can
-import the contracts) and `cdylib`, which makes a default build roughly 40%
-larger. The script passes `--crate-type cdylib` per contract, as the Stellar
-CLI does. Current sizes are 28 to 50 KB per contract.
+`cargo build`. Two things go wrong otherwise. The contracts must target
+`wasm32v1-none`: since Rust 1.82, `wasm32-unknown-unknown` emits WebAssembly
+features that the Soroban VM rejects, so the build succeeds but the network
+refuses to deploy the result. And `Cargo.toml` lists both `lib` (so the
+integration tests can import the contracts) and `cdylib`, which makes a default
+build noticeably larger; the script passes `--crate-type cdylib` per contract, as
+the Stellar CLI does. The workspace root is itself a package, so a bare build at
+the root emits no contract wasm at all. Current sizes are 18 to 39 KB per contract.
 
 ## Testing
 
@@ -132,29 +135,52 @@ produce an artifact, and `cargo audit` on every push and pull request.
 
 ## Deployment
 
-Network configuration lives in [`config/`](config); see
-[config/README.md](config/README.md) for the shape of those files.
+The contracts are deployed on Stellar testnet. There is no mainnet deployment; see
+the audit status below.
+
+| Contract | Testnet address |
+| --- | --- |
+| `waste_token` | [`CBSHEPK3FDF4E4A3NE25S6M4RDTJOJZGQVDG7PDLM4R2YLLBJMYTHDCS`](https://stellar.expert/explorer/testnet/contract/CBSHEPK3FDF4E4A3NE25S6M4RDTJOJZGQVDG7PDLM4R2YLLBJMYTHDCS) |
+| `collector_registry` | [`CC6OULJTBVRE3TJBEXG5TAUIFXDF2JAARMSK6EKDCYK6FPQFCRUUKHJE`](https://stellar.expert/explorer/testnet/contract/CC6OULJTBVRE3TJBEXG5TAUIFXDF2JAARMSK6EKDCYK6FPQFCRUUKHJE) |
+| `collection_point` | [`CDXRC6LFSXMSIHU3NXEOQE4OM7BA45NTYJS3LUSNEX7Q54LNUSKKPL33`](https://stellar.expert/explorer/testnet/contract/CDXRC6LFSXMSIHU3NXEOQE4OM7BA45NTYJS3LUSNEX7Q54LNUSKKPL33) |
+| `material_pricing` | [`CBDQDXBEG7V3URBZR5HAOZF4ESICV3UZ5WDEO6NJQ5E2QLKPBEDVW45D`](https://stellar.expert/explorer/testnet/contract/CBDQDXBEG7V3URBZR5HAOZF4ESICV3UZ5WDEO6NJQ5E2QLKPBEDVW45D) |
+| `reputation` | [`CARIL3VA74YS6JYA6P4D4MDAW3GFMSMWJ4JUMTM3RZWDKOTUU5ZIVWJG`](https://stellar.expert/explorer/testnet/contract/CARIL3VA74YS6JYA6P4D4MDAW3GFMSMWJ4JUMTM3RZWDKOTUU5ZIVWJG) |
+| `waste_transaction` | [`CDB2G3EVSRIG5UKRTEKGFT3CM6VJYAFVAQAV2DLOTC6U3UISSLB4LV2X`](https://stellar.expert/explorer/testnet/contract/CDB2G3EVSRIG5UKRTEKGFT3CM6VJYAFVAQAV2DLOTC6U3UISSLB4LV2X) |
+| `payment_distribution` | [`CDEXPCJ7IR3LL7GW3QWETNOTISUYWUCKPUJ2JPKPKYTMKDTVXVWJJYKN`](https://stellar.expert/explorer/testnet/contract/CDEXPCJ7IR3LL7GW3QWETNOTISUYWUCKPUJ2JPKPKYTMKDTVXVWJJYKN) |
+
+Deployed 2026-10-09 from `a460df1+uncommitted` by
+[`GBPLV2ID...3Y4L`](https://stellar.expert/explorer/testnet/account/GBPLV2IDOG7E2UQEDHTN2ZZA3OGUECFHM5F54S3F65QEUR5EATJA3Y4L),
+which is also the admin of every contract. The addresses are recorded in
+[`deployed_addresses_testnet.json`](deployed_addresses_testnet.json). Testnet is
+reset periodically, so these will stop resolving eventually; redeploy with the
+script below.
+
+### Deploy it yourself
+
+Requires the [Stellar CLI](https://developers.stellar.org/docs/tools/cli) (`make install`
+installs it).
 
 ```sh
-soroban network add testnet \
-  --rpc-url https://soroban-testnet.stellar.org:443 \
-  --network-passphrase "Test SDF Network ; September 2015"
-
-soroban keys generate deployer --network testnet
-curl "https://friendbot.stellar.org?addr=$(soroban keys address deployer)"
-
-./scripts/deploy.sh testnet config/testnet.json
+make deploy-testnet     # build, deploy, initialize and wire all seven contracts
+make smoke-test         # drive a delivery through the deployed contracts
 ```
 
-Full instructions, including initialization order and the operator role grants
-each contract needs, are in [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md). Day-to-day
-operational procedures are in [docs/OPERATIONS.md](docs/OPERATIONS.md).
+`scripts/deploy-testnet.sh` creates and funds a testnet identity named
+`wastefi-deployer` on first run (its key stays in the Stellar CLI's own store and
+is never written into the repository), then deploys the seven contracts,
+initializes them with that identity as admin, points `waste_transaction` at the
+pricing, reputation and registry contracts, and records the addresses.
 
-### Deployed addresses
+`scripts/smoke-test.sh` then exercises the deployed contracts end to end with
+freshly generated throwaway accounts: it registers and activates a collector,
+registers and verifies a collection point, records a collection, checks that
+recording one in an active collector's name without their signature is rejected,
+verifies it, checks the stored payout, records the payment, mints the reward, and
+checks the collector's balance. It exits non-zero on the first failure.
 
-Current testnet addresses are in
-[`deployed_addresses_testnet.json`](deployed_addresses_testnet.json). There is
-no mainnet deployment; see the audit status below.
+Further background, including the role each contract needs, is in
+[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md); day-to-day operations are in
+[docs/OPERATIONS.md](docs/OPERATIONS.md).
 
 ## Security
 

@@ -24,11 +24,11 @@ make build
 
 # 2. Optimize WASM
 soroban contract optimize \
-  --wasm target/wasm32-unknown-unknown/release/collector_registry.wasm
+  --wasm target/wasm32v1-none/release/collector_registry.wasm
 
 # 3. Deploy to testnet first
 soroban contract deploy \
-  --wasm target/wasm32-unknown-unknown/release/collector_registry.optimized.wasm \
+  --wasm target/wasm32v1-none/release/collector_registry.optimized.wasm \
   --source deployer \
   --network testnet
 ```

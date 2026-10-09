@@ -153,7 +153,7 @@ This guide provides developers with comprehensive information about the WasteFi 
 **Smart Contracts**:
 - Language: Rust
 - Framework: Soroban SDK v20.0.0+
-- Target: wasm32-unknown-unknown
+- Target: wasm32v1-none
 - Network: Stellar Soroban
 
 **Development Tools**:
@@ -186,7 +186,7 @@ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 rustc --version  # Should be 1.74.0 or higher
 
 # Add wasm32 target
-rustup target add wasm32-unknown-unknown
+rustup target add wasm32v1-none
 ```
 
 #### Install Soroban CLI
@@ -223,7 +223,7 @@ cd wastefi-contracts
 make build
 
 # Verify build
-ls -lh target/wasm32-unknown-unknown/release/*.wasm
+ls -lh target/wasm32v1-none/release/*.wasm
 
 # Run tests
 cargo test --workspace
@@ -241,7 +241,7 @@ cargo fmt --all --check
 ```json
 // .vscode/settings.json
 {
-  "rust-analyzer.cargo.target": "wasm32-unknown-unknown",
+  "rust-analyzer.cargo.target": "wasm32v1-none",
   "rust-analyzer.checkOnSave.command": "clippy",
   "editor.formatOnSave": true,
   "rust-analyzer.linkedProjects": [
@@ -259,7 +259,7 @@ cargo fmt --all --check
 #### IntelliJ IDEA / CLion
 - Install Rust plugin
 - Configure Rust toolchain
-- Set target to wasm32-unknown-unknown
+- Set target to wasm32v1-none
 - Enable format on save
 
 ---
@@ -1116,7 +1116,7 @@ pub fn process_payment(env: Env, transaction_id: u64) -> u64 {
 **Issue: "target not found"**
 ```bash
 # Solution: Install wasm32 target
-rustup target add wasm32-unknown-unknown
+rustup target add wasm32v1-none
 ```
 
 **Issue: "failed to compile"**
@@ -1175,7 +1175,7 @@ cargo fmt --all --check
 ### Deployment Commands
 ```bash
 # Deploy contract
-soroban contract deploy --wasm target/wasm32-unknown-unknown/release/<contract>.wasm --source deployer --network testnet
+soroban contract deploy --wasm target/wasm32v1-none/release/<contract>.wasm --source deployer --network testnet
 
 # Initialize contract
 soroban contract invoke --id <CONTRACT_ID> --source deployer --network testnet -- initialize --admin <ADMIN_ADDRESS>
