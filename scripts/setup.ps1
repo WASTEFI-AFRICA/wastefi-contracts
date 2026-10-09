@@ -63,7 +63,7 @@ if (!(Test-Path .env)) {
 
 # Build the project
 Write-Host "`nBuilding WasteFi contracts..." -ForegroundColor Yellow
-cargo build --target wasm32-unknown-unknown --release
+.\scripts\build-wasm.ps1
 Write-Host "Contracts built successfully" -ForegroundColor Green
 
 # Run tests

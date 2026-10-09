@@ -1,12 +1,10 @@
 .PHONY: build test clean install fmt lint optimize check setup deploy-testnet
 
-# The workspace root is itself a package (it holds the integration tests), so
-# cargo would otherwise build only that package and emit no contract wasm.
-# Every target below is explicit about --workspace for this reason.
-
-# Build all contracts to wasm
+# Build all contracts to wasm. scripts/build-wasm.sh explains why this is not a
+# plain `cargo build`: the workspace root is itself a package, and building the
+# contracts with the default crate types produces oversized wasm.
 build:
-	cargo build --workspace --target wasm32-unknown-unknown --release
+	./scripts/build-wasm.sh
 
 # Run the test suite
 test:
@@ -29,19 +27,15 @@ fmt:
 lint:
 	cargo clippy --workspace --all-targets -- -D warnings
 
-# Report the size of each built contract; wasm size drives deployment fees
+# Build and report the size of each contract; wasm size drives deployment fees
 optimize: build
-	@echo "Built contracts:"
-	@ls -1 target/wasm32-unknown-unknown/release/*.wasm | while read f; do \
-		printf "  %-28s %7.1f KB\n" "$$(basename $$f)" "$$(echo "scale=1; $$(stat -c%s $$f)/1024" | bc)"; \
-	done
 
 # Everything CI checks, in the same order
 check:
 	cargo fmt --all -- --check
 	cargo clippy --workspace -- -D warnings
 	cargo check --workspace
-	cargo build --workspace --target wasm32-unknown-unknown --release
+	./scripts/build-wasm.sh
 	@echo "All checks passed."
 
 # Register the Soroban testnet with the local CLI

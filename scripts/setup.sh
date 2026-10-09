@@ -67,7 +67,7 @@ fi
 
 # Build the project
 echo -e "\n${YELLOW}Building WasteFi contracts...${NC}"
-cargo build --target wasm32-unknown-unknown --release
+./scripts/build-wasm.sh
 echo -e "${GREEN}Contracts built successfully${NC}"
 
 # Run tests

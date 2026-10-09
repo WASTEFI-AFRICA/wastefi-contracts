@@ -118,7 +118,7 @@ build_contracts() {
     
     # Build all contracts
     log_info "Compiling contracts to WASM..."
-    if cargo build --target wasm32-unknown-unknown --release; then
+    if ./scripts/build-wasm.sh; then
         log_success "✓ All contracts built successfully"
     else
         log_error "Contract build failed"

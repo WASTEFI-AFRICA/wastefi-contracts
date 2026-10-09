@@ -24,7 +24,7 @@ $WasmPath = "target\wasm32-unknown-unknown\release"
 
 if (-not (Test-Path "$WasmPath\waste_token.wasm")) {
     Write-Host "Contracts not built. Building now..." -ForegroundColor Red
-    cargo build --target wasm32-unknown-unknown --release
+    .\scripts\build-wasm.ps1
 } else {
     Write-Host "Contracts found" -ForegroundColor Green
 }

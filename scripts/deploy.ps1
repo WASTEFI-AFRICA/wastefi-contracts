@@ -145,7 +145,7 @@ function Build-Contracts {
         
         # Build all contracts
         Write-LogInfo "Compiling contracts to WASM..."
-        $buildOutput = cargo build --target wasm32-unknown-unknown --release 2>&1
+        $buildOutput = & .\scripts\build-wasm.ps1 2>&1
         
         if ($LASTEXITCODE -eq 0) {
             Write-LogSuccess "✓ All contracts built successfully"
