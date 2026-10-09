@@ -83,36 +83,42 @@ mod tests {
     #[test]
     fn test_register_and_get_contract() {
         let env = Env::default();
-        let address = Address::generate(&env);
+        crate::test_utils::with_contract(&env, || {
+            let address = Address::generate(&env);
 
-        ContractRegistry::register(&env, WASTE_TOKEN_CONTRACT, &address);
+            ContractRegistry::register(&env, WASTE_TOKEN_CONTRACT, &address);
 
-        let retrieved = ContractRegistry::get(&env, WASTE_TOKEN_CONTRACT);
-        assert_eq!(retrieved, Some(address));
+            let retrieved = ContractRegistry::get(&env, WASTE_TOKEN_CONTRACT);
+            assert_eq!(retrieved, Some(address));
+        });
     }
 
     #[test]
     fn test_is_registered() {
         let env = Env::default();
-        let address = Address::generate(&env);
+        crate::test_utils::with_contract(&env, || {
+            let address = Address::generate(&env);
 
-        assert!(!ContractRegistry::is_registered(&env, WASTE_TOKEN_CONTRACT));
+            assert!(!ContractRegistry::is_registered(&env, WASTE_TOKEN_CONTRACT));
 
-        ContractRegistry::register(&env, WASTE_TOKEN_CONTRACT, &address);
+            ContractRegistry::register(&env, WASTE_TOKEN_CONTRACT, &address);
 
-        assert!(ContractRegistry::is_registered(&env, WASTE_TOKEN_CONTRACT));
+            assert!(ContractRegistry::is_registered(&env, WASTE_TOKEN_CONTRACT));
+        });
     }
 
     #[test]
     fn test_unregister_contract() {
         let env = Env::default();
-        let address = Address::generate(&env);
+        crate::test_utils::with_contract(&env, || {
+            let address = Address::generate(&env);
 
-        ContractRegistry::register(&env, WASTE_TOKEN_CONTRACT, &address);
-        assert!(ContractRegistry::is_registered(&env, WASTE_TOKEN_CONTRACT));
+            ContractRegistry::register(&env, WASTE_TOKEN_CONTRACT, &address);
+            assert!(ContractRegistry::is_registered(&env, WASTE_TOKEN_CONTRACT));
 
-        ContractRegistry::unregister(&env, WASTE_TOKEN_CONTRACT);
-        assert!(!ContractRegistry::is_registered(&env, WASTE_TOKEN_CONTRACT));
+            ContractRegistry::unregister(&env, WASTE_TOKEN_CONTRACT);
+            assert!(!ContractRegistry::is_registered(&env, WASTE_TOKEN_CONTRACT));
+        });
     }
 
     #[test]

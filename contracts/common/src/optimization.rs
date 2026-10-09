@@ -185,11 +185,11 @@ impl StructureOptimization {
         let total_size: u32 = field_sizes.iter().sum();
         let field_count = field_sizes.len() as u32;
 
-        // Check for alignment waste
-        let has_small_fields = field_sizes.iter().any(|&size| size <= 4);
-        let has_large_fields = field_sizes.iter().any(|&size| size > 8);
+        // Alignment is wasted when a smaller field precedes a larger one, so
+        // fields not already ordered largest-first are worth reordering.
+        let needs_reorder = field_sizes.windows(2).any(|pair| pair[0] < pair[1]);
 
-        if has_small_fields && has_large_fields {
+        if needs_reorder {
             PackingRecommendation::Reorder
         } else if field_count > 10 {
             PackingRecommendation::Split
@@ -213,6 +213,7 @@ pub enum PackingRecommendation {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use soroban_sdk::testutils::Ledger as _;
 
     #[test]
     fn test_storage_recommendations() {
@@ -284,6 +285,7 @@ mod tests {
     #[test]
     fn test_cache_validity() {
         let env = Env::default();
+        env.ledger().with_mut(|li| li.timestamp = 100_000);
         let cached_at = env.ledger().timestamp();
 
         assert!(CacheOptimization::is_cache_valid(&env, cached_at, 3600));

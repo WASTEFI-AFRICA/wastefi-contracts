@@ -149,6 +149,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
+    use soroban_sdk::testutils::Ledger as _;
     use soroban_sdk::Env;
 
     #[test]
@@ -197,7 +198,7 @@ mod tests {
     #[test]
     fn test_get_timestamp() {
         let env = Env::default();
-        let ts = get_timestamp(&env);
-        assert!(ts > 0);
+        env.ledger().with_mut(|li| li.timestamp = 12_345);
+        assert_eq!(get_timestamp(&env), 12_345);
     }
 }

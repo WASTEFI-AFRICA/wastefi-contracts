@@ -332,91 +332,102 @@ mod tests {
     #[test]
     fn test_version_storage() {
         let env = Env::default();
-        let version = ContractVersion::new(1, 2, 3);
+        crate::test_utils::with_contract(&env, || {
+            let version = ContractVersion::new(1, 2, 3);
 
-        Upgrade::set_version(&env, version.clone());
-        let retrieved = Upgrade::get_version(&env).unwrap();
+            Upgrade::set_version(&env, version.clone());
+            let retrieved = Upgrade::get_version(&env).unwrap();
 
-        assert_eq!(retrieved.major, 1);
-        assert_eq!(retrieved.minor, 2);
-        assert_eq!(retrieved.patch, 3);
+            assert_eq!(retrieved.major, 1);
+            assert_eq!(retrieved.minor, 2);
+            assert_eq!(retrieved.patch, 3);
+        });
     }
 
     #[test]
     fn test_upgrade_flag() {
         let env = Env::default();
+        crate::test_utils::with_contract(&env, || {
+            assert!(!Upgrade::is_upgrade_in_progress(&env));
 
-        assert!(!Upgrade::is_upgrade_in_progress(&env));
+            Upgrade::mark_upgrade_in_progress(&env);
+            assert!(Upgrade::is_upgrade_in_progress(&env));
 
-        Upgrade::mark_upgrade_in_progress(&env);
-        assert!(Upgrade::is_upgrade_in_progress(&env));
-
-        Upgrade::mark_upgrade_complete(&env, ContractVersion::new(2, 0, 0));
-        assert!(!Upgrade::is_upgrade_in_progress(&env));
+            Upgrade::mark_upgrade_complete(&env, ContractVersion::new(2, 0, 0));
+            assert!(!Upgrade::is_upgrade_in_progress(&env));
+        });
     }
 
     #[test]
     fn test_migration_tracking() {
         let env = Env::default();
-        let version = ContractVersion::new(2, 0, 0);
+        crate::test_utils::with_contract(&env, || {
+            let version = ContractVersion::new(2, 0, 0);
 
-        Migration::mark_migration_complete(&env, version);
-        let (migrated_version, _timestamp) = Migration::get_last_migration(&env).unwrap();
+            Migration::mark_migration_complete(&env, version);
+            let (migrated_version, _timestamp) = Migration::get_last_migration(&env).unwrap();
 
-        assert_eq!(migrated_version.major, 2);
-        assert_eq!(migrated_version.minor, 0);
-        assert_eq!(migrated_version.patch, 0);
+            assert_eq!(migrated_version.major, 2);
+            assert_eq!(migrated_version.minor, 0);
+            assert_eq!(migrated_version.patch, 0);
+        });
     }
 
     #[test]
     fn test_migration_log() {
         let env = Env::default();
+        crate::test_utils::with_contract(&env, || {
+            Migration::record_migration_step(&env, String::from_str(&env, "step1"), true);
+            Migration::record_migration_step(&env, String::from_str(&env, "step2"), true);
 
-        Migration::record_migration_step(&env, String::from_str(&env, "step1"), true);
-        Migration::record_migration_step(&env, String::from_str(&env, "step2"), true);
-
-        let log = Migration::get_migration_log(&env);
-        assert_eq!(log.len(), 2);
+            let log = Migration::get_migration_log(&env);
+            assert_eq!(log.len(), 2);
+        });
     }
 
     #[test]
     fn test_storage_schema() {
         let env = Env::default();
+        crate::test_utils::with_contract(&env, || {
+            assert_eq!(StorageSchema::get_schema_version(&env), 1);
 
-        assert_eq!(StorageSchema::get_schema_version(&env), 1);
+            StorageSchema::set_schema_version(&env, 2);
+            assert_eq!(StorageSchema::get_schema_version(&env), 2);
 
-        StorageSchema::set_schema_version(&env, 2);
-        assert_eq!(StorageSchema::get_schema_version(&env), 2);
-
-        assert!(StorageSchema::needs_migration(&env, 3));
-        assert!(!StorageSchema::needs_migration(&env, 2));
+            assert!(StorageSchema::needs_migration(&env, 3));
+            assert!(!StorageSchema::needs_migration(&env, 2));
+        });
     }
 
     #[test]
     fn test_feature_flags() {
         let env = Env::default();
-        let feature = String::from_str(&env, "new_feature");
+        crate::test_utils::with_contract(&env, || {
+            let feature = String::from_str(&env, "new_feature");
 
-        assert!(!Compatibility::is_feature_supported(&env, feature.clone()));
+            assert!(!Compatibility::is_feature_supported(&env, feature.clone()));
 
-        Compatibility::enable_feature(&env, feature.clone());
-        assert!(Compatibility::is_feature_supported(&env, feature.clone()));
+            Compatibility::enable_feature(&env, feature.clone());
+            assert!(Compatibility::is_feature_supported(&env, feature.clone()));
 
-        Compatibility::disable_feature(&env, feature.clone());
-        assert!(!Compatibility::is_feature_supported(&env, feature));
+            Compatibility::disable_feature(&env, feature.clone());
+            assert!(!Compatibility::is_feature_supported(&env, feature));
+        });
     }
 
     #[test]
     fn test_deprecation() {
         let env = Env::default();
-        let func = String::from_str(&env, "old_function");
+        crate::test_utils::with_contract(&env, || {
+            let func = String::from_str(&env, "old_function");
 
-        assert!(!Deprecation::is_deprecated(&env, func.clone()));
+            assert!(!Deprecation::is_deprecated(&env, func.clone()));
 
-        Deprecation::mark_deprecated(&env, func.clone(), ContractVersion::new(2, 0, 0));
-        assert!(Deprecation::is_deprecated(&env, func.clone()));
+            Deprecation::mark_deprecated(&env, func.clone(), ContractVersion::new(2, 0, 0));
+            assert!(Deprecation::is_deprecated(&env, func.clone()));
 
-        let removal_version = Deprecation::get_deprecation_version(&env, func.clone()).unwrap();
-        assert_eq!(removal_version.major, 2);
+            let removal_version = Deprecation::get_deprecation_version(&env, func.clone()).unwrap();
+            assert_eq!(removal_version.major, 2);
+        });
     }
 }

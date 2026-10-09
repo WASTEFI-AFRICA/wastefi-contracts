@@ -284,66 +284,74 @@ mod tests {
     #[test]
     fn test_admin_management() {
         let env = Env::default();
-        let admin = Address::generate(&env);
+        crate::test_utils::with_contract(&env, || {
+            let admin = Address::generate(&env);
 
-        AccessControl::set_admin(&env, admin.clone());
-        assert!(AccessControl::is_admin(&env, &admin));
+            AccessControl::set_admin(&env, admin.clone());
+            assert!(AccessControl::is_admin(&env, &admin));
 
-        let non_admin = Address::generate(&env);
-        assert!(!AccessControl::is_admin(&env, &non_admin));
+            let non_admin = Address::generate(&env);
+            assert!(!AccessControl::is_admin(&env, &non_admin));
+        });
     }
 
     #[test]
     fn test_operator_management() {
         let env = Env::default();
-        let operator = Address::generate(&env);
+        crate::test_utils::with_contract(&env, || {
+            let operator = Address::generate(&env);
 
-        assert!(!AccessControl::is_operator(&env, &operator));
+            assert!(!AccessControl::is_operator(&env, &operator));
 
-        AccessControl::add_operator(&env, operator.clone());
-        assert!(AccessControl::is_operator(&env, &operator));
-        assert!(AccessControl::has_elevated_access(&env, &operator));
+            AccessControl::add_operator(&env, operator.clone());
+            assert!(AccessControl::is_operator(&env, &operator));
+            assert!(AccessControl::has_elevated_access(&env, &operator));
 
-        AccessControl::remove_operator(&env, &operator);
-        assert!(!AccessControl::is_operator(&env, &operator));
+            AccessControl::remove_operator(&env, &operator);
+            assert!(!AccessControl::is_operator(&env, &operator));
+        });
     }
 
     #[test]
     fn test_admin_action_logging() {
         let env = Env::default();
-        let admin = Address::generate(&env);
+        crate::test_utils::with_contract(&env, || {
+            let admin = Address::generate(&env);
 
-        AccessControl::log_admin_action(
-            &env,
-            &admin,
-            String::from_str(&env, "test_action"),
-            Some(String::from_str(&env, "target1")),
-        );
+            AccessControl::log_admin_action(
+                &env,
+                &admin,
+                String::from_str(&env, "test_action"),
+                Some(String::from_str(&env, "target1")),
+            );
 
-        let actions = AccessControl::get_admin_actions(&env, 10);
-        assert_eq!(actions.len(), 1);
+            let actions = AccessControl::get_admin_actions(&env, 10);
+            assert_eq!(actions.len(), 1);
+        });
     }
 
     #[test]
     fn test_pausable() {
         let env = Env::default();
+        crate::test_utils::with_contract(&env, || {
+            assert!(!Pausable::is_paused(&env));
 
-        assert!(!Pausable::is_paused(&env));
+            Pausable::pause(&env);
+            assert!(Pausable::is_paused(&env));
 
-        Pausable::pause(&env);
-        assert!(Pausable::is_paused(&env));
-
-        Pausable::unpause(&env);
-        assert!(!Pausable::is_paused(&env));
+            Pausable::unpause(&env);
+            assert!(!Pausable::is_paused(&env));
+        });
     }
 
     #[test]
     fn test_initializable() {
         let env = Env::default();
+        crate::test_utils::with_contract(&env, || {
+            assert!(!Initializable::is_initialized(&env));
 
-        assert!(!Initializable::is_initialized(&env));
-
-        Initializable::mark_initialized(&env);
-        assert!(Initializable::is_initialized(&env));
+            Initializable::mark_initialized(&env);
+            assert!(Initializable::is_initialized(&env));
+        });
     }
 }

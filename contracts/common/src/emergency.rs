@@ -417,85 +417,99 @@ mod tests {
     #[test]
     fn test_emergency_levels() {
         let env = Env::default();
+        crate::test_utils::with_contract(&env, || {
+            assert_eq!(Emergency::get_level(&env), EmergencyLevel::Normal);
 
-        assert_eq!(Emergency::get_level(&env), EmergencyLevel::Normal);
+            Emergency::set_level(&env, EmergencyLevel::Warning);
+            assert_eq!(Emergency::get_level(&env), EmergencyLevel::Warning);
+            assert!(Emergency::is_active(&env));
 
-        Emergency::set_level(&env, EmergencyLevel::Warning);
-        assert_eq!(Emergency::get_level(&env), EmergencyLevel::Warning);
-        assert!(Emergency::is_active(&env));
-
-        Emergency::set_level(&env, EmergencyLevel::Normal);
-        assert!(!Emergency::is_active(&env));
+            Emergency::set_level(&env, EmergencyLevel::Normal);
+            assert!(!Emergency::is_active(&env));
+        });
     }
 
     #[test]
     fn test_circuit_breaker() {
         let env = Env::default();
-        let operation = String::from_str(&env, "test_operation");
+        crate::test_utils::with_contract(&env, || {
+            let operation = String::from_str(&env, "test_operation");
 
-        assert!(!CircuitBreaker::is_tripped(&env, operation.clone()));
+            assert!(!CircuitBreaker::is_tripped(&env, operation.clone()));
 
-        CircuitBreaker::trip(&env, operation.clone());
-        assert!(CircuitBreaker::is_tripped(&env, operation.clone()));
+            CircuitBreaker::trip(&env, operation.clone());
+            assert!(CircuitBreaker::is_tripped(&env, operation.clone()));
 
-        CircuitBreaker::reset(&env, operation.clone());
-        assert!(!CircuitBreaker::is_tripped(&env, operation));
+            CircuitBreaker::reset(&env, operation.clone());
+            assert!(!CircuitBreaker::is_tripped(&env, operation));
+        });
     }
 
     #[test]
     fn test_emergency_withdrawal() {
         let env = Env::default();
-
-        assert!(!EmergencyWithdrawal::is_enabled(&env));
-
+        env.mock_all_auths();
+        let contract_id = env.register_contract(None, crate::test_utils::TestContract);
         let admin = Address::generate(&env);
-        crate::AccessControl::set_admin(&env, admin.clone());
 
-        EmergencyWithdrawal::enable(&env, &admin).unwrap();
-        assert!(EmergencyWithdrawal::is_enabled(&env));
+        // enable and disable each authorize the admin, and the host rejects two
+        // auths in one frame, so run them as separate invocations of one contract.
+        env.as_contract(&contract_id, || {
+            assert!(!EmergencyWithdrawal::is_enabled(&env));
+            crate::AccessControl::set_admin(&env, admin.clone());
+            EmergencyWithdrawal::enable(&env, &admin).unwrap();
+            assert!(EmergencyWithdrawal::is_enabled(&env));
+        });
 
-        EmergencyWithdrawal::disable(&env, &admin).unwrap();
-        assert!(!EmergencyWithdrawal::is_enabled(&env));
+        env.as_contract(&contract_id, || {
+            EmergencyWithdrawal::disable(&env, &admin).unwrap();
+            assert!(!EmergencyWithdrawal::is_enabled(&env));
+        });
     }
 
     #[test]
     fn test_operation_throttle() {
         let env = Env::default();
-        let operation = String::from_str(&env, "test_op");
-        let caller = Address::generate(&env);
+        crate::test_utils::with_contract(&env, || {
+            let operation = String::from_str(&env, "test_op");
+            let caller = Address::generate(&env);
 
-        assert!(!OperationThrottle::is_throttled(
-            &env,
-            operation.clone(),
-            &caller,
-            3,
-            60
-        ));
+            assert!(!OperationThrottle::is_throttled(
+                &env,
+                operation.clone(),
+                &caller,
+                3,
+                60
+            ));
 
-        OperationThrottle::record_attempt(&env, operation.clone(), &caller);
-        OperationThrottle::record_attempt(&env, operation.clone(), &caller);
-        OperationThrottle::record_attempt(&env, operation.clone(), &caller);
+            OperationThrottle::record_attempt(&env, operation.clone(), &caller);
+            OperationThrottle::record_attempt(&env, operation.clone(), &caller);
+            OperationThrottle::record_attempt(&env, operation.clone(), &caller);
 
-        assert!(OperationThrottle::is_throttled(
-            &env, operation, &caller, 3, 60
-        ));
+            assert!(OperationThrottle::is_throttled(
+                &env, operation, &caller, 3, 60
+            ));
+        });
     }
 
     #[test]
     fn test_emergency_event_history() {
         let env = Env::default();
-        let admin = Address::generate(&env);
-        crate::AccessControl::set_admin(&env, admin.clone());
+        env.mock_all_auths();
+        crate::test_utils::with_contract(&env, || {
+            let admin = Address::generate(&env);
+            crate::AccessControl::set_admin(&env, admin.clone());
 
-        Emergency::trigger(
-            &env,
-            &admin,
-            EmergencyLevel::Warning,
-            String::from_str(&env, "Test alert"),
-        )
-        .unwrap();
+            Emergency::trigger(
+                &env,
+                &admin,
+                EmergencyLevel::Warning,
+                String::from_str(&env, "Test alert"),
+            )
+            .unwrap();
 
-        let history = Emergency::get_event_history(&env, 10);
-        assert_eq!(history.len(), 1);
+            let history = Emergency::get_event_history(&env, 10);
+            assert_eq!(history.len(), 1);
+        });
     }
 }

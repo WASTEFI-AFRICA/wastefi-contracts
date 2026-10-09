@@ -475,85 +475,96 @@ mod tests {
     #[test]
     fn test_fraud_detection_flagging() {
         let env = Env::default();
-        let collector = Address::generate(&env);
+        crate::test_utils::with_contract(&env, || {
+            let collector = Address::generate(&env);
 
-        assert!(!FraudDetection::is_flagged_for_review(&env, &collector));
+            assert!(!FraudDetection::is_flagged_for_review(&env, &collector));
 
-        FraudDetection::flag_for_review(
-            &env,
-            &collector,
-            String::from_str(&env, "Suspicious activity"),
-        );
+            FraudDetection::flag_for_review(
+                &env,
+                &collector,
+                String::from_str(&env, "Suspicious activity"),
+            );
 
-        assert!(FraudDetection::is_flagged_for_review(&env, &collector));
+            assert!(FraudDetection::is_flagged_for_review(&env, &collector));
 
-        FraudDetection::clear_flag(&env, &collector);
-        assert!(!FraudDetection::is_flagged_for_review(&env, &collector));
+            FraudDetection::clear_flag(&env, &collector);
+            assert!(!FraudDetection::is_flagged_for_review(&env, &collector));
+        });
     }
 
     #[test]
     fn test_transaction_velocity_tracking() {
         let env = Env::default();
-        let collector = Address::generate(&env);
+        crate::test_utils::with_contract(&env, || {
+            let collector = Address::generate(&env);
 
-        // Record several transactions
-        for _ in 0..5 {
-            FraudDetection::record_transaction(&env, &collector);
-        }
+            // Record several transactions
+            for _ in 0..5 {
+                FraudDetection::record_transaction(&env, &collector);
+            }
 
-        // Risk score should increase with velocity
-        let score = FraudDetection::calculate_risk_score(&env, &collector);
-        assert!(score >= 0); // At least some base score
+            // Risk score should increase with velocity
+            let score = FraudDetection::calculate_risk_score(&env, &collector);
+            assert!(score >= 0); // At least some base score
+        });
     }
 
     #[test]
     fn test_duplicate_detection() {
         let env = Env::default();
-        let collector = Address::generate(&env);
+        crate::test_utils::with_contract(&env, || {
+            let collector = Address::generate(&env);
 
-        assert!(!DuplicateDetection::is_duplicate(
-            &env, &collector, 1000, 1, 300
-        ));
+            assert!(!DuplicateDetection::is_duplicate(
+                &env, &collector, 1000, 1, 300
+            ));
 
-        DuplicateDetection::record_transaction(&env, &collector, 1000, 1);
+            DuplicateDetection::record_transaction(&env, &collector, 1000, 1);
 
-        assert!(DuplicateDetection::is_duplicate(
-            &env, &collector, 1000, 1, 300
-        ));
-        assert!(!DuplicateDetection::is_duplicate(
-            &env, &collector, 2000, 1, 300
-        ));
+            assert!(DuplicateDetection::is_duplicate(
+                &env, &collector, 1000, 1, 300
+            ));
+            assert!(!DuplicateDetection::is_duplicate(
+                &env, &collector, 2000, 1, 300
+            ));
+        });
     }
 
     #[test]
     fn test_rate_limit_quota() {
         let env = Env::default();
-        let operation = String::from_str(&env, "test_op");
-        let caller = Address::generate(&env);
+        crate::test_utils::with_contract(&env, || {
+            let operation = String::from_str(&env, "test_op");
+            let caller = Address::generate(&env);
 
-        let remaining = RateLimit::get_remaining_quota(&env, operation.clone(), &caller, 10, 60);
-        assert_eq!(remaining, 10);
+            let remaining =
+                RateLimit::get_remaining_quota(&env, operation.clone(), &caller, 10, 60);
+            assert_eq!(remaining, 10);
 
-        RateLimit::record(&env, operation.clone(), &caller);
+            RateLimit::record(&env, operation.clone(), &caller);
 
-        let remaining = RateLimit::get_remaining_quota(&env, operation, &caller, 10, 60);
-        assert_eq!(remaining, 9);
+            let remaining = RateLimit::get_remaining_quota(&env, operation, &caller, 10, 60);
+            assert_eq!(remaining, 9);
+        });
     }
 
     #[test]
     fn test_weight_anomaly_detection() {
         let env = Env::default();
-        let collector = Address::generate(&env);
+        crate::test_utils::with_contract(&env, || {
+            let collector = Address::generate(&env);
 
-        // Record normal weights
-        for _ in 0..10 {
-            FraudDetection::record_weight(&env, &collector, 1000);
-        }
+            // Record normal weights
+            for _ in 0..10 {
+                FraudDetection::record_weight(&env, &collector, 1000);
+            }
 
-        // Record anomalous weight
-        FraudDetection::record_weight(&env, &collector, 5000);
+            // Record anomalous weight
+            FraudDetection::record_weight(&env, &collector, 5000);
 
-        let score = FraudDetection::calculate_risk_score(&env, &collector);
-        assert!(score > 0); // Should detect anomaly
+            let score = FraudDetection::calculate_risk_score(&env, &collector);
+            assert!(score > 0); // Should detect anomaly
+        });
     }
 }
