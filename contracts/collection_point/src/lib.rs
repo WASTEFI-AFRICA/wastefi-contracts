@@ -1,4 +1,9 @@
 #![no_std]
+
+// Tests use std's vec! and format!; the contract build stays no_std.
+#[cfg(test)]
+#[macro_use]
+extern crate std;
 use soroban_sdk::{contract, contractimpl, Address, Env, String, Vec};
 
 mod storage;

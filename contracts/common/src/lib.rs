@@ -1,5 +1,10 @@
 #![no_std]
 
+// Tests use std's vec! and format!; the contract build stays no_std.
+#[cfg(test)]
+#[macro_use]
+extern crate std;
+
 pub mod access_control;
 pub mod anti_fraud;
 pub mod contract_registry;

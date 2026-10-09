@@ -27,3 +27,6 @@ Thumbs.db
 # Testing
 coverage/
 *.profraw
+
+# Soroban test environment snapshots, regenerated on every test run
+test_snapshots/

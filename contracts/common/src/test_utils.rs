@@ -1,6 +1,9 @@
 #![cfg(test)]
 use crate::types::*;
-use soroban_sdk::{Address, Env, String};
+use soroban_sdk::{
+    testutils::{Address as _, Ledger as _},
+    Address, Env, String,
+};
 
 /// Test utilities for WasteFi contracts
 
@@ -123,4 +126,22 @@ pub fn set_time(env: &Env, timestamp: u64) {
     env.ledger().with_mut(|li| {
         li.timestamp = timestamp;
     });
+}
+
+/// Empty contract that gives library code a contract context in unit tests.
+///
+/// Storage access outside a contract panics, so tests of the shared library run
+/// inside this contract via `with_contract`.
+#[soroban_sdk::contract]
+pub struct TestContract;
+
+#[soroban_sdk::contractimpl]
+impl TestContract {
+    pub fn noop(_env: Env) {}
+}
+
+/// Run `f` as if called from inside a deployed contract.
+pub fn with_contract<T>(env: &Env, f: impl FnOnce() -> T) -> T {
+    let id = env.register_contract(None, TestContract);
+    env.as_contract(&id, f)
 }
