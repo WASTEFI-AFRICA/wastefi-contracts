@@ -10,6 +10,13 @@ updates:
     labels:
       - "dependencies"
       - "rust"
+    # soroban-sdk majors change the contract ABI and the wasm output, and each one
+    # needs the contracts redeployed and the test suite checked, so they are
+    # upgraded by hand (see docs/UPGRADE_GUIDE.md) rather than by a bot PR that
+    # cannot know that. Minor and patch updates still arrive automatically.
+    ignore:
+      - dependency-name: "soroban-sdk"
+        update-types: ["version-update:semver-major"]
     
   - package-ecosystem: "github-actions"
     directory: "/"
