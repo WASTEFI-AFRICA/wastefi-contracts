@@ -1,4 +1,4 @@
-.PHONY: build test clean install fmt lint optimize check setup deploy-testnet
+.PHONY: build test clean install fmt lint optimize check deploy-testnet smoke-test
 
 # Build all contracts to wasm. scripts/build-wasm.sh explains why this is not a
 # plain `cargo build`: the workspace root is itself a package, and building the
@@ -14,10 +14,10 @@ test:
 clean:
 	cargo clean
 
-# Install the wasm target and the Soroban CLI
+# Install the wasm target and the Stellar CLI
 install:
-	rustup target add wasm32-unknown-unknown
-	cargo install --locked soroban-cli
+	rustup target add wasm32v1-none
+	cargo install --locked stellar-cli
 
 # Format all sources
 fmt:
@@ -35,16 +35,14 @@ check:
 	cargo fmt --all -- --check
 	cargo clippy --workspace -- -D warnings
 	cargo check --workspace
+	cargo test --workspace
 	./scripts/build-wasm.sh
 	@echo "All checks passed."
 
-# Register the Soroban testnet with the local CLI
-setup: install
-	soroban network add testnet \
-		--rpc-url https://soroban-testnet.stellar.org:443 \
-		--network-passphrase "Test SDF Network ; September 2015"
-	@echo "Testnet registered."
+# Build, deploy, initialize and wire all contracts on testnet (see scripts/deploy-testnet.sh)
+deploy-testnet:
+	./scripts/deploy-testnet.sh
 
-# Deploy to testnet; see docs/DEPLOYMENT.md for the full procedure
-deploy-testnet: build
-	./scripts/deploy.sh testnet config/testnet.json
+# Drive one delivery through the deployed testnet contracts
+smoke-test:
+	./scripts/smoke-test.sh
