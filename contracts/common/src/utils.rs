@@ -93,8 +93,9 @@ pub fn price_per_kg_to_gram(price_per_kg: i128) -> i128 {
 
 /// Calculate total amount from weight and price per kg
 pub fn calculate_total_amount(weight_grams: u64, price_per_kg: i128) -> i128 {
-    let weight_kg = grams_to_kg(weight_grams);
-    price_per_kg.saturating_mul(weight_kg as i128)
+    // Multiply before dividing. Converting grams to whole kilograms first would
+    // truncate the fraction, so 500g would be paid as 0 and 1.5kg as 1kg.
+    (weight_grams as i128).saturating_mul(price_per_kg) / 1000
 }
 
 /// Get current timestamp
@@ -187,6 +188,10 @@ mod tests {
     fn test_calculate_total_amount() {
         // 5000 grams (5kg) at 1 XLM per kg = 5 XLM
         assert_eq!(calculate_total_amount(5000, 10000000), 50000000);
+        // Fractional kilograms are paid, not truncated.
+        assert_eq!(calculate_total_amount(500, 10000000), 5000000);
+        assert_eq!(calculate_total_amount(1500, 10000000), 15000000);
+        assert_eq!(calculate_total_amount(0, 10000000), 0);
     }
 
     #[test]

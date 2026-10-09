@@ -183,9 +183,7 @@ impl WasteTransaction {
         common::FraudDetection::record_transaction(&env, &collector);
         common::FraudDetection::record_weight(&env, &collector, weight);
 
-        // Calculate total amount: (weight in grams / 1000) * price_per_kg
-        let weight_kg = (weight as i128) / 1000;
-        let total_amount = weight_kg.saturating_mul(price_per_kg);
+        let total_amount = common::calculate_total_amount(weight, price_per_kg);
 
         // Get next transaction ID
         let transaction_id = increment_transaction_count(&env);
@@ -274,9 +272,7 @@ impl WasteTransaction {
         // For now, we'll use a default price until full cross-contract call implementation
         let price_per_kg = 5_000_000i128; // 0.5 XLM/kg default
 
-        // Calculate total amount
-        let weight_kg = (weight as i128) / 1000;
-        let total_amount = weight_kg.saturating_mul(price_per_kg);
+        let total_amount = common::calculate_total_amount(weight, price_per_kg);
 
         // Get next transaction ID
         let transaction_id = increment_transaction_count(&env);
@@ -508,9 +504,7 @@ impl WasteTransaction {
                     continue;
                 }
 
-                // Calculate total amount
-                let weight_kg = (weight as i128) / 1000;
-                let total_amount = weight_kg.saturating_mul(price_per_kg);
+                let total_amount = common::calculate_total_amount(weight, price_per_kg);
 
                 // Get next transaction ID
                 let transaction_id = increment_transaction_count(&env);
