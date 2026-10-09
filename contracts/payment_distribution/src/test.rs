@@ -49,13 +49,13 @@ fn test_process_payment() {
 
     let admin = Address::generate(&env);
     let token_contract = Address::generate(&env);
-    let transaction_contract = Address::generate(&env);
+    let recipient = Address::generate(&env);
     let (_, client) = create_contract(&env);
 
     client.initialize(&admin, &token_contract);
 
     // Process payment for transaction
-    let payment_id = client.process_payment(&transaction_contract, &1);
+    let payment_id = client.process_payment(&1, &recipient, &1_000);
 
     assert_eq!(payment_id, 1);
     assert_eq!(client.get_payment_count(), 1);
@@ -64,6 +64,8 @@ fn test_process_payment() {
     let payment = client.get_payment(&payment_id);
     assert_eq!(payment.id, 1);
     assert_eq!(payment.transaction_id, 1);
+    assert_eq!(payment.recipient, recipient);
+    assert_eq!(payment.amount, 1_000);
     assert_eq!(payment.status, PaymentStatus::Pending);
     assert_eq!(payment.created_at, 1000);
 }
@@ -75,15 +77,15 @@ fn test_process_multiple_payments() {
 
     let admin = Address::generate(&env);
     let token_contract = Address::generate(&env);
-    let transaction_contract = Address::generate(&env);
+    let recipient = Address::generate(&env);
     let (_, client) = create_contract(&env);
 
     client.initialize(&admin, &token_contract);
 
     // Process multiple payments
-    let payment1 = client.process_payment(&transaction_contract, &1);
-    let payment2 = client.process_payment(&transaction_contract, &2);
-    let payment3 = client.process_payment(&transaction_contract, &3);
+    let payment1 = client.process_payment(&1, &recipient, &1_000);
+    let payment2 = client.process_payment(&2, &recipient, &1_000);
+    let payment3 = client.process_payment(&3, &recipient, &1_000);
 
     assert_eq!(payment1, 1);
     assert_eq!(payment2, 2);
@@ -99,12 +101,12 @@ fn test_update_payment_status() {
 
     let admin = Address::generate(&env);
     let token_contract = Address::generate(&env);
-    let transaction_contract = Address::generate(&env);
+    let recipient = Address::generate(&env);
     let (_, client) = create_contract(&env);
 
     client.initialize(&admin, &token_contract);
 
-    let payment_id = client.process_payment(&transaction_contract, &1);
+    let payment_id = client.process_payment(&1, &recipient, &1_000);
 
     // Update status to completed
     env.ledger().with_mut(|li| li.timestamp = 2000);
@@ -170,18 +172,18 @@ fn test_get_recipient_payments() {
 
     let admin = Address::generate(&env);
     let token_contract = Address::generate(&env);
-    let transaction_contract = Address::generate(&env);
+    let recipient = Address::generate(&env);
     let (_, client) = create_contract(&env);
 
     client.initialize(&admin, &token_contract);
 
-    // Process payments (all go to admin as recipient in this simplified version)
-    client.process_payment(&transaction_contract, &1);
-    client.process_payment(&transaction_contract, &2);
-    client.process_payment(&transaction_contract, &3);
+    // Process payments for one recipient
+    client.process_payment(&1, &recipient, &1_000);
+    client.process_payment(&2, &recipient, &1_000);
+    client.process_payment(&3, &recipient, &1_000);
 
-    // Get admin's payments
-    let payments = client.get_recipient_payments(&admin, &10);
+    // Get the recipient's payments
+    let payments = client.get_recipient_payments(&recipient, &10);
     assert_eq!(payments.len(), 3);
 }
 
@@ -192,22 +194,22 @@ fn test_limit_recipient_payments() {
 
     let admin = Address::generate(&env);
     let token_contract = Address::generate(&env);
-    let transaction_contract = Address::generate(&env);
+    let recipient = Address::generate(&env);
     let (_, client) = create_contract(&env);
 
     client.initialize(&admin, &token_contract);
 
     // Process 10 payments
     for i in 1..=10 {
-        client.process_payment(&transaction_contract, &i);
+        client.process_payment(&i, &recipient, &1_000);
     }
 
     // Request only 5
-    let payments = client.get_recipient_payments(&admin, &5);
+    let payments = client.get_recipient_payments(&recipient, &5);
     assert_eq!(payments.len(), 5);
 
     // Request all (0 means use default limit)
-    let all_payments = client.get_recipient_payments(&admin, &0);
+    let all_payments = client.get_recipient_payments(&recipient, &0);
     assert_eq!(all_payments.len(), 10);
 }
 
@@ -242,14 +244,14 @@ fn test_cannot_process_when_paused() {
 
     let admin = Address::generate(&env);
     let token_contract = Address::generate(&env);
-    let transaction_contract = Address::generate(&env);
+    let recipient = Address::generate(&env);
     let (_, client) = create_contract(&env);
 
     client.initialize(&admin, &token_contract);
     client.pause();
 
     // Try to process payment while paused
-    client.process_payment(&transaction_contract, &1);
+    client.process_payment(&1, &recipient, &1_000);
 }
 
 #[test]
@@ -259,12 +261,12 @@ fn test_payment_status_transitions() {
 
     let admin = Address::generate(&env);
     let token_contract = Address::generate(&env);
-    let transaction_contract = Address::generate(&env);
+    let recipient = Address::generate(&env);
     let (_, client) = create_contract(&env);
 
     client.initialize(&admin, &token_contract);
 
-    let payment_id = client.process_payment(&transaction_contract, &1);
+    let payment_id = client.process_payment(&1, &recipient, &1_000);
 
     // Check initial status
     let payment = client.get_payment(&payment_id);
@@ -288,12 +290,12 @@ fn test_payment_status_failed() {
 
     let admin = Address::generate(&env);
     let token_contract = Address::generate(&env);
-    let transaction_contract = Address::generate(&env);
+    let recipient = Address::generate(&env);
     let (_, client) = create_contract(&env);
 
     client.initialize(&admin, &token_contract);
 
-    let payment_id = client.process_payment(&transaction_contract, &1);
+    let payment_id = client.process_payment(&1, &recipient, &1_000);
 
     // Mark payment as failed
     client.update_payment_status(&payment_id, &PaymentStatus::Failed);
