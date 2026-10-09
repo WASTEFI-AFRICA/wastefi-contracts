@@ -99,6 +99,16 @@ impl WasteFiTestEnv {
 // Basic Setup Tests
 // ============================================================================
 
+/// Materials a test collection point accepts.
+fn accepted_materials(env: &Env) -> soroban_sdk::Vec<MaterialType> {
+    soroban_sdk::vec![
+        env,
+        MaterialType::Plastic,
+        MaterialType::Glass,
+        MaterialType::Metal
+    ]
+}
+
 #[test]
 fn test_all_contracts_deploy_and_initialize() {
     let test_env = WasteFiTestEnv::new();
@@ -148,7 +158,7 @@ fn test_collector_registration_flow() {
     // Verify collector info
     let collector_info = test_env.collector_registry.get_collector(&collector);
     assert_eq!(collector_info.name, name);
-    assert_eq!(collector_info.phone_number, phone);
+    assert_eq!(collector_info.phone, phone);
     assert_eq!(collector_info.status, CollectorStatus::Pending);
 
     // Admin approves collector
@@ -161,7 +171,7 @@ fn test_collector_registration_flow() {
     assert_eq!(updated_info.status, CollectorStatus::Active);
 
     // Check initial reputation
-    let initial_reputation = test_env.reputation.get_score(&collector);
+    let initial_reputation = test_env.reputation.get_score(&collector).score;
     assert_eq!(initial_reputation, 500); // Base score
 }
 
@@ -178,7 +188,12 @@ fn test_collection_point_registration_flow() {
     let location = String::from_str(&test_env.env, "123 Main St");
 
     // Register collection point
-    let point_id = test_env.collection_point.register(&owner, &name, &location);
+    let point_id = test_env.collection_point.register_point(
+        &owner,
+        &name,
+        &location,
+        &accepted_materials(&test_env.env),
+    );
     assert_eq!(point_id, 1);
 
     // Verify point details
@@ -186,14 +201,20 @@ fn test_collection_point_registration_flow() {
     assert_eq!(point_info.id, point_id);
     assert_eq!(point_info.owner, owner);
     assert_eq!(point_info.name, name);
-    assert!(!point_info.verified);
+    assert_eq!(
+        point_info.verification_status,
+        VerificationStatus::Unverified
+    );
 
     // Admin verifies collection point
     test_env.collection_point.verify_point(&point_id);
 
     // Verify verification
     let verified_info = test_env.collection_point.get_point(&point_id);
-    assert!(verified_info.verified);
+    assert_eq!(
+        verified_info.verification_status,
+        VerificationStatus::Verified
+    );
 }
 
 // ============================================================================
@@ -272,10 +293,11 @@ fn test_complete_waste_collection_flow() {
 
     // Setup: Register collection point
     let point_owner = Address::generate(&test_env.env);
-    let point_id = test_env.collection_point.register(
+    let point_id = test_env.collection_point.register_point(
         &point_owner,
         &String::from_str(&test_env.env, "Central Point"),
         &String::from_str(&test_env.env, "456 Oak Ave"),
+        &accepted_materials(&test_env.env),
     );
     test_env.collection_point.verify_point(&point_id);
 
@@ -286,7 +308,7 @@ fn test_complete_waste_collection_flow() {
 
     let tx_id = test_env.waste_transaction.record_collection(
         &collector,
-        &point_id,
+        &point_owner,
         &material_type,
         &weight,
         &price_per_kg,
@@ -318,7 +340,7 @@ fn test_complete_waste_collection_flow() {
         .reputation
         .record_transaction(&collector, &TransactionStatus::Completed);
 
-    let reputation_score = test_env.reputation.get_score(&collector);
+    let reputation_score = test_env.reputation.get_score(&collector).score;
     assert_eq!(reputation_score, 505); // Base 500 + 5 for successful tx
 }
 
@@ -333,10 +355,12 @@ fn test_collector_transaction_history() {
         &String::from_str(&test_env.env, "+5555555555"),
     );
 
-    let point_id = test_env.collection_point.register(
-        &Address::generate(&test_env.env),
+    let point_owner = Address::generate(&test_env.env);
+    let point_id = test_env.collection_point.register_point(
+        &point_owner,
         &String::from_str(&test_env.env, "Point A"),
         &String::from_str(&test_env.env, "Location A"),
+        &accepted_materials(&test_env.env),
     );
 
     // Record multiple transactions
@@ -348,9 +372,13 @@ fn test_collector_transaction_history() {
 
     for material in materials.iter() {
         let price = test_env.material_pricing.get_price(material);
-        test_env
-            .waste_transaction
-            .record_collection(&collector, &point_id, material, &3000, &price);
+        test_env.waste_transaction.record_collection(
+            &collector,
+            &point_owner,
+            material,
+            &3000,
+            &price,
+        );
     }
 
     // Query collector transactions
@@ -435,7 +463,7 @@ fn test_reputation_score_calculation() {
     let collector = Address::generate(&test_env.env);
 
     // Initial score
-    let initial_score = test_env.reputation.get_score(&collector);
+    let initial_score = test_env.reputation.get_score(&collector).score;
     assert_eq!(initial_score, 500);
 
     // Record successful transactions
@@ -445,7 +473,7 @@ fn test_reputation_score_calculation() {
             .record_transaction(&collector, &TransactionStatus::Completed);
     }
 
-    let score_after_success = test_env.reputation.get_score(&collector);
+    let score_after_success = test_env.reputation.get_score(&collector).score;
     assert_eq!(score_after_success, 525); // 500 + (5 * 5)
 
     // Record a disputed transaction
@@ -453,13 +481,13 @@ fn test_reputation_score_calculation() {
         .reputation
         .record_transaction(&collector, &TransactionStatus::Disputed);
 
-    let score_after_dispute = test_env.reputation.get_score(&collector);
+    let score_after_dispute = test_env.reputation.get_score(&collector).score;
     assert_eq!(score_after_dispute, 515); // 525 - 10
 
     // Check statistics
     let stats = test_env.reputation.get_statistics(&collector);
-    assert_eq!(stats.successful_transactions, 5);
-    assert_eq!(stats.disputed_transactions, 1);
+    assert_eq!(stats.2, 5);
+    assert_eq!(stats.3, 1);
 }
 
 #[test]
@@ -475,7 +503,7 @@ fn test_reputation_success_rate_bonus() {
             .record_transaction(&collector, &TransactionStatus::Completed);
     }
 
-    let score = test_env.reputation.get_score(&collector);
+    let score = test_env.reputation.get_score(&collector).score;
     // Base 500 + (20 * 5) + success_rate_bonus for 100% with 20+ txs
     // Success rate bonus: up to +100 points for perfect score
     assert!(score >= 600); // At least base + successful txs
@@ -500,10 +528,12 @@ fn test_multi_material_collection_session() {
         .collector_registry
         .update_status(&collector, &CollectorStatus::Active);
 
-    let point_id = test_env.collection_point.register(
-        &Address::generate(&test_env.env),
+    let point_owner = Address::generate(&test_env.env);
+    let point_id = test_env.collection_point.register_point(
+        &point_owner,
         &String::from_str(&test_env.env, "Multi Point"),
         &String::from_str(&test_env.env, "Multi Location"),
+        &accepted_materials(&test_env.env),
     );
 
     // Collect different materials in one session
@@ -518,9 +548,13 @@ fn test_multi_material_collection_session() {
 
     for (material, weight) in collections.iter() {
         let price = test_env.material_pricing.get_price(material);
-        test_env
-            .waste_transaction
-            .record_collection(&collector, &point_id, material, weight, &price);
+        test_env.waste_transaction.record_collection(
+            &collector,
+            &point_owner,
+            material,
+            weight,
+            &price,
+        );
         total_expected_amount += (price * *weight as i128) / 1000;
     }
 
@@ -594,16 +628,18 @@ fn test_transaction_timestamps() {
     let initial_time = test_env.env.ledger().timestamp();
 
     let collector = Address::generate(&test_env.env);
-    let point_id = test_env.collection_point.register(
-        &Address::generate(&test_env.env),
+    let point_owner = Address::generate(&test_env.env);
+    let point_id = test_env.collection_point.register_point(
+        &point_owner,
         &String::from_str(&test_env.env, "Time Point"),
         &String::from_str(&test_env.env, "Time Location"),
+        &accepted_materials(&test_env.env),
     );
 
     // Record transaction
     let tx_id = test_env.waste_transaction.record_collection(
         &collector,
-        &point_id,
+        &point_owner,
         &MaterialType::Plastic,
         &1000,
         &8_000_000,
@@ -617,7 +653,7 @@ fn test_transaction_timestamps() {
 
     let tx_id_2 = test_env.waste_transaction.record_collection(
         &collector,
-        &point_id,
+        &point_owner,
         &MaterialType::Glass,
         &2000,
         &5_000_000,
@@ -632,29 +668,27 @@ fn test_transaction_timestamps() {
 // ============================================================================
 
 #[test]
+#[should_panic(expected = "Invalid weight")]
 fn test_zero_weight_collection_blocked() {
     let test_env = WasteFiTestEnv::new();
 
     let collector = Address::generate(&test_env.env);
-    let point_id = test_env.collection_point.register(
-        &Address::generate(&test_env.env),
+    let point_owner = Address::generate(&test_env.env);
+    let point_id = test_env.collection_point.register_point(
+        &point_owner,
         &String::from_str(&test_env.env, "Test Point"),
         &String::from_str(&test_env.env, "Test Location"),
+        &accepted_materials(&test_env.env),
     );
 
-    // This should panic or be blocked by validation
-    // Depending on implementation, adjust test accordingly
-    // For now, assuming it's allowed but records 0 amount
-    let tx_id = test_env.waste_transaction.record_collection(
+    // Weight validation rejects a zero-weight collection.
+    test_env.waste_transaction.record_collection(
         &collector,
-        &point_id,
+        &point_owner,
         &MaterialType::Plastic,
         &0,
         &8_000_000,
     );
-
-    let tx = test_env.waste_transaction.get_transaction(&tx_id);
-    assert_eq!(tx.total_amount, 0);
 }
 
 #[test]
@@ -688,10 +722,12 @@ fn test_collector_comprehensive_stats() {
         &String::from_str(&test_env.env, "+2222222222"),
     );
 
-    let point_id = test_env.collection_point.register(
-        &Address::generate(&test_env.env),
+    let point_owner = Address::generate(&test_env.env);
+    let point_id = test_env.collection_point.register_point(
+        &point_owner,
         &String::from_str(&test_env.env, "Stats Point"),
         &String::from_str(&test_env.env, "Stats Location"),
+        &accepted_materials(&test_env.env),
     );
 
     // Record 10 transactions
@@ -702,9 +738,16 @@ fn test_collector_comprehensive_stats() {
             MaterialType::Glass
         };
         let price = test_env.material_pricing.get_price(&material);
-        test_env
-            .waste_transaction
-            .record_collection(&collector, &point_id, &material, &1000, &price);
+        // Distinct weights: identical repeat submissions are rejected by the
+        // duplicate-transaction check, which is correct behaviour.
+        let weight = 1000u64 * (i + 1);
+        test_env.waste_transaction.record_collection(
+            &collector,
+            &point_owner,
+            &material,
+            &weight,
+            &price,
+        );
     }
 
     // Check transaction stats
@@ -712,7 +755,7 @@ fn test_collector_comprehensive_stats() {
         .waste_transaction
         .get_collector_statistics(&collector);
     assert_eq!(tx_stats.total_transactions, 10);
-    assert_eq!(tx_stats.total_weight, 10_000);
+    assert_eq!(tx_stats.total_weight, 55_000); // 1000 + 2000 + ... + 10_000
 
     // Check reputation stats
     for _ in 0..10 {
@@ -722,8 +765,8 @@ fn test_collector_comprehensive_stats() {
     }
 
     let rep_stats = test_env.reputation.get_statistics(&collector);
-    assert_eq!(rep_stats.successful_transactions, 10);
-    assert_eq!(rep_stats.total_transactions, 10);
+    assert_eq!(rep_stats.2, 10);
+    assert_eq!(rep_stats.1, 10);
 }
 
 // ============================================================================
@@ -732,8 +775,8 @@ fn test_collector_comprehensive_stats() {
 
 #[test]
 fn test_workspace_setup() {
-    let env = Env::default();
-    assert!(env.ledger().timestamp() > 0);
+    let test_env = WasteFiTestEnv::new();
+    assert!(test_env.env.ledger().timestamp() > 0);
 }
 
 #[test]
@@ -778,22 +821,22 @@ fn test_active_collector_can_submit_transaction() {
 
     // Register collection point
     let point_owner = Address::generate(&test_env.env);
-    let point_id = test_env.collection_point.register(
+    let point_id = test_env.collection_point.register_point(
         &point_owner,
         &String::from_str(&test_env.env, "Test Point"),
         &String::from_str(&test_env.env, "123 Test St"),
+        &accepted_materials(&test_env.env),
     );
 
     // Configure waste_transaction to use collector_registry
-    let registry_id = test_env.env.register_contract(None, CollectorRegistry);
     test_env
         .waste_transaction
-        .set_collector_registry_contract(&registry_id);
+        .set_collector_registry_contract(&test_env.collector_registry.address);
 
     // Active collector should be able to submit transaction
     let tx_id = test_env.waste_transaction.record_collection(
         &collector,
-        &point_id,
+        &point_owner,
         &MaterialType::Plastic,
         &5000,
         &8_000_000,
@@ -818,22 +861,23 @@ fn test_pending_collector_cannot_submit_transaction() {
         &String::from_str(&test_env.env, "+9876543210"),
     );
 
-    let point_id = test_env.collection_point.register(
-        &Address::generate(&test_env.env),
+    let point_owner = Address::generate(&test_env.env);
+    let point_id = test_env.collection_point.register_point(
+        &point_owner,
         &String::from_str(&test_env.env, "Test Point"),
         &String::from_str(&test_env.env, "456 Test Ave"),
+        &accepted_materials(&test_env.env),
     );
 
     // Configure waste_transaction to use collector_registry
-    let registry_id = test_env.env.register_contract(None, CollectorRegistry);
     test_env
         .waste_transaction
-        .set_collector_registry_contract(&registry_id);
+        .set_collector_registry_contract(&test_env.collector_registry.address);
 
     // Pending collector should NOT be able to submit - should panic
     test_env.waste_transaction.record_collection(
         &collector,
-        &point_id,
+        &point_owner,
         &MaterialType::Plastic,
         &5000,
         &8_000_000,
@@ -861,22 +905,23 @@ fn test_suspended_collector_cannot_submit_transaction() {
         .collector_registry
         .update_status(&collector, &CollectorStatus::Suspended);
 
-    let point_id = test_env.collection_point.register(
-        &Address::generate(&test_env.env),
+    let point_owner = Address::generate(&test_env.env);
+    let point_id = test_env.collection_point.register_point(
+        &point_owner,
         &String::from_str(&test_env.env, "Test Point"),
         &String::from_str(&test_env.env, "789 Test Blvd"),
+        &accepted_materials(&test_env.env),
     );
 
     // Configure waste_transaction to use collector_registry
-    let registry_id = test_env.env.register_contract(None, CollectorRegistry);
     test_env
         .waste_transaction
-        .set_collector_registry_contract(&registry_id);
+        .set_collector_registry_contract(&test_env.collector_registry.address);
 
     // Suspended collector should NOT be able to submit - should panic
     test_env.waste_transaction.record_collection(
         &collector,
-        &point_id,
+        &point_owner,
         &MaterialType::Glass,
         &3000,
         &5_000_000,
@@ -904,22 +949,23 @@ fn test_banned_collector_cannot_submit_transaction() {
         .collector_registry
         .update_status(&collector, &CollectorStatus::Banned);
 
-    let point_id = test_env.collection_point.register(
-        &Address::generate(&test_env.env),
+    let point_owner = Address::generate(&test_env.env);
+    let point_id = test_env.collection_point.register_point(
+        &point_owner,
         &String::from_str(&test_env.env, "Test Point"),
         &String::from_str(&test_env.env, "321 Test Ln"),
+        &accepted_materials(&test_env.env),
     );
 
     // Configure waste_transaction to use collector_registry
-    let registry_id = test_env.env.register_contract(None, CollectorRegistry);
     test_env
         .waste_transaction
-        .set_collector_registry_contract(&registry_id);
+        .set_collector_registry_contract(&test_env.collector_registry.address);
 
     // Banned collector should NOT be able to submit - should panic
     test_env.waste_transaction.record_collection(
         &collector,
-        &point_id,
+        &point_owner,
         &MaterialType::Metal,
         &4000,
         &15_000_000,
@@ -941,22 +987,23 @@ fn test_collector_status_change_affects_future_transactions() {
         .collector_registry
         .update_status(&collector, &CollectorStatus::Active);
 
-    let point_id = test_env.collection_point.register(
-        &Address::generate(&test_env.env),
+    let point_owner = Address::generate(&test_env.env);
+    let point_id = test_env.collection_point.register_point(
+        &point_owner,
         &String::from_str(&test_env.env, "Test Point"),
         &String::from_str(&test_env.env, "555 Test Dr"),
+        &accepted_materials(&test_env.env),
     );
 
     // Configure waste_transaction to use collector_registry
-    let registry_id = test_env.env.register_contract(None, CollectorRegistry);
     test_env
         .waste_transaction
-        .set_collector_registry_contract(&registry_id);
+        .set_collector_registry_contract(&test_env.collector_registry.address);
 
     // First transaction should succeed (collector is active)
     let tx_id_1 = test_env.waste_transaction.record_collection(
         &collector,
-        &point_id,
+        &point_owner,
         &MaterialType::Plastic,
         &2000,
         &8_000_000,
@@ -969,15 +1016,15 @@ fn test_collector_status_change_affects_future_transactions() {
         .update_status(&collector, &CollectorStatus::Suspended);
 
     // Second transaction should fail (collector is now suspended)
-    let result = std::panic::catch_unwind(|| {
+    let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
         test_env.waste_transaction.record_collection(
             &collector,
-            &point_id,
+            &point_owner,
             &MaterialType::Plastic,
             &2000,
             &8_000_000,
         )
-    });
+    }));
     assert!(result.is_err());
 }
 
@@ -987,17 +1034,19 @@ fn test_transaction_without_registry_configured_works() {
 
     // Don't configure collector registry contract
     let collector = Address::generate(&test_env.env);
-    let point_id = test_env.collection_point.register(
-        &Address::generate(&test_env.env),
+    let point_owner = Address::generate(&test_env.env);
+    let point_id = test_env.collection_point.register_point(
+        &point_owner,
         &String::from_str(&test_env.env, "Test Point"),
         &String::from_str(&test_env.env, "999 Test Way"),
+        &accepted_materials(&test_env.env),
     );
 
     // Without collector registry configured, validation should be skipped
     // and transaction should succeed
     let tx_id = test_env.waste_transaction.record_collection(
         &collector,
-        &point_id,
+        &point_owner,
         &MaterialType::Electronics,
         &1000,
         &25_000_000,
