@@ -363,6 +363,11 @@ impl CollectionPoint {
         common::AdminEvents::unpaused(&env);
     }
 
+    /// Check if contract is paused
+    pub fn is_paused(env: Env) -> bool {
+        common::Pausable::is_paused(&env)
+    }
+
     /// Get admin address
     pub fn admin(env: Env) -> Address {
         common::AccessControl::get_admin(&env).expect("Admin not found")
