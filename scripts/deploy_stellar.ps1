@@ -20,7 +20,7 @@ Write-Host ""
 
 # Check contracts are built
 Write-Host "[1/8] Checking contracts..." -ForegroundColor Blue
-$WasmPath = "target\wasm32-unknown-unknown\release"
+$WasmPath = "target\wasm32v1-none\release"
 
 if (-not (Test-Path "$WasmPath\waste_token.wasm")) {
     Write-Host "Contracts not built. Building now..." -ForegroundColor Red

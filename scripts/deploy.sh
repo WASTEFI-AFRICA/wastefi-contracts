@@ -14,7 +14,7 @@
 #
 # Requirements:
 #   - Soroban CLI (soroban) installed
-#   - Rust toolchain with wasm32-unknown-unknown target
+#   - Rust toolchain with wasm32v1-none target
 #   - Network configured in Soroban CLI
 #   - Admin account with sufficient XLM balance
 
@@ -85,11 +85,11 @@ check_prerequisites() {
     log_success "✓ Rust found: $(rustc --version)"
     
     # Check wasm32 target
-    if ! rustup target list | grep -q "wasm32-unknown-unknown (installed)"; then
-        log_warning "wasm32-unknown-unknown target not installed. Installing..."
-        rustup target add wasm32-unknown-unknown
+    if ! rustup target list | grep -q "wasm32v1-none (installed)"; then
+        log_warning "wasm32v1-none target not installed. Installing..."
+        rustup target add wasm32v1-none
     fi
-    log_success "✓ wasm32-unknown-unknown target available"
+    log_success "✓ wasm32v1-none target available"
     
     # Check config file
     if [ ! -f "$PROJECT_ROOT/$CONFIG_FILE" ]; then
@@ -127,7 +127,7 @@ build_contracts() {
     
     # List built contracts
     log_info "Built contracts:"
-    ls -lh target/wasm32-unknown-unknown/release/*.wasm | awk '{print "  " $9 " (" $5 ")"}'
+    ls -lh target/wasm32v1-none/release/*.wasm | awk '{print "  " $9 " (" $5 ")"}'
 }
 
 optimize_wasm() {
@@ -333,7 +333,7 @@ main() {
     log_info "[1/7] Deploying WasteToken..."
     WASTE_TOKEN_ID=$(deploy_contract \
         "WasteToken" \
-        "target/wasm32-unknown-unknown/release/waste_token.wasm" \
+        "target/wasm32v1-none/release/waste_token.wasm" \
         "$ADMIN_ADDRESS")
     if [ $? -ne 0 ]; then exit 1; fi
     echo ""
@@ -342,7 +342,7 @@ main() {
     log_info "[2/7] Deploying CollectorRegistry..."
     COLLECTOR_REGISTRY_ID=$(deploy_contract \
         "CollectorRegistry" \
-        "target/wasm32-unknown-unknown/release/collector_registry.wasm" \
+        "target/wasm32v1-none/release/collector_registry.wasm" \
         "$ADMIN_ADDRESS")
     if [ $? -ne 0 ]; then exit 1; fi
     echo ""
@@ -351,7 +351,7 @@ main() {
     log_info "[3/7] Deploying CollectionPoint..."
     COLLECTION_POINT_ID=$(deploy_contract \
         "CollectionPoint" \
-        "target/wasm32-unknown-unknown/release/collection_point.wasm" \
+        "target/wasm32v1-none/release/collection_point.wasm" \
         "$ADMIN_ADDRESS")
     if [ $? -ne 0 ]; then exit 1; fi
     echo ""
@@ -360,7 +360,7 @@ main() {
     log_info "[4/7] Deploying MaterialPricing..."
     MATERIAL_PRICING_ID=$(deploy_contract \
         "MaterialPricing" \
-        "target/wasm32-unknown-unknown/release/material_pricing.wasm" \
+        "target/wasm32v1-none/release/material_pricing.wasm" \
         "$ADMIN_ADDRESS")
     if [ $? -ne 0 ]; then exit 1; fi
     echo ""
@@ -369,7 +369,7 @@ main() {
     log_info "[5/7] Deploying Reputation..."
     REPUTATION_ID=$(deploy_contract \
         "Reputation" \
-        "target/wasm32-unknown-unknown/release/reputation.wasm" \
+        "target/wasm32v1-none/release/reputation.wasm" \
         "$ADMIN_ADDRESS")
     if [ $? -ne 0 ]; then exit 1; fi
     echo ""
@@ -378,7 +378,7 @@ main() {
     log_info "[6/7] Deploying WasteTransaction..."
     WASTE_TRANSACTION_ID=$(deploy_contract \
         "WasteTransaction" \
-        "target/wasm32-unknown-unknown/release/waste_transaction.wasm" \
+        "target/wasm32v1-none/release/waste_transaction.wasm" \
         "$ADMIN_ADDRESS")
     if [ $? -ne 0 ]; then exit 1; fi
     echo ""
@@ -387,7 +387,7 @@ main() {
     log_info "[7/7] Deploying PaymentDistribution..."
     PAYMENT_DISTRIBUTION_ID=$(deploy_contract \
         "PaymentDistribution" \
-        "target/wasm32-unknown-unknown/release/payment_distribution.wasm" \
+        "target/wasm32v1-none/release/payment_distribution.wasm" \
         "$ADMIN_ADDRESS")
     if [ $? -ne 0 ]; then exit 1; fi
     echo ""

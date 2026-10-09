@@ -6,7 +6,7 @@
   "operator": "GBKKMOEBKLQU3YARAASL7CB7YWAEXOZ47AXW6AIEZ5UAWFP5SIS4NJNM",
   "contracts": {
     "waste_token": {
-      "wasm": "target/wasm32-unknown-unknown/release/waste_token.wasm",
+      "wasm": "target/wasm32v1-none/release/waste_token.wasm",
       "init_params": {
         "name": "WasteFi Token Testnet",
         "symbol": "WASTE-TEST",
@@ -14,23 +14,23 @@
       }
     },
     "collector_registry": {
-      "wasm": "target/wasm32-unknown-unknown/release/collector_registry.wasm",
+      "wasm": "target/wasm32v1-none/release/collector_registry.wasm",
       "init_params": {}
     },
     "collection_point": {
-      "wasm": "target/wasm32-unknown-unknown/release/collection_point.wasm",
+      "wasm": "target/wasm32v1-none/release/collection_point.wasm",
       "init_params": {}
     },
     "waste_transaction": {
-      "wasm": "target/wasm32-unknown-unknown/release/waste_transaction.wasm",
+      "wasm": "target/wasm32v1-none/release/waste_transaction.wasm",
       "init_params": {}
     },
     "payment_distribution": {
-      "wasm": "target/wasm32-unknown-unknown/release/payment_distribution.wasm",
+      "wasm": "target/wasm32v1-none/release/payment_distribution.wasm",
       "init_params": {}
     },
     "material_pricing": {
-      "wasm": "target/wasm32-unknown-unknown/release/material_pricing.wasm",
+      "wasm": "target/wasm32v1-none/release/material_pricing.wasm",
       "init_params": {
         "default_prices": {
           "plastic": 100,
@@ -42,7 +42,7 @@
       }
     },
     "reputation": {
-      "wasm": "target/wasm32-unknown-unknown/release/reputation.wasm",
+      "wasm": "target/wasm32v1-none/release/reputation.wasm",
       "init_params": {
         "initial_score": 500
       }

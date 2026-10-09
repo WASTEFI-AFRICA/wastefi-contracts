@@ -13,7 +13,7 @@
 #
 # Requirements:
 #   - Soroban CLI (soroban.exe) installed
-#   - Rust toolchain with wasm32-unknown-unknown target
+#   - Rust toolchain with wasm32v1-none target
 #   - Network configured in Soroban CLI
 #   - Admin account with sufficient XLM balance
 
@@ -106,13 +106,13 @@ function Test-Prerequisites {
     
     # Check wasm32 target
     $targets = rustup target list
-    if ($targets -match "wasm32-unknown-unknown \(installed\)") {
-        Write-LogSuccess "✓ wasm32-unknown-unknown target available"
+    if ($targets -match "wasm32v1-none \(installed\)") {
+        Write-LogSuccess "✓ wasm32v1-none target available"
     }
     else {
-        Write-LogWarning "wasm32-unknown-unknown target not installed. Installing..."
-        rustup target add wasm32-unknown-unknown
-        Write-LogSuccess "✓ wasm32-unknown-unknown target installed"
+        Write-LogWarning "wasm32v1-none target not installed. Installing..."
+        rustup target add wasm32v1-none
+        Write-LogSuccess "✓ wasm32v1-none target installed"
     }
     
     # Check config file
@@ -158,7 +158,7 @@ function Build-Contracts {
         
         # List built contracts
         Write-LogInfo "Built contracts:"
-        $wasmFiles = Get-ChildItem "target\wasm32-unknown-unknown\release\*.wasm"
+        $wasmFiles = Get-ChildItem "target\wasm32v1-none\release\*.wasm"
         foreach ($file in $wasmFiles) {
             $size = [math]::Round($file.Length / 1KB, 2)
             Write-Host "  $($file.Name) ($size KB)" -ForegroundColor Gray
@@ -394,7 +394,7 @@ function Start-Deployment {
     Write-LogInfo "Deploying contracts (this may take several minutes)..."
     Write-Host ""
     
-    $wasmDir = Join-Path $ProjectRoot "target\wasm32-unknown-unknown\release"
+    $wasmDir = Join-Path $ProjectRoot "target\wasm32v1-none\release"
     
     # 1. WasteToken
     Write-LogInfo "[1/7] Deploying WasteToken..."

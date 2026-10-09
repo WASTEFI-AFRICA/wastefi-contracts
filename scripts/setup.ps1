@@ -20,8 +20,8 @@ rustup update
 Write-Host "Rust updated" -ForegroundColor Green
 
 # Add wasm32 target
-Write-Host "`nAdding wasm32-unknown-unknown target..." -ForegroundColor Yellow
-rustup target add wasm32-unknown-unknown
+Write-Host "`nAdding wasm32v1-none target..." -ForegroundColor Yellow
+rustup target add wasm32v1-none
 Write-Host "wasm32 target added" -ForegroundColor Green
 
 # Install rustfmt and clippy

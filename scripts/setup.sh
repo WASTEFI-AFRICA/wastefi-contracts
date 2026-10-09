@@ -28,8 +28,8 @@ rustup update
 echo -e "${GREEN}Rust updated${NC}"
 
 # Add wasm32 target
-echo -e "\n${YELLOW}Adding wasm32-unknown-unknown target...${NC}"
-rustup target add wasm32-unknown-unknown
+echo -e "\n${YELLOW}Adding wasm32v1-none target...${NC}"
+rustup target add wasm32v1-none
 echo -e "${GREEN}wasm32 target added${NC}"
 
 # Install rustfmt and clippy

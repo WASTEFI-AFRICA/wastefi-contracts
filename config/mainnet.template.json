@@ -11,7 +11,7 @@
   
   "contracts": {
     "waste_token": {
-      "wasm": "target/wasm32-unknown-unknown/release/waste_token.wasm",
+      "wasm": "target/wasm32v1-none/release/waste_token.wasm",
       "init_params": {
         "name": "WasteFi Token",
         "symbol": "WASTE",
@@ -21,27 +21,27 @@
       "notes": "Consider implementing supply cap before mainnet"
     },
     "collector_registry": {
-      "wasm": "target/wasm32-unknown-unknown/release/collector_registry.wasm",
+      "wasm": "target/wasm32v1-none/release/collector_registry.wasm",
       "init_params": {},
       "notes": "Ensure KYC integration ready"
     },
     "collection_point": {
-      "wasm": "target/wasm32-unknown-unknown/release/collection_point.wasm",
+      "wasm": "target/wasm32v1-none/release/collection_point.wasm",
       "init_params": {},
       "notes": "Verify all collection points before registration"
     },
     "waste_transaction": {
-      "wasm": "target/wasm32-unknown-unknown/release/waste_transaction.wasm",
+      "wasm": "target/wasm32v1-none/release/waste_transaction.wasm",
       "init_params": {},
       "notes": "Monitor fraud detection effectiveness closely"
     },
     "payment_distribution": {
-      "wasm": "target/wasm32-unknown-unknown/release/payment_distribution.wasm",
+      "wasm": "target/wasm32v1-none/release/payment_distribution.wasm",
       "init_params": {},
       "notes": "CRITICAL: Implement double-payment prevention before mainnet"
     },
     "material_pricing": {
-      "wasm": "target/wasm32-unknown-unknown/release/material_pricing.wasm",
+      "wasm": "target/wasm32v1-none/release/material_pricing.wasm",
       "init_params": {
         "default_prices": {
           "plastic": "REPLACE_WITH_MARKET_PRICE",
@@ -54,7 +54,7 @@
       "notes": "Verify prices with market research before deployment"
     },
     "reputation": {
-      "wasm": "target/wasm32-unknown-unknown/release/reputation.wasm",
+      "wasm": "target/wasm32v1-none/release/reputation.wasm",
       "init_params": {
         "initial_score": 500
       }
