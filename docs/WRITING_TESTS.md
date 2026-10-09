@@ -56,8 +56,7 @@ wastefi-contracts/
 │   │       └── test.rs
 │   └── ...
 └── tests/
-    ├── integration_e2e.rs      # Integration tests
-    ├── stress_tests.rs         # Stress/performance tests
+    └── integration_test.rs     # Cross-contract integration tests
     └── ...
 ```
 
@@ -658,7 +657,7 @@ cargo test transfer --workspace
 
 ```bash
 # Run only integration tests
-cargo test --test integration_e2e
+cargo test --test integration_test
 
 # Run all integration tests
 cargo test --tests
@@ -1103,7 +1102,7 @@ cargo test -p waste_token
 When stuck:
 1. Check the [Soroban documentation](https://soroban.stellar.org/)
 2. Review existing tests in the codebase
-3. Look at `tests/integration_e2e.rs` for examples
+3. Look at `tests/integration_test.rs` for examples
 4. Check the main `TESTING.md` document
 5. Open an issue on GitHub with test output
 

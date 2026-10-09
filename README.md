@@ -26,7 +26,7 @@ For the HTTP API and indexer that sit in front of these contracts, see
 | `material_pricing` | Per-material price oracle, written by an operator role |
 | `payment_distribution` | Records a payout against a transaction id; the amount is supplied by the caller |
 | `reputation` | Integer reputation scoring derived from verified delivery history |
-| `waste_token` | The reward token: mint, burn, transfer and balances. Allowance storage exists but no `approve`/`transfer_from` entry points are exposed yet |
+| `waste_token` | The reward token: capped mint, burn, transfer, and approve/transfer_from allowances |
 
 `common` is a library rather than a deployed contract. The other seven each
 build to their own wasm.
@@ -92,7 +92,7 @@ pinned in [`rust-toolchain.toml`](rust-toolchain.toml), so `rustup` provisions
 them on first build.
 
 ```sh
-make build          # cargo build --target wasm32-unknown-unknown --release
+make build          # scripts/build-wasm.sh: one cdylib wasm per contract
 make test           # cargo test --workspace
 make lint           # cargo clippy --all-targets -- -D warnings
 make fmt            # cargo fmt --all
@@ -101,32 +101,34 @@ make check          # fmt, lint, test, build
 
 Built artifacts land in `target/wasm32-unknown-unknown/release/`.
 
+Always build wasm through `make build` or `scripts/build-wasm.sh`, not a bare
+`cargo build`. The workspace root is itself a package, so a bare build emits no
+contract wasm, and `Cargo.toml` lists both `lib` (so the integration tests can
+import the contracts) and `cdylib`, which makes a default build roughly 40%
+larger. The script passes `--crate-type cdylib` per contract, as the Stellar
+CLI does. Current sizes are 28 to 50 KB per contract.
+
 ## Testing
 
 ```sh
-cargo test --workspace          # all unit tests
-cargo test -p payment_distribution    # one crate
-cargo test --test integration_e2e     # end-to-end scenarios
-cargo test --test stress_tests        # high-volume scenarios
+cargo test --workspace                 # everything
+cargo test -p payment_distribution     # one crate
+cargo test --test integration_test     # cross-contract scenarios
 ```
 
-The suite is 146 unit tests across the eight crates plus 58 integration tests
-in [`tests/`](tests). Coverage is uneven: `common` carries 54 of the unit tests,
-while `waste_transaction` has none of its own and is exercised only through the
-integration tests.
+194 tests, all passing: 166 unit tests across the crates and 28 integration
+tests in [`tests/integration_test.rs`](tests/integration_test.rs) that deploy all
+seven contracts into one test environment and drive them through registration,
+collection, pricing, payment, reputation, pausing, and collector-status gating.
 
-**The test suite does not currently compile.** The wasm release build is fine,
-but building for the host target pulls in `soroban-sdk`'s `testutils`, and
-`soroban-env-host` 21.2.1 fails against the `ed25519-dalek` version that now
-resolves. The CI test job is a stub that echoes a message instead of running
-`cargo test`, so CI reports green while executing none of these tests. Fixing
-this means moving off `soroban-sdk` 21.7.7, which is many major versions behind;
-see the open Dependabot pull requests. Until then, treat the test counts above
-as tests that exist, not tests that pass.
+Coverage is uneven. `waste_transaction`, the most logic-heavy contract, has no
+unit tests of its own and is exercised only through the integration tests. There
+is no coverage measurement, so no coverage figure is claimed.
 
 CI ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) runs
-`cargo fmt --check`, `cargo clippy -D warnings`, `cargo check`, a release wasm
-build, and `cargo audit` on every push and pull request.
+`cargo fmt --check`, `cargo clippy -D warnings`, `cargo check`, `cargo test
+--workspace`, a release wasm build that fails unless all seven contracts
+produce an artifact, and `cargo audit` on every push and pull request.
 
 ## Deployment
 
@@ -160,10 +162,12 @@ These contracts have **not** been audited and are **not** deployed to mainnet.
 Do not use them to hold real value in their present state.
 
 Known gaps that must close before a mainnet deployment are tracked in
-[docs/SECURITY_ROADMAP.md](docs/SECURITY_ROADMAP.md). It lists, in its own
-priority order: no double-payment prevention in `payment_distribution`, no
-supply cap in `waste_token`, a single admin key where a multisig belongs,
-incomplete collector-status validation, and weak rate limiting.
+[docs/SECURITY_ROADMAP.md](docs/SECURITY_ROADMAP.md). The token supply cap is
+now enforced in `mint` and a completed or failed payment can no longer be
+modified. Still open: a single admin key where a multisig belongs, payout
+amounts supplied by the caller, verification gated on the admin rather than
+the collection point, incomplete collector-status validation, and weak rate
+limiting.
 
 - [docs/THREAT_MODEL.md](docs/THREAT_MODEL.md) — who these contracts defend against and what the admin can do
 - [docs/SECURITY_CONSIDERATIONS.md](docs/SECURITY_CONSIDERATIONS.md) — per-contract analysis

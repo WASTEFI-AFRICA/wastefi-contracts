@@ -418,7 +418,7 @@ cd wastefi-contracts
 
 **Build All Contracts**:
 ```bash
-cargo build --target wasm32-unknown-unknown --release
+make build
 ```
 
 **Run Unit Tests**:

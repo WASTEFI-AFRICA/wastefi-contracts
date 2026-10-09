@@ -868,7 +868,7 @@ cargo tarpaulin --workspace --out Html
 
 **Build WASM**:
 ```bash
-cargo build --target wasm32-unknown-unknown --release
+make build
 ```
 
 ---

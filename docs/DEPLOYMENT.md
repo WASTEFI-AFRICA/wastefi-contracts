@@ -174,7 +174,7 @@ git checkout tags/v1.0.0
 cargo clean
 
 # Build all contracts for production
-cargo build --target wasm32-unknown-unknown --release
+make build
 
 # Verify all WASM files generated
 ls -lh target/wasm32-unknown-unknown/release/*.wasm
@@ -637,7 +637,7 @@ soroban contract invoke \
 
 # 4. Verify build is clean
 cargo clean
-cargo build --target wasm32-unknown-unknown --release
+make build
 cargo test --workspace
 
 # 5. Create deployment backup
@@ -1004,7 +1004,7 @@ soroban contract invoke \
 
 ```bash
 # 1. Build new contract version
-cargo build --target wasm32-unknown-unknown --release
+make build
 
 # 2. Deploy new version
 NEW_CONTRACT_ID=$(soroban contract deploy \

@@ -20,7 +20,7 @@ This guide provides detailed instructions for safely upgrading WasteFi smart con
 
 ```bash
 # 1. Build new contract version
-cargo build --release --target wasm32-unknown-unknown
+make build
 
 # 2. Optimize WASM
 soroban contract optimize \

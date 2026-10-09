@@ -220,7 +220,7 @@ git clone https://github.com/WASTEFI-AFRICA/wastefi-contracts.git
 cd wastefi-contracts
 
 # Build all contracts
-cargo build --target wasm32-unknown-unknown --release
+make build
 
 # Verify build
 ls -lh target/wasm32-unknown-unknown/release/*.wasm
@@ -338,8 +338,7 @@ wastefi-contracts/
 │       │   └── ...
 │       └── Cargo.toml
 ├── tests/                       # Integration tests
-│   ├── integration_e2e.rs       # E2E test suite
-│   ├── stress_tests.rs          # Stress/performance tests
+│   └── integration_test.rs      # Cross-contract integration tests
 │   ├── security_tests.rs        # Security tests
 │   └── chaos_tests.rs           # Chaos testing
 ├── scripts/                     # Deployment & utility scripts
@@ -630,7 +629,7 @@ cargo tarpaulin --workspace --out Html
 
 **Example E2E Test**:
 ```rust
-// tests/integration_e2e.rs
+// tests/integration_test.rs
 
 #[test]
 fn test_complete_workflow() {
@@ -675,7 +674,7 @@ fn test_complete_workflow() {
 
 **Run Integration Tests**:
 ```bash
-cargo test --test integration_e2e
+cargo test --test integration_test
 ```
 
 ---
@@ -1166,7 +1165,7 @@ curl "https://friendbot.stellar.org?addr=$(soroban keys address deployer)"
 
 ### Build Commands
 ```bash
-cargo build --target wasm32-unknown-unknown --release
+make build
 cargo check --workspace
 cargo test --workspace
 cargo clippy --workspace -- -D warnings
@@ -1188,7 +1187,7 @@ soroban contract invoke --id <CONTRACT_ID> --network testnet -- <method> --<para
 ### Testing Commands
 ```bash
 cargo test
-cargo test --test integration_e2e
+cargo test --test integration_test
 cargo tarpaulin --workspace --out Html
 ```
 

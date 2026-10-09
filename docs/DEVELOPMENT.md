@@ -79,12 +79,12 @@ wastefi-contracts/
 
 ### Build all contracts
 ```bash
-cargo build --target wasm32-unknown-unknown --release
+make build
 ```
 
 ### Build specific contract
 ```bash
-cargo build -p waste_token --target wasm32-unknown-unknown --release
+./scripts/build-wasm.sh waste_token
 ```
 
 ### Optimized build
