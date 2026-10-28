@@ -1,0 +1,15 @@
+# cargo audit configuration, read by the Security Audit job in CI.
+#
+# Every ignored advisory needs a reason here and should be removed as soon as an
+# upgrade path exists.
+
+[advisories]
+ignore = [
+    # crypto-bigint 0.5.5: timing variability in constant-time operations.
+    # It reaches this workspace only through soroban-env-host (k256 and p256 via
+    # elliptic-curve 0.13), which is the native host used to run tests. It is not
+    # in the dependency tree for wasm32v1-none, so the deployed contracts do not
+    # contain it. The fix is crypto-bigint 0.7, which soroban-sdk 23 cannot use.
+    # Check with: cargo tree -i crypto-bigint -e normal --target wasm32v1-none
+    "RUSTSEC-2026-0387",
+]
