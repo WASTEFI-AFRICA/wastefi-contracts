@@ -47,16 +47,17 @@ that physically received the material:
    requires the contract admin**, not the collection point. Collection-point
    identity is registered in `collection_point` but is not yet what authorizes a
    verification.
-4. `payment_distribution::process_payment` records what is owed. It also
-   requires admin, and it takes `amount` as a caller-supplied argument — it does
-   not read the verified transaction or price it against `material_pricing`.
-5. `waste_token` mints against that record, gated on the minter role.
+4. `payment_distribution::process_payment` records what is owed. It requires
+   admin and takes `amount` as an argument; it does not yet read the amount from
+   the verified transaction.
+5. `payment_distribution::update_payment_status(Completed)` mints that amount of
+   WASTE to the collector through `waste_token::mint_from`. The deploy script
+   approves `payment_distribution` as the token's only minter.
 
-The practical consequence is that the admin key is trusted for verification,
-payout amounts, and minting. Reducing that trust — deriving amounts on-chain,
-authorizing verification from `collection_point`, and splitting the admin into a
-multisig — is the main item in
-[docs/SECURITY_ROADMAP.md](docs/SECURITY_ROADMAP.md).
+The practical consequence is that the admin key is trusted for verification and
+payout amounts. Reducing that trust (deriving amounts on-chain, authorizing
+verification from `collection_point`, and splitting the admin into a multisig) is
+the main item in [docs/SECURITY_ROADMAP.md](docs/SECURITY_ROADMAP.md).
 
 ## Release profile
 

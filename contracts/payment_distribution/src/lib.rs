@@ -1,5 +1,5 @@
 #![no_std]
-use soroban_sdk::{contract, contractimpl, Address, Env, Vec};
+use soroban_sdk::{contract, contractimpl, Address, Env, IntoVal, Symbol, Vec};
 
 use common::types::*;
 
@@ -11,6 +11,28 @@ const PAYMENT_COUNT: &str = "PaymentCount";
 
 #[contract]
 pub struct PaymentDistribution;
+
+impl PaymentDistribution {
+    /// Mints the payment amount to the recipient through the token contract. This
+    /// contract must be an approved minter there (`add_minter`).
+    fn pay_out(env: &Env, payment: &Payment) {
+        let token: Address = env
+            .storage()
+            .instance()
+            .get(&TOKEN_CONTRACT)
+            .expect("Token contract not set");
+        env.invoke_contract::<()>(
+            &token,
+            &Symbol::new(env, "mint_from"),
+            soroban_sdk::vec![
+                env,
+                env.current_contract_address().into_val(env),
+                payment.recipient.clone().into_val(env),
+                payment.amount.into_val(env),
+            ],
+        );
+    }
+}
 
 #[contractimpl]
 impl PaymentDistribution {
@@ -251,6 +273,10 @@ impl PaymentDistribution {
     /// # Arguments
     /// * `payment_id` - Payment ID
     /// * `status` - New status
+    ///
+    /// # Note
+    /// Setting `Completed` mints the payment amount to the recipient, so this contract
+    /// must be an approved minter on the token contract.
     pub fn update_payment_status(env: Env, payment_id: u64, status: PaymentStatus) {
         common::Initializable::require_initialized(&env).expect("Not initialized");
 
@@ -275,11 +301,13 @@ impl PaymentDistribution {
             panic!("Cannot modify failed payment");
         }
 
-        // Update status
+        // Update status. Completing a payment mints the tokens; if the mint fails the
+        // whole call fails and the payment stays as it was.
         let status_clone = status.clone();
         payment.status = status;
         if status_clone == PaymentStatus::Completed {
             payment.processed_at = env.ledger().timestamp();
+            Self::pay_out(&env, &payment);
         }
 
         // Save updated payment

@@ -11,6 +11,24 @@ fn create_contract(env: &Env) -> (Address, PaymentDistributionClient) {
     (contract_id, client)
 }
 
+/// Deploys a real WASTE token with the payment contract approved as a minter.
+fn create_token<'a>(
+    env: &Env,
+    admin: &Address,
+    payment_contract: &Address,
+) -> waste_token::WasteTokenClient<'a> {
+    let token_id = env.register_contract(None, waste_token::WasteToken);
+    let token = waste_token::WasteTokenClient::new(env, &token_id);
+    token.initialize(
+        admin,
+        &soroban_sdk::String::from_str(env, "WasteFi Token"),
+        &soroban_sdk::String::from_str(env, "WASTE"),
+        &7,
+    );
+    token.add_minter(payment_contract);
+    token
+}
+
 #[test]
 fn test_initialize() {
     let env = Env::default();
@@ -100,11 +118,11 @@ fn test_update_payment_status() {
     env.ledger().with_mut(|li| li.timestamp = 1000);
 
     let admin = Address::generate(&env);
-    let token_contract = Address::generate(&env);
     let recipient = Address::generate(&env);
-    let (_, client) = create_contract(&env);
+    let (contract_id, client) = create_contract(&env);
+    let token = create_token(&env, &admin, &contract_id);
 
-    client.initialize(&admin, &token_contract);
+    client.initialize(&admin, &token.address);
 
     let payment_id = client.process_payment(&1, &recipient, &1_000);
 
@@ -260,11 +278,11 @@ fn test_payment_status_transitions() {
     env.mock_all_auths();
 
     let admin = Address::generate(&env);
-    let token_contract = Address::generate(&env);
     let recipient = Address::generate(&env);
-    let (_, client) = create_contract(&env);
+    let (contract_id, client) = create_contract(&env);
+    let token = create_token(&env, &admin, &contract_id);
 
-    client.initialize(&admin, &token_contract);
+    client.initialize(&admin, &token.address);
 
     let payment_id = client.process_payment(&1, &recipient, &1_000);
 
@@ -582,4 +600,46 @@ fn test_batch_process_maintains_timestamp_consistency() {
         assert_eq!(payment.created_at, first_payment.created_at);
         assert_eq!(payment.created_at, 5000);
     }
+}
+
+#[test]
+fn test_completing_a_payment_mints_to_the_recipient() {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    let admin = Address::generate(&env);
+    let recipient = Address::generate(&env);
+    let (contract_id, client) = create_contract(&env);
+    let token = create_token(&env, &admin, &contract_id);
+    client.initialize(&admin, &token.address);
+
+    let payment_id = client.process_payment(&7, &recipient, &16_000_000);
+    assert_eq!(token.balance(&recipient), 0);
+
+    client.update_payment_status(&payment_id, &PaymentStatus::Completed);
+    assert_eq!(token.balance(&recipient), 16_000_000);
+    assert_eq!(token.total_supply(), 16_000_000);
+}
+
+#[test]
+fn test_completion_fails_if_not_a_minter() {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    let admin = Address::generate(&env);
+    let recipient = Address::generate(&env);
+    let (contract_id, client) = create_contract(&env);
+    let token = create_token(&env, &admin, &contract_id);
+    token.remove_minter(&contract_id);
+    client.initialize(&admin, &token.address);
+
+    let payment_id = client.process_payment(&7, &recipient, &1_000);
+    let result = client.try_update_payment_status(&payment_id, &PaymentStatus::Completed);
+
+    assert!(result.is_err());
+    assert_eq!(
+        client.get_payment(&payment_id).status,
+        PaymentStatus::Pending
+    );
+    assert_eq!(token.balance(&recipient), 0);
 }

@@ -14,6 +14,38 @@ const MAX_SUPPLY: i128 = 10_000_000_000_000_000;
 #[contract]
 pub struct WasteToken;
 
+impl WasteToken {
+    /// Mints after the caller's authorization has been checked.
+    fn mint_internal(env: &Env, to: Address, amount: i128) {
+        // Validate amount
+        common::validate_amount(amount).expect("Invalid amount");
+
+        // Enforce the supply cap before any state changes. saturating_add means
+        // an overflow lands above MAX_SUPPLY and is rejected by the same check.
+        let total_supply = read_total_supply(env);
+        let new_total_supply = total_supply.saturating_add(amount);
+        if new_total_supply > MAX_SUPPLY {
+            panic!("Minting would exceed maximum supply cap");
+        }
+
+        // Emit event before storage updates for consistency
+        common::TokenEvents::mint(env, to.clone(), amount);
+
+        // Get current balance
+        let current_balance = read_balance(env, &to);
+        let new_balance = current_balance.saturating_add(amount);
+
+        // Update balance
+        write_balance(env, &to, new_balance);
+
+        // Update total supply
+        write_total_supply(env, new_total_supply);
+
+        // Bump storage
+        common::bump_instance(env);
+    }
+}
+
 #[contractimpl]
 impl WasteToken {
     /// Initialize the token contract
@@ -59,32 +91,61 @@ impl WasteToken {
         let admin = common::AccessControl::get_admin(&env).expect("Admin not found");
         common::AccessControl::require_admin(&env, &admin).expect("Not admin");
 
-        // Validate amount
-        common::validate_amount(amount).expect("Invalid amount");
+        Self::mint_internal(&env, to, amount);
+    }
 
-        // Enforce the supply cap before any state changes. saturating_add means
-        // an overflow lands above MAX_SUPPLY and is rejected by the same check.
-        let total_supply = read_total_supply(&env);
-        let new_total_supply = total_supply.saturating_add(amount);
-        if new_total_supply > MAX_SUPPLY {
-            panic!("Minting would exceed maximum supply cap");
+    /// Mint new tokens as an approved minter
+    ///
+    /// # Arguments
+    /// * `minter` - An address the admin approved with `add_minter`; must sign
+    /// * `to` - Recipient address
+    /// * `amount` - Amount to mint
+    ///
+    /// # Note
+    /// PaymentDistribution calls this with its own address when a payment completes.
+    pub fn mint_from(env: Env, minter: Address, to: Address, amount: i128) {
+        common::Initializable::require_initialized(&env).expect("Not initialized");
+        common::Pausable::require_not_paused(&env).expect("Contract paused");
+
+        if !read_minter(&env, &minter) {
+            panic!("Not a minter");
         }
+        minter.require_auth();
 
-        // Emit event before storage updates for consistency
-        common::TokenEvents::mint(&env, to.clone(), amount);
+        Self::mint_internal(&env, to, amount);
+    }
 
-        // Get current balance
-        let current_balance = read_balance(&env, &to);
-        let new_balance = current_balance.saturating_add(amount);
+    /// Allow an address to call `mint_from` (admin only)
+    ///
+    /// # Arguments
+    /// * `minter` - Address to approve, normally the PaymentDistribution contract
+    pub fn add_minter(env: Env, minter: Address) {
+        common::Initializable::require_initialized(&env).expect("Not initialized");
 
-        // Update balance
-        write_balance(&env, &to, new_balance);
+        let admin = common::AccessControl::get_admin(&env).expect("Admin not found");
+        common::AccessControl::require_admin(&env, &admin).expect("Not admin");
 
-        // Update total supply
-        write_total_supply(&env, new_total_supply);
-
-        // Bump storage
+        write_minter(&env, &minter, true);
         common::bump_instance(&env);
+    }
+
+    /// Revoke an address's right to call `mint_from` (admin only)
+    ///
+    /// # Arguments
+    /// * `minter` - Address to revoke
+    pub fn remove_minter(env: Env, minter: Address) {
+        common::Initializable::require_initialized(&env).expect("Not initialized");
+
+        let admin = common::AccessControl::get_admin(&env).expect("Admin not found");
+        common::AccessControl::require_admin(&env, &admin).expect("Not admin");
+
+        write_minter(&env, &minter, false);
+        common::bump_instance(&env);
+    }
+
+    /// Check whether an address may call `mint_from`
+    pub fn is_minter(env: Env, minter: Address) -> bool {
+        read_minter(&env, &minter)
     }
 
     /// Burn tokens

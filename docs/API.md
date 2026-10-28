@@ -1080,152 +1080,120 @@ pub fn flag_for_review(env: Env, collector: Address, reason: String)
 
 ## 6. PaymentDistribution Contract
 
-**Purpose**: Calculates and distributes token rewards for verified collections
+**Purpose**: Records what is owed for a transaction and mints WASTE to the recipient
+when the payment completes
 
 **Contract ID**: `<PAYMENT_DISTRIBUTION_CONTRACT_ID>`
 
----
-
-### 6.1 Configuration
-
-#### `set_token_contract`
-
-Set the WasteToken contract address (admin only).
-
-**Signature**:
-```rust
-pub fn set_token_contract(env: Env, token_address: Address)
-```
-
-**Authorization**: Admin only
+The token contract is set at `initialize(admin, token_contract)`. This contract mints
+through `WasteToken::mint_from`, so the token admin must approve it with
+`add_minter`. The deploy script does this.
 
 ---
 
-### 6.2 Payment Processing
+### 6.1 Payment Processing
 
 #### `process_payment`
 
-Process payment for a verified transaction.
+Record a pending payment for a transaction.
 
 **Signature**:
 ```rust
-pub fn process_payment(env: Env, transaction_id: u64) -> u64
+pub fn process_payment(
+    env: Env,
+    transaction_id: u64,
+    recipient: Address,
+    amount: i128
+) -> u64
 ```
-
-**Parameters**:
-- `transaction_id` (u64): Verified transaction ID
 
 **Returns**: `u64` - Payment ID
 
-**Errors**:
-- `TransactionNotFound` (30): Transaction doesn't exist
-- `InvalidTransactionStatus` (31): Transaction not verified
-- `PaymentAlreadyProcessed` (41): Payment already made
-- `InsufficientBalance` (42): Contract has insufficient tokens
+**Errors**: panics if `amount` is not positive
 
-**Effects**:
-- Mints tokens to collector
-- Records payment
-- Updates transaction status to `Paid`
-
-**Authorization**: Admin or automated process
-
-**Events**:
-```rust
-PaymentProcessed {
-    payment_id: u64,
-    transaction_id: u64,
-    collector: Address,
-    amount: i128,
-    timestamp: u64
-}
-```
+**Authorization**: Admin only
 
 **Example**:
 ```bash
-soroban contract invoke \
+stellar contract invoke \
   --id $PAYMENT_DISTRIBUTION \
-  --source admin \
+  --source-account wastefi-deployer \
   --network testnet \
   -- \
   process_payment \
-  --transaction_id 123
+  --transaction_id 1 \
+  --recipient GCOL...123 \
+  --amount 37500000
 ```
 
 ---
 
-#### `batch_process_payments`
+#### `batch_process`
 
-Process multiple payments in one transaction.
+Record several pending payments in one call.
 
 **Signature**:
 ```rust
-pub fn batch_process_payments(env: Env, transaction_ids: Vec<u64>) -> u32
+pub fn batch_process(env: Env, payments: Vec<(u64, Address, i128)>) -> Vec<u64>
 ```
 
-**Returns**: `u32` - Number of successful payments
+**Returns**: the new payment IDs, in order
 
 **Authorization**: Admin only
 
 ---
 
-#### `get_payment`
+#### `update_payment_status`
 
-Retrieve payment details.
+Move a payment to a new status. Setting `Completed` mints `amount` WASTE to the
+recipient; if the mint fails, the call fails and the payment keeps its old status.
+Completed and failed payments cannot be changed.
+
+**Signature**:
+```rust
+pub fn update_payment_status(env: Env, payment_id: u64, status: PaymentStatus)
+```
+
+**Authorization**: Admin only
+
+---
+
+### 6.2 Queries
+
+#### `get_payment`
 
 **Signature**:
 ```rust
 pub fn get_payment(env: Env, payment_id: u64) -> Payment
 ```
 
-**Returns**: `Payment` object
+**Returns**:
 ```rust
 pub struct Payment {
-    pub payment_id: u64,
-    pub transaction_id: u64,
-    pub collector: Address,
+    pub id: u64,
+    pub recipient: Address,
     pub amount: i128,
-    pub timestamp: u64,
     pub status: PaymentStatus,
+    pub transaction_id: u64,
+    pub created_at: u64,
+    pub processed_at: u64,
 }
 ```
 
-**Authorization**: Public
-
 ---
 
-### 6.3 Statistics
-
-#### `get_total_payments`
-
-Get total number of payments processed.
+#### `get_recipient_payments`
 
 **Signature**:
 ```rust
-pub fn get_total_payments(env: Env) -> u64
+pub fn get_recipient_payments(env: Env, recipient: Address, limit: u32) -> Vec<Payment>
 ```
-
-**Authorization**: Public
 
 ---
 
-#### `get_collector_payments`
+#### `get_payment_count`, `get_recipient_statistics`, `get_global_payment_statistics`
 
-Get collector's payment history.
-
-**Signature**:
-```rust
-pub fn get_collector_payments(
-    env: Env,
-    collector: Address,
-    start: u64,
-    limit: u64
-) -> Vec<u64>
-```
-
-**Returns**: `Vec<u64>` - List of payment IDs
-
-**Authorization**: Public
+Counts and totals across payments. All public.
 
 ---
 
@@ -1589,24 +1557,55 @@ pub fn transfer(env: Env, from: Address, to: Address, amount: i128)
 
 #### `mint`
 
-Mint new tokens (admin only).
+Mint new tokens.
 
 **Signature**:
 ```rust
 pub fn mint(env: Env, to: Address, amount: i128)
 ```
 
-**Parameters**:
-- `to` (Address): Recipient address
-- `amount` (i128): Amount to mint in stroops
-
-**Errors**:
-- `MintingDisabled` (72): Minting disabled
-- `NotAdmin` (80): Caller is not admin
-
 **Authorization**: Admin only
 
-**Note**: Called automatically by PaymentDistribution contract
+---
+
+#### `mint_from`
+
+Mint new tokens as an approved minter. PaymentDistribution calls this with its own
+address when a payment completes.
+
+**Signature**:
+```rust
+pub fn mint_from(env: Env, minter: Address, to: Address, amount: i128)
+```
+
+**Errors**: `Not a minter` if `minter` was not approved; the supply cap applies as for
+`mint`
+
+**Authorization**: `minter` must be approved with `add_minter` and must sign
+
+---
+
+#### `add_minter` / `remove_minter` / `is_minter`
+
+**Signature**:
+```rust
+pub fn add_minter(env: Env, minter: Address)
+pub fn remove_minter(env: Env, minter: Address)
+pub fn is_minter(env: Env, minter: Address) -> bool
+```
+
+**Authorization**: Admin only (`is_minter` is public)
+
+**Example**:
+```bash
+stellar contract invoke \
+  --id $WASTE_TOKEN \
+  --source-account wastefi-deployer \
+  --network testnet \
+  -- \
+  add_minter \
+  --minter $PAYMENT_DISTRIBUTION
+```
 
 ---
 
@@ -1619,7 +1618,7 @@ Burn tokens from circulation.
 pub fn burn(env: Env, from: Address, amount: i128)
 ```
 
-**Authorization**: Admin or `from` address
+**Authorization**: `from` must sign
 
 ---
 

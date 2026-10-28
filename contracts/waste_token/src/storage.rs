@@ -75,3 +75,17 @@ pub fn read_allowance(env: &Env, owner: &Address, spender: &Address) -> i128 {
     let key = ("Allowance", owner, spender);
     env.storage().persistent().get(&key).unwrap_or(0)
 }
+
+pub fn write_minter(env: &Env, minter: &Address, allowed: bool) {
+    let key = ("Minter", minter.clone());
+    if allowed {
+        env.storage().instance().set(&key, &true);
+    } else {
+        env.storage().instance().remove(&key);
+    }
+}
+
+pub fn read_minter(env: &Env, minter: &Address) -> bool {
+    let key = ("Minter", minter.clone());
+    env.storage().instance().get(&key).unwrap_or(false)
+}

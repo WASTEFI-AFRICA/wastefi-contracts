@@ -720,3 +720,94 @@ fn test_allowance_persists_across_calls_and_is_per_spender() {
     assert_eq!(client.allowance(&owner, &spender_a), 100);
     assert_eq!(client.allowance(&owner, &spender_b), 200);
 }
+
+fn initialized_token<'a>(env: &Env, admin: &Address) -> WasteTokenClient<'a> {
+    let (_, client) = create_token_contract(env);
+    client.initialize(
+        admin,
+        &String::from_str(env, "WasteFi Token"),
+        &String::from_str(env, "WASTE"),
+        &7,
+    );
+    client
+}
+
+#[test]
+fn test_approved_minter_can_mint() {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    let admin = Address::generate(&env);
+    let minter = Address::generate(&env);
+    let user = Address::generate(&env);
+    let client = initialized_token(&env, &admin);
+
+    client.add_minter(&minter);
+    assert!(client.is_minter(&minter));
+
+    client.mint_from(&minter, &user, &5_000);
+    assert_eq!(client.balance(&user), 5_000);
+    assert_eq!(client.total_supply(), 5_000);
+}
+
+#[test]
+#[should_panic(expected = "Not a minter")]
+fn test_unapproved_address_cannot_mint_from() {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    let admin = Address::generate(&env);
+    let stranger = Address::generate(&env);
+    let user = Address::generate(&env);
+    let client = initialized_token(&env, &admin);
+
+    client.mint_from(&stranger, &user, &5_000);
+}
+
+#[test]
+#[should_panic(expected = "Not a minter")]
+fn test_removed_minter_cannot_mint_from() {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    let admin = Address::generate(&env);
+    let minter = Address::generate(&env);
+    let user = Address::generate(&env);
+    let client = initialized_token(&env, &admin);
+
+    client.add_minter(&minter);
+    client.remove_minter(&minter);
+    client.mint_from(&minter, &user, &5_000);
+}
+
+// Naming an approved minter is not enough; the minter has to sign.
+#[test]
+fn test_mint_from_requires_the_minters_signature() {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    let admin = Address::generate(&env);
+    let minter = Address::generate(&env);
+    let user = Address::generate(&env);
+    let client = initialized_token(&env, &admin);
+    client.add_minter(&minter);
+
+    env.set_auths(&[]);
+    assert!(client.try_mint_from(&minter, &user, &5_000).is_err());
+    assert_eq!(client.balance(&user), 0);
+}
+
+#[test]
+#[should_panic(expected = "Minting would exceed maximum supply cap")]
+fn test_mint_from_respects_the_supply_cap() {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    let admin = Address::generate(&env);
+    let minter = Address::generate(&env);
+    let user = Address::generate(&env);
+    let client = initialized_token(&env, &admin);
+    client.add_minter(&minter);
+
+    client.mint_from(&minter, &user, &(client.get_max_supply() + 1));
+}

@@ -72,6 +72,7 @@ impl WasteFiTestEnv {
         collection_point.initialize(&admin);
         waste_transaction.initialize(&admin);
         payment_distribution.initialize(&admin, &waste_token_id);
+        waste_token.add_minter(&payment_distribution_id);
         reputation.initialize(&admin);
         material_pricing.initialize(&admin);
 
@@ -430,6 +431,7 @@ fn test_payment_creation_and_processing() {
 
     let completed_payment = test_env.payment_distribution.get_payment(&payment_id);
     assert_eq!(completed_payment.status, PaymentStatus::Completed);
+    assert_eq!(test_env.waste_token.balance(&recipient), amount);
 }
 
 #[test]
@@ -1280,4 +1282,56 @@ fn test_verification_fails_if_transaction_contract_is_not_an_operator() {
     let result = test_env.waste_transaction.try_verify_transaction(&tx_id);
     assert!(result.is_err());
     assert!(!test_env.waste_transaction.get_transaction(&tx_id).verified);
+}
+
+// ============================================================================
+// Full flow, wired the way scripts/deploy-testnet.sh wires testnet
+// ============================================================================
+
+#[test]
+fn test_verified_collection_is_paid_in_waste() {
+    let test_env = WasteFiTestEnv::new();
+    wire_pricing(&test_env);
+    wire_reputation(&test_env);
+    test_env
+        .waste_transaction
+        .set_collector_registry_contract(&test_env.collector_registry.address);
+
+    let collector = Address::generate(&test_env.env);
+    test_env.collector_registry.register(
+        &collector,
+        &String::from_str(&test_env.env, "Ada Collector"),
+        &String::from_str(&test_env.env, "+254700000001"),
+    );
+    test_env
+        .collector_registry
+        .update_status(&collector, &CollectorStatus::Active);
+    let point_owner = Address::generate(&test_env.env);
+
+    // 1. The collector records 2.5 kg of metal, priced on-chain
+    let tx_id = test_env.waste_transaction.record_with_price_lookup(
+        &collector,
+        &point_owner,
+        &MaterialType::Metal,
+        &2500,
+    );
+    let owed = test_env
+        .waste_transaction
+        .get_transaction(&tx_id)
+        .total_amount;
+    assert_eq!(owed, 37_500_000); // 1.5 per kg * 2.5 kg, 7 decimals
+
+    // 2. Verification completes it and updates reputation
+    test_env.waste_transaction.verify_transaction(&tx_id);
+    assert_eq!(test_env.reputation.get_score(&collector).score, 505);
+
+    // 3. Payment is recorded and minted on completion
+    let payment_id = test_env
+        .payment_distribution
+        .process_payment(&tx_id, &collector, &owed);
+    test_env
+        .payment_distribution
+        .update_payment_status(&payment_id, &PaymentStatus::Completed);
+
+    assert_eq!(test_env.waste_token.balance(&collector), owed);
 }
