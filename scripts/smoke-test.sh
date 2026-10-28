@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Drive one delivery through the contracts listed in deployed_addresses_testnet.json:
-# register a collector and a collection point, record a collection, verify it,
-# record the payment, mint the reward, and check the balances.
+# register a collector and a collection point, record a collection priced by
+# material_pricing, verify it (which updates reputation), record the payment and
+# complete it (which mints WASTE to the collector), and check every result.
 #
 # Usage: scripts/smoke-test.sh
 #
@@ -23,7 +24,7 @@ command -v stellar >/dev/null || { echo "The Stellar CLI (stellar) is required" 
 addr() { python3 -c "import json,sys; print(json.load(open('$ADDRESSES'))['contracts']['$1'])"; }
 TOKEN=$(addr waste_token);           REGISTRY=$(addr collector_registry)
 POINTS=$(addr collection_point);     TRANSACTION=$(addr waste_transaction)
-PAYMENT=$(addr payment_distribution)
+PAYMENT=$(addr payment_distribution); REPUTATION=$(addr reputation)
 
 # Fresh throwaway identities every run, so the script is repeatable and never
 # depends on state left by an earlier run. They are removed on exit.
@@ -59,7 +60,7 @@ ok() { step=$((step + 1)); printf '%2d. %s\n' "$step" "$1"; }
 
 # Weight varies per run: identical repeat submissions are rejected as duplicates.
 WEIGHT=$((1000 + RANDOM % 9000))
-PRICE=8000000
+PRICE=$(call "$DEPLOYER" "$(addr material_pricing)" get_price --material_type '"Plastic"')
 AMOUNT=$((WEIGHT * PRICE / 1000))
 
 echo "Collector $COLLECTOR"
@@ -78,8 +79,8 @@ ok "collection point registered (id $POINT_ID)"
 call "$DEPLOYER" "$POINTS" verify_point --point_id "$POINT_ID" >/dev/null
 ok "admin verified the collection point"
 
-TX_ID=$(call "$COLLECTOR_KEY" "$TRANSACTION" record_collection --collector "$COLLECTOR" --collection_point "$POINT" --material_type '"Plastic"' --weight "$WEIGHT" --price_per_kg "$PRICE")
-ok "collection recorded by the collector (transaction $TX_ID)"
+TX_ID=$(call "$COLLECTOR_KEY" "$TRANSACTION" record_with_price_lookup --collector "$COLLECTOR" --collection_point "$POINT" --material_type '"Plastic"' --weight "$WEIGHT")
+ok "collection recorded by the collector at the on-chain price (transaction $TX_ID)"
 
 # Authorization. The Stellar CLI signs any authorization it holds a key for, so the
 # victim must be an account whose key the CLI no longer has. Register and activate
@@ -90,7 +91,7 @@ VICTIM=$(stellar keys address "$VICTIM_KEY")
 call "$VICTIM_KEY" "$REGISTRY" register --collector "$VICTIM" --name "Smoke Victim" --phone "+254700000002" >/dev/null
 call "$DEPLOYER" "$REGISTRY" update_status --collector "$VICTIM" --status '"Active"' >/dev/null
 stellar keys rm "$VICTIM_KEY" --force >/dev/null 2>&1
-if stellar contract invoke --id "$TRANSACTION" --source-account "$POINT_KEY" --network "$NETWORK" -- record_collection --collector "$VICTIM" --collection_point "$POINT" --material_type '"Plastic"' --weight "$((WEIGHT + 777))" --price_per_kg "$PRICE" >/dev/null 2>&1; then
+if stellar contract invoke --id "$TRANSACTION" --source-account "$POINT_KEY" --network "$NETWORK" -- record_with_price_lookup --collector "$VICTIM" --collection_point "$POINT" --material_type '"Plastic"' --weight "$((WEIGHT + 777))" >/dev/null 2>&1; then
   echo "FAILED: a collection was recorded in an active collector's name without their signature" >&2
   exit 1
 fi
@@ -99,6 +100,16 @@ ok "recording in an active collector's name without their signature was rejected
 call "$DEPLOYER" "$TRANSACTION" verify_transaction --transaction_id "$TX_ID" >/dev/null
 ok "admin verified the transaction"
 
+STATS=$(call "$DEPLOYER" "$REPUTATION" get_statistics --collector "$COLLECTOR")
+echo "$STATS" | grep -qE '^\[[0-9]+,1,1,0\]$' || { echo "reputation did not record the verified transaction: $STATS" >&2; exit 1; }
+ok "verification updated the collector's reputation ($STATS)"
+
+if stellar contract invoke --id "$TRANSACTION" --source-account "$DEPLOYER" --network "$NETWORK" -- verify_transaction --transaction_id "$TX_ID" >/dev/null 2>&1; then
+  echo "FAILED: the same transaction was verified twice" >&2
+  exit 1
+fi
+ok "verifying the same transaction again was rejected"
+
 STORED=$(call "$DEPLOYER" "$TRANSACTION" get_transaction --transaction_id "$TX_ID")
 echo "$STORED" | grep -qE "total_amount:$AMOUNT[,}]" || { echo "stored amount is not $AMOUNT: $STORED" >&2; exit 1; }
 ok "stored payout is exactly ${AMOUNT} (fractional kilograms are paid)"
@@ -106,11 +117,17 @@ ok "stored payout is exactly ${AMOUNT} (fractional kilograms are paid)"
 PAYMENT_ID=$(call "$DEPLOYER" "$PAYMENT" process_payment --transaction_id "$TX_ID" --recipient "$COLLECTOR" --amount "$AMOUNT")
 ok "payment recorded (id $PAYMENT_ID)"
 
+if stellar contract invoke --id "$PAYMENT" --source-account "$DEPLOYER" --network "$NETWORK" -- process_payment --transaction_id "$TX_ID" --recipient "$COLLECTOR" --amount "$AMOUNT" >/dev/null 2>&1; then
+  echo "FAILED: a second payment was recorded for the same transaction" >&2
+  exit 1
+fi
+ok "a second payment for the same transaction was rejected"
+
 BEFORE=$(call "$DEPLOYER" "$TOKEN" balance --account "$COLLECTOR")
-call "$DEPLOYER" "$TOKEN" mint --to "$COLLECTOR" --amount "$AMOUNT" >/dev/null
+call "$DEPLOYER" "$PAYMENT" update_payment_status --payment_id "$PAYMENT_ID" --status '"Completed"' >/dev/null
 AFTER=$(call "$DEPLOYER" "$TOKEN" balance --account "$COLLECTOR")
 [ "$((AFTER - BEFORE))" -eq "$AMOUNT" ] || { echo "balance moved by $((AFTER - BEFORE)), expected $AMOUNT" >&2; exit 1; }
-ok "reward minted; collector balance rose by ${AMOUNT}"
+ok "completing the payment minted ${AMOUNT} WASTE base units (7 decimals) to the collector"
 
 echo
 echo "Smoke test passed: $step checks against the deployed contracts."
