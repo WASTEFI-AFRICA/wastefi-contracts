@@ -342,3 +342,77 @@ fn test_success_rate_bonus_threshold() {
     // 500 + (10 * 5) + 100 (success rate bonus) = 650
     assert_eq!(score_after.score, 650);
 }
+
+#[test]
+fn test_operator_can_record_transaction() {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    let admin = Address::generate(&env);
+    let operator = Address::generate(&env);
+    let collector = Address::generate(&env);
+    let (_, client) = create_contract(&env);
+
+    client.initialize(&admin);
+    client.add_operator(&operator);
+    assert!(client.is_operator(&operator));
+
+    client.record_transaction(&operator, &collector, &TransactionStatus::Completed);
+    client.record_transaction(&operator, &collector, &TransactionStatus::Disputed);
+
+    let score = client.get_score(&collector);
+    assert_eq!(score.successful_transactions, 1);
+    assert_eq!(score.disputed_transactions, 1);
+}
+
+#[test]
+#[should_panic(expected = "Not admin or operator")]
+fn test_unknown_caller_cannot_record_transaction() {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    let admin = Address::generate(&env);
+    let stranger = Address::generate(&env);
+    let collector = Address::generate(&env);
+    let (_, client) = create_contract(&env);
+
+    client.initialize(&admin);
+    client.record_transaction(&stranger, &collector, &TransactionStatus::Completed);
+}
+
+#[test]
+#[should_panic(expected = "Not admin or operator")]
+fn test_removed_operator_cannot_record_transaction() {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    let admin = Address::generate(&env);
+    let operator = Address::generate(&env);
+    let collector = Address::generate(&env);
+    let (_, client) = create_contract(&env);
+
+    client.initialize(&admin);
+    client.add_operator(&operator);
+    client.remove_operator(&operator);
+    client.record_transaction(&operator, &collector, &TransactionStatus::Completed);
+}
+
+// The operator check must not be satisfiable by naming an operator without its signature.
+#[test]
+fn test_record_transaction_requires_the_callers_signature() {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    let admin = Address::generate(&env);
+    let operator = Address::generate(&env);
+    let collector = Address::generate(&env);
+    let (_, client) = create_contract(&env);
+
+    client.initialize(&admin);
+    client.add_operator(&operator);
+
+    env.set_auths(&[]);
+    let result =
+        client.try_record_transaction(&operator, &collector, &TransactionStatus::Completed);
+    assert!(result.is_err());
+}

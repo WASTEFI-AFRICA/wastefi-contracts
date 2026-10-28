@@ -336,9 +336,11 @@ fn test_complete_waste_collection_flow() {
     assert_eq!(verified_tx.status, TransactionStatus::Completed);
 
     // Step 4: Update reputation
-    test_env
-        .reputation
-        .record_transaction(&collector, &TransactionStatus::Completed);
+    test_env.reputation.record_transaction(
+        &test_env.admin,
+        &collector,
+        &TransactionStatus::Completed,
+    );
 
     let reputation_score = test_env.reputation.get_score(&collector).score;
     assert_eq!(reputation_score, 505); // Base 500 + 5 for successful tx
@@ -468,18 +470,22 @@ fn test_reputation_score_calculation() {
 
     // Record successful transactions
     for _ in 0..5 {
-        test_env
-            .reputation
-            .record_transaction(&collector, &TransactionStatus::Completed);
+        test_env.reputation.record_transaction(
+            &test_env.admin,
+            &collector,
+            &TransactionStatus::Completed,
+        );
     }
 
     let score_after_success = test_env.reputation.get_score(&collector).score;
     assert_eq!(score_after_success, 525); // 500 + (5 * 5)
 
     // Record a disputed transaction
-    test_env
-        .reputation
-        .record_transaction(&collector, &TransactionStatus::Disputed);
+    test_env.reputation.record_transaction(
+        &test_env.admin,
+        &collector,
+        &TransactionStatus::Disputed,
+    );
 
     let score_after_dispute = test_env.reputation.get_score(&collector).score;
     assert_eq!(score_after_dispute, 515); // 525 - 10
@@ -498,9 +504,11 @@ fn test_reputation_success_rate_bonus() {
 
     // Record 20 successful transactions (100% success rate)
     for _ in 0..20 {
-        test_env
-            .reputation
-            .record_transaction(&collector, &TransactionStatus::Completed);
+        test_env.reputation.record_transaction(
+            &test_env.admin,
+            &collector,
+            &TransactionStatus::Completed,
+        );
     }
 
     let score = test_env.reputation.get_score(&collector).score;
@@ -788,9 +796,11 @@ fn test_collector_comprehensive_stats() {
 
     // Check reputation stats
     for _ in 0..10 {
-        test_env
-            .reputation
-            .record_transaction(&collector, &TransactionStatus::Completed);
+        test_env.reputation.record_transaction(
+            &test_env.admin,
+            &collector,
+            &TransactionStatus::Completed,
+        );
     }
 
     let rep_stats = test_env.reputation.get_statistics(&collector);
@@ -1201,4 +1211,73 @@ fn test_price_lookup_applies_duplicate_detection() {
             &1000,
         );
     }
+}
+
+// ============================================================================
+// Verification updates reputation
+// ============================================================================
+
+fn wire_reputation(test_env: &WasteFiTestEnv) {
+    test_env
+        .waste_transaction
+        .set_reputation_contract(&test_env.reputation.address);
+    test_env
+        .reputation
+        .add_operator(&test_env.waste_transaction.address);
+}
+
+fn record_one(test_env: &WasteFiTestEnv, collector: &Address) -> u64 {
+    let point_owner = Address::generate(&test_env.env);
+    test_env.waste_transaction.record_collection(
+        collector,
+        &point_owner,
+        &MaterialType::Plastic,
+        &2000,
+        &8_000_000,
+    )
+}
+
+#[test]
+fn test_verification_updates_reputation() {
+    let test_env = WasteFiTestEnv::new();
+    wire_reputation(&test_env);
+
+    let collector = Address::generate(&test_env.env);
+    let tx_id = record_one(&test_env, &collector);
+    test_env.waste_transaction.verify_transaction(&tx_id);
+
+    let (score, total, successful, disputed) = test_env.reputation.get_statistics(&collector);
+    assert_eq!(score, 505);
+    assert_eq!(total, 1);
+    assert_eq!(successful, 1);
+    assert_eq!(disputed, 0);
+}
+
+#[test]
+#[should_panic(expected = "Transaction already verified")]
+fn test_transaction_cannot_be_verified_twice() {
+    let test_env = WasteFiTestEnv::new();
+    wire_reputation(&test_env);
+
+    let collector = Address::generate(&test_env.env);
+    let tx_id = record_one(&test_env, &collector);
+    test_env.waste_transaction.verify_transaction(&tx_id);
+    test_env.waste_transaction.verify_transaction(&tx_id);
+}
+
+// Without the operator grant in the reputation contract, verification must fail
+// rather than silently skip the reputation update.
+#[test]
+fn test_verification_fails_if_transaction_contract_is_not_an_operator() {
+    let test_env = WasteFiTestEnv::new();
+    test_env
+        .waste_transaction
+        .set_reputation_contract(&test_env.reputation.address);
+
+    let collector = Address::generate(&test_env.env);
+    let tx_id = record_one(&test_env, &collector);
+
+    let result = test_env.waste_transaction.try_verify_transaction(&tx_id);
+    assert!(result.is_err());
+    assert!(!test_env.waste_transaction.get_transaction(&tx_id).verified);
 }

@@ -74,6 +74,9 @@ invoke "$TRANSACTION" set_material_pricing_contract --contract_address "$PRICING
 invoke "$TRANSACTION" set_reputation_contract --contract_address "$REPUTATION"
 invoke "$TRANSACTION" set_collector_registry_contract --contract_address "$REGISTRY"
 
+echo "Letting waste_transaction update reputation"
+invoke "$REPUTATION" add_operator --operator "$TRANSACTION"
+
 # Record exactly what was deployed. A working tree with uncommitted changes is
 # flagged, because the commit hash alone would not describe the deployed code.
 SOURCE_COMMIT=$(git rev-parse --short HEAD)

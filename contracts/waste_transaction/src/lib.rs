@@ -310,7 +310,8 @@ impl WasteTransaction {
     /// * `transaction_id` - Transaction ID to verify
     ///
     /// # Note
-    /// This also triggers a reputation update if the Reputation contract is configured
+    /// This also updates the collector's reputation if the Reputation contract is
+    /// configured. A transaction can only be verified once.
     pub fn verify_transaction(env: Env, transaction_id: u64) {
         common::Initializable::require_initialized(&env).expect("Not initialized");
 
@@ -320,6 +321,11 @@ impl WasteTransaction {
 
         // Get transaction
         let mut record = read_transaction(&env, transaction_id).expect("Transaction not found");
+
+        // Verifying twice would count the collection twice in the collector's reputation
+        if record.verified {
+            panic!("Transaction already verified");
+        }
 
         // Record acceptance for fraud detection
         common::FraudDetection::record_rejection(&env, &record.collector, false);
@@ -334,15 +340,24 @@ impl WasteTransaction {
         // Update risk score after verification
         common::FraudDetection::update_risk_score(&env, &record.collector);
 
-        // Trigger reputation update if configured
-        if let Some(_reputation_contract) = env
+        // Update the collector's reputation if a reputation contract is configured.
+        // This contract calls as itself, so the reputation admin must have added it
+        // as an operator there.
+        if let Some(reputation_contract) = env
             .storage()
             .instance()
             .get::<_, Address>(&REPUTATION_CONTRACT)
         {
-            // TODO: Call reputation_contract.record_transaction(collector, TransactionStatus::Completed)
-            // For now, just note that the contract is configured
-            // Full implementation requires cross-contract invocation setup
+            env.invoke_contract::<()>(
+                &reputation_contract,
+                &Symbol::new(&env, "record_transaction"),
+                soroban_sdk::vec![
+                    &env,
+                    env.current_contract_address().into_val(&env),
+                    record.collector.clone().into_val(&env),
+                    TransactionStatus::Completed.into_val(&env),
+                ],
+            );
         }
 
         // Emit event

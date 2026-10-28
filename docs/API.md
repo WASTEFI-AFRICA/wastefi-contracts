@@ -1381,97 +1381,109 @@ soroban contract invoke \
 
 ### 8.1 Score Management
 
-#### `get_score`
+Scores start at 500 and stay between 0 and 1000. Each successful transaction adds 5,
+each disputed one subtracts 10, and after 10 transactions a success-rate bonus of up
+to 100 points applies.
 
-Get reputation score for a collector.
+#### `record_transaction`
+
+Record the outcome of a transaction for a collector. `WasteTransaction` calls this
+from `verify_transaction`, passing its own address as `caller`.
 
 **Signature**:
 ```rust
-pub fn get_score(env: Env, user: Address) -> u32
+pub fn record_transaction(
+    env: Env,
+    caller: Address,
+    collector: Address,
+    status: TransactionStatus
+)
 ```
 
-**Returns**: `u32` - Reputation score (0-1000)
-- Initial score: 500
-- Good behavior increases score
-- Bad behavior decreases score
+**Effects**: `Completed` counts as successful, any other status as disputed
 
-**Authorization**: Public
-
-**Example**:
-```bash
-soroban contract invoke \
-  --id $REPUTATION \
-  --network testnet \
-  -- \
-  get_score \
-  --user GCOL...123
-```
+**Authorization**: `caller` must be the admin or an operator, and must sign
 
 ---
 
 #### `update_score`
 
-Update reputation score (authorized contracts only).
+Apply a successful or disputed transaction to a collector's score directly.
 
 **Signature**:
 ```rust
-pub fn update_score(env: Env, user: Address, delta: i32)
+pub fn update_score(env: Env, collector: Address, transaction_successful: bool)
 ```
 
-**Parameters**:
-- `user` (Address): User address
-- `delta` (i32): Change in score (positive or negative)
-
-**Effects**: Score clamped to 0-1000 range
-
-**Authorization**: Authorized contracts (WasteTransaction, PaymentDistribution) or admin
+**Authorization**: Admin only
 
 ---
 
-#### `get_reputation_level`
+#### `add_operator` / `remove_operator` / `is_operator`
 
-Get reputation level category.
+Grant or revoke the right to call `record_transaction`. The deploy script adds the
+`WasteTransaction` contract as an operator.
 
 **Signature**:
 ```rust
-pub fn get_reputation_level(env: Env, user: Address) -> String
+pub fn add_operator(env: Env, operator: Address)
+pub fn remove_operator(env: Env, operator: Address)
+pub fn is_operator(env: Env, address: Address) -> bool
 ```
 
-**Returns**: String
-- "Excellent" (800-1000)
-- "Good" (600-799)
-- "Fair" (400-599)
-- "Poor" (200-399)
-- "Bad" (0-199)
+**Authorization**: Admin only (`is_operator` is public)
+
+**Example**:
+```bash
+stellar contract invoke \
+  --id $REPUTATION \
+  --source-account wastefi-deployer \
+  --network testnet \
+  -- \
+  add_operator \
+  --operator $WASTE_TRANSACTION
+```
+
+---
+
+### 8.2 Queries
+
+#### `get_score`
+
+**Signature**:
+```rust
+pub fn get_score(env: Env, collector: Address) -> ReputationScore
+```
+
+**Returns**: the collector's `ReputationScore` (score, total, successful and disputed
+transaction counts, last update time). Unknown collectors get a neutral record with
+score 500.
 
 **Authorization**: Public
 
 ---
 
-### 8.2 History and Statistics
-
-#### `get_score_history`
-
-Get score change history for a user.
+#### `get_statistics`
 
 **Signature**:
 ```rust
-pub fn get_score_history(
-    env: Env,
-    user: Address,
-    limit: u32
-) -> Vec<ScoreChange>
+pub fn get_statistics(env: Env, collector: Address) -> (u32, u64, u64, u64)
 ```
 
-**Returns**: `Vec<ScoreChange>`
+**Returns**: `(score, total_transactions, successful_transactions, disputed_transactions)`
+
+**Authorization**: Public
+
+---
+
+#### `get_reputation_tier`
+
+**Signature**:
 ```rust
-pub struct ScoreChange {
-    pub old_score: u32,
-    pub new_score: u32,
-    pub reason: String,
-    pub timestamp: u64,
-}
+pub fn get_reputation_tier(env: Env, collector: Address) -> u32
 ```
+
+**Returns**: 1 Bronze (0-400), 2 Silver (401-700), 3 Gold (701-900), 4 Platinum (901-1000)
 
 **Authorization**: Public
 

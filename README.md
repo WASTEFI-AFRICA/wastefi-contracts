@@ -43,17 +43,14 @@ that physically received the material:
    caller-supplied price. Both require the collector's signature and reject
    collectors that `collector_registry::is_active` reports as inactive.
 3. `waste_transaction::verify_transaction` marks the delivery verified and
-   completed. **This call requires the contract admin**, not the collection
-   point. Collection-point identity is registered in `collection_point` but is
-   not yet what authorizes a verification.
+   completed, and records it in the collector's `reputation` score. **This call
+   requires the contract admin**, not the collection point. Collection-point
+   identity is registered in `collection_point` but is not yet what authorizes a
+   verification.
 4. `payment_distribution::process_payment` records what is owed. It also
    requires admin, and it takes `amount` as a caller-supplied argument — it does
    not read the verified transaction or price it against `material_pricing`.
 5. `waste_token` mints against that record, gated on the minter role.
-6. `reputation::update_score` folds the result into the collector's score.
-
-One cross-contract link is still stubbed: `verify_transaction` has a `TODO`
-where it should notify `reputation`, so the admin has to make a second call.
 
 The practical consequence is that the admin key is trusted for verification,
 payout amounts, and minting. Reducing that trust — deriving amounts on-chain,

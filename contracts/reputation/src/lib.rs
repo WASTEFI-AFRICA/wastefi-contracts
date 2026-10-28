@@ -9,6 +9,50 @@ mod test;
 #[contract]
 pub struct Reputation;
 
+impl Reputation {
+    /// Applies one transaction outcome to a collector's score. Callers check
+    /// authorization first.
+    fn apply_update(env: &Env, collector: Address, transaction_successful: bool) {
+        // Get or create reputation score
+        let key = common::StorageKey::Reputation(collector.clone());
+        let mut score: ReputationScore =
+            env.storage()
+                .persistent()
+                .get(&key)
+                .unwrap_or(ReputationScore {
+                    collector: collector.clone(),
+                    score: 500, // Start with neutral score
+                    total_transactions: 0,
+                    successful_transactions: 0,
+                    disputed_transactions: 0,
+                    last_updated: env.ledger().timestamp(),
+                });
+
+        // Update transaction counts
+        score.total_transactions += 1;
+        if transaction_successful {
+            score.successful_transactions += 1;
+        } else {
+            score.disputed_transactions += 1;
+        }
+
+        // Calculate new score
+        let old_score = score.score;
+        score.score = Self::calculate_score_internal(&score);
+        score.last_updated = env.ledger().timestamp();
+
+        // Save updated score
+        env.storage().persistent().set(&key, &score);
+        common::bump_persistent(env, &key);
+
+        // Emit event
+        common::ReputationEvents::score_updated(env, collector, old_score, score.score);
+
+        // Bump storage
+        common::bump_instance(env);
+    }
+}
+
 #[contractimpl]
 impl Reputation {
     /// Initialize the reputation contract
@@ -41,43 +85,7 @@ impl Reputation {
         let admin = common::AccessControl::get_admin(&env).expect("Admin not found");
         common::AccessControl::require_admin(&env, &admin).expect("Not admin");
 
-        // Get or create reputation score
-        let key = common::StorageKey::Reputation(collector.clone());
-        let mut score: ReputationScore =
-            env.storage()
-                .persistent()
-                .get(&key)
-                .unwrap_or(ReputationScore {
-                    collector: collector.clone(),
-                    score: 500, // Start with neutral score
-                    total_transactions: 0,
-                    successful_transactions: 0,
-                    disputed_transactions: 0,
-                    last_updated: env.ledger().timestamp(),
-                });
-
-        // Update transaction counts
-        score.total_transactions += 1;
-        if transaction_successful {
-            score.successful_transactions += 1;
-        } else {
-            score.disputed_transactions += 1;
-        }
-
-        // Calculate new score
-        let old_score = score.score;
-        score.score = Self::calculate_score_internal(&score);
-        score.last_updated = env.ledger().timestamp();
-
-        // Save updated score
-        env.storage().persistent().set(&key, &score);
-        common::bump_persistent(&env, &key);
-
-        // Emit event
-        common::ReputationEvents::score_updated(&env, collector, old_score, score.score);
-
-        // Bump storage
-        common::bump_instance(&env);
+        Self::apply_update(&env, collector, transaction_successful);
     }
 
     /// Get reputation score for a collector
@@ -350,14 +358,54 @@ impl Reputation {
     /// Record transaction status for reputation tracking
     ///
     /// # Arguments
+    /// * `caller` - The admin, or an operator such as the WasteTransaction contract
     /// * `collector` - Collector address
     /// * `status` - Transaction status
     ///
     /// # Note
-    /// This is a convenience method that maps TransactionStatus to boolean
-    pub fn record_transaction(env: Env, collector: Address, status: TransactionStatus) {
+    /// WasteTransaction calls this when a transaction is verified, passing its own
+    /// address as `caller`. The admin grants it that right with `add_operator`.
+    pub fn record_transaction(
+        env: Env,
+        caller: Address,
+        collector: Address,
+        status: TransactionStatus,
+    ) {
+        common::Initializable::require_initialized(&env).expect("Not initialized");
+        common::Pausable::require_not_paused(&env).expect("Contract paused");
+        common::AccessControl::require_elevated_access(&env, &caller)
+            .expect("Not admin or operator");
+
         let transaction_successful = status == TransactionStatus::Completed;
-        Self::update_score(env, collector, transaction_successful);
+        Self::apply_update(&env, collector, transaction_successful);
+    }
+
+    /// Grant an address the right to call `record_transaction` (admin only)
+    ///
+    /// # Arguments
+    /// * `operator` - Address to grant operator role, normally the WasteTransaction contract
+    pub fn add_operator(env: Env, operator: Address) {
+        let admin = common::AccessControl::get_admin(&env).expect("Admin not found");
+        common::AccessControl::require_admin(&env, &admin).expect("Not admin");
+
+        common::AccessControl::add_operator(&env, operator);
+    }
+
+    /// Revoke an operator (admin only)
+    ///
+    /// # Arguments
+    /// * `operator` - Address to revoke operator role
+    pub fn remove_operator(env: Env, operator: Address) {
+        let admin = common::AccessControl::get_admin(&env).expect("Admin not found");
+        common::AccessControl::require_admin(&env, &admin).expect("Not admin");
+
+        common::AccessControl::remove_operator(&env, &operator);
+        common::bump_instance(&env);
+    }
+
+    /// Check if address is operator
+    pub fn is_operator(env: Env, address: Address) -> bool {
+        common::AccessControl::is_operator(&env, &address)
     }
 
     /// Get collector statistics
