@@ -8,11 +8,23 @@ mod test;
 
 const TOKEN_CONTRACT: &str = "TokenContract";
 const PAYMENT_COUNT: &str = "PaymentCount";
+const PAYMENT_FOR_TRANSACTION: &str = "PaymentForTx";
 
 #[contract]
 pub struct PaymentDistribution;
 
 impl PaymentDistribution {
+    /// Links a transaction to its payment, refusing a second payment for the same
+    /// transaction.
+    fn claim_transaction(env: &Env, transaction_id: u64, payment_id: u64) {
+        let key = (PAYMENT_FOR_TRANSACTION, transaction_id);
+        if env.storage().persistent().has(&key) {
+            panic!("Payment already exists for this transaction");
+        }
+        env.storage().persistent().set(&key, &payment_id);
+        common::bump_persistent(env, &key);
+    }
+
     /// Mints the payment amount to the recipient through the token contract. This
     /// contract must be an approved minter there (`add_minter`).
     fn pay_out(env: &Env, payment: &Payment) {
@@ -91,6 +103,7 @@ impl PaymentDistribution {
         // Get next payment ID
         let payment_count: u64 = env.storage().instance().get(&PAYMENT_COUNT).unwrap_or(0);
         let payment_id = payment_count + 1;
+        Self::claim_transaction(&env, transaction_id, payment_id);
         env.storage().instance().set(&PAYMENT_COUNT, &payment_id);
 
         // Create payment record
@@ -220,9 +233,11 @@ impl PaymentDistribution {
                     panic!("Amount must be positive");
                 }
 
-                // Generate next payment ID
+                // Generate next payment ID. A transaction that already has a payment,
+                // including one earlier in this batch, aborts the whole batch.
                 payment_count += 1;
                 let payment_id = payment_count;
+                Self::claim_transaction(&env, tx_id, payment_id);
 
                 // Create payment record
                 let payment = Payment {
@@ -316,6 +331,16 @@ impl PaymentDistribution {
 
         // Bump storage
         common::bump_instance(&env);
+    }
+
+    /// Get the payment recorded for a transaction, if any
+    ///
+    /// # Arguments
+    /// * `transaction_id` - Transaction ID from WasteTransaction contract
+    pub fn get_payment_for_transaction(env: Env, transaction_id: u64) -> Option<u64> {
+        env.storage()
+            .persistent()
+            .get(&(PAYMENT_FOR_TRANSACTION, transaction_id))
     }
 
     /// Get total payment count

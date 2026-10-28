@@ -1325,7 +1325,7 @@ fn test_verified_collection_is_paid_in_waste() {
     test_env.waste_transaction.verify_transaction(&tx_id);
     assert_eq!(test_env.reputation.get_score(&collector).score, 505);
 
-    // 3. Payment is recorded and minted on completion
+    // 3. Payment is recorded once and minted on completion
     let payment_id = test_env
         .payment_distribution
         .process_payment(&tx_id, &collector, &owed);
@@ -1334,4 +1334,10 @@ fn test_verified_collection_is_paid_in_waste() {
         .update_payment_status(&payment_id, &PaymentStatus::Completed);
 
     assert_eq!(test_env.waste_token.balance(&collector), owed);
+    assert_eq!(
+        test_env
+            .payment_distribution
+            .get_payment_for_transaction(&tx_id),
+        Some(payment_id)
+    );
 }

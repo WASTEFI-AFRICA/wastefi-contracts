@@ -47,9 +47,9 @@ that physically received the material:
    requires the contract admin**, not the collection point. Collection-point
    identity is registered in `collection_point` but is not yet what authorizes a
    verification.
-4. `payment_distribution::process_payment` records what is owed. It requires
-   admin and takes `amount` as an argument; it does not yet read the amount from
-   the verified transaction.
+4. `payment_distribution::process_payment` records what is owed, once per
+   transaction. It requires admin and takes `amount` as an argument; it does not
+   yet read the amount from the verified transaction.
 5. `payment_distribution::update_payment_status(Completed)` mints that amount of
    WASTE to the collector through `waste_token::mint_from`. The deploy script
    approves `payment_distribution` as the token's only minter.

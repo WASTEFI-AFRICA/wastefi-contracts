@@ -1109,7 +1109,8 @@ pub fn process_payment(
 
 **Returns**: `u64` - Payment ID
 
-**Errors**: panics if `amount` is not positive
+**Errors**: panics if `amount` is not positive, or with `Payment already exists for
+this transaction` if the transaction already has a payment
 
 **Authorization**: Admin only
 
@@ -1138,6 +1139,9 @@ pub fn batch_process(env: Env, payments: Vec<(u64, Address, i128)>) -> Vec<u64>
 ```
 
 **Returns**: the new payment IDs, in order
+
+**Errors**: a transaction that already has a payment, or appears twice in the batch,
+aborts the whole batch
 
 **Authorization**: Admin only
 
@@ -1179,6 +1183,17 @@ pub struct Payment {
     pub processed_at: u64,
 }
 ```
+
+---
+
+#### `get_payment_for_transaction`
+
+**Signature**:
+```rust
+pub fn get_payment_for_transaction(env: Env, transaction_id: u64) -> Option<u64>
+```
+
+**Returns**: the payment ID recorded for the transaction, if any
 
 ---
 

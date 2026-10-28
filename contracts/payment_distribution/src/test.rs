@@ -643,3 +643,73 @@ fn test_completion_fails_if_not_a_minter() {
     );
     assert_eq!(token.balance(&recipient), 0);
 }
+
+#[test]
+#[should_panic(expected = "Payment already exists for this transaction")]
+fn test_transaction_cannot_be_paid_twice() {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    let admin = Address::generate(&env);
+    let token_contract = Address::generate(&env);
+    let recipient = Address::generate(&env);
+    let (_, client) = create_contract(&env);
+    client.initialize(&admin, &token_contract);
+
+    client.process_payment(&1, &recipient, &1_000);
+    client.process_payment(&1, &recipient, &1_000);
+}
+
+#[test]
+fn test_payment_is_indexed_by_transaction() {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    let admin = Address::generate(&env);
+    let token_contract = Address::generate(&env);
+    let recipient = Address::generate(&env);
+    let (_, client) = create_contract(&env);
+    client.initialize(&admin, &token_contract);
+
+    let payment_id = client.process_payment(&42, &recipient, &1_000);
+    assert_eq!(client.get_payment_for_transaction(&42), Some(payment_id));
+    assert_eq!(client.get_payment_for_transaction(&43), None);
+}
+
+#[test]
+#[should_panic(expected = "Payment already exists for this transaction")]
+fn test_batch_rejects_an_already_paid_transaction() {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    let admin = Address::generate(&env);
+    let token_contract = Address::generate(&env);
+    let recipient = Address::generate(&env);
+    let (_, client) = create_contract(&env);
+    client.initialize(&admin, &token_contract);
+
+    client.process_payment(&1, &recipient, &1_000);
+
+    let mut batch = Vec::new(&env);
+    batch.push_back((2u64, recipient.clone(), 1_000i128));
+    batch.push_back((1u64, recipient.clone(), 1_000i128));
+    client.batch_process(&batch);
+}
+
+#[test]
+#[should_panic(expected = "Payment already exists for this transaction")]
+fn test_batch_rejects_a_transaction_repeated_within_the_batch() {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    let admin = Address::generate(&env);
+    let token_contract = Address::generate(&env);
+    let recipient = Address::generate(&env);
+    let (_, client) = create_contract(&env);
+    client.initialize(&admin, &token_contract);
+
+    let mut batch = Vec::new(&env);
+    batch.push_back((5u64, recipient.clone(), 1_000i128));
+    batch.push_back((5u64, recipient.clone(), 1_000i128));
+    client.batch_process(&batch);
+}

@@ -16,7 +16,7 @@ Before deploying to mainnet, the WasteFi platform requires several critical secu
 
 ### 1. Double-Payment Prevention CRITICAL
 
-**Status**: Partly done. `update_payment_status` rejects any change to a completed or failed payment. `process_payment` still accepts a repeated `transaction_id`, so the same transaction can be recorded twice; that remains open.
+**Status**: Done. `update_payment_status` rejects any change to a completed or failed payment, and `process_payment` and `batch_process` keep a `transaction_id -> payment_id` index and reject a second payment for the same transaction.
 
 **Contract**: `PaymentDistribution`  
 **Risk Level**: HIGH  
