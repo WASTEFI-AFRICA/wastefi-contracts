@@ -38,9 +38,10 @@ state change through the platform admin rather than through the collection point
 that physically received the material:
 
 1. `collector_registry::register` records a collector.
-2. `waste_transaction::record_collection` (or `record_with_price_lookup`, which
-   additionally calls `collector_registry::is_active` to reject inactive
-   collectors) records a delivery as pending.
+2. `waste_transaction::record_with_price_lookup` records a delivery as pending,
+   priced from `material_pricing`. `record_collection` does the same with a
+   caller-supplied price. Both require the collector's signature and reject
+   collectors that `collector_registry::is_active` reports as inactive.
 3. `waste_transaction::verify_transaction` marks the delivery verified and
    completed. **This call requires the contract admin**, not the collection
    point. Collection-point identity is registered in `collection_point` but is
@@ -51,11 +52,8 @@ that physically received the material:
 5. `waste_token` mints against that record, gated on the minter role.
 6. `reputation::update_score` folds the result into the collector's score.
 
-Two cross-contract links are stubbed rather than implemented:
-`record_with_price_lookup` resolves the `material_pricing` address but still
-carries a `TODO` instead of calling `get_price`, and `verify_transaction` has a
-`TODO` where it should notify `reputation`. Both currently require the caller to
-pass the value in or the admin to make a second call.
+One cross-contract link is still stubbed: `verify_transaction` has a `TODO`
+where it should notify `reputation`, so the admin has to make a second call.
 
 The practical consequence is that the admin key is trusted for verification,
 payout amounts, and minting. Reducing that trust — deriving amounts on-chain,

@@ -1085,3 +1085,120 @@ fn test_transaction_without_registry_configured_works() {
     let tx = test_env.waste_transaction.get_transaction(&tx_id);
     assert_eq!(tx.collector, collector);
 }
+
+// ============================================================================
+// Price lookup
+// ============================================================================
+
+fn wire_pricing(test_env: &WasteFiTestEnv) {
+    test_env
+        .waste_transaction
+        .set_material_pricing_contract(&test_env.material_pricing.address);
+}
+
+#[test]
+fn test_price_lookup_uses_the_material_price() {
+    let test_env = WasteFiTestEnv::new();
+    wire_pricing(&test_env);
+
+    let collector = Address::generate(&test_env.env);
+    let point_owner = Address::generate(&test_env.env);
+
+    let plastic_tx = test_env.waste_transaction.record_with_price_lookup(
+        &collector,
+        &point_owner,
+        &MaterialType::Plastic,
+        &2000,
+    );
+    let electronics_tx = test_env.waste_transaction.record_with_price_lookup(
+        &collector,
+        &point_owner,
+        &MaterialType::Electronics,
+        &2000,
+    );
+
+    let plastic = test_env.waste_transaction.get_transaction(&plastic_tx);
+    let electronics = test_env.waste_transaction.get_transaction(&electronics_tx);
+
+    assert_eq!(plastic.price_per_kg, 8_000_000);
+    assert_eq!(plastic.total_amount, 16_000_000);
+    assert_eq!(electronics.price_per_kg, 25_000_000);
+    assert_eq!(electronics.total_amount, 50_000_000);
+    assert_eq!(plastic.collection_point, point_owner);
+}
+
+#[test]
+fn test_price_change_applies_to_the_next_collection() {
+    let test_env = WasteFiTestEnv::new();
+    wire_pricing(&test_env);
+
+    let collector = Address::generate(&test_env.env);
+    let point_owner = Address::generate(&test_env.env);
+
+    let before = test_env.waste_transaction.record_with_price_lookup(
+        &collector,
+        &point_owner,
+        &MaterialType::Paper,
+        &1000,
+    );
+    test_env
+        .material_pricing
+        .set_price(&MaterialType::Paper, &6_000_000);
+    let after = test_env.waste_transaction.record_with_price_lookup(
+        &collector,
+        &point_owner,
+        &MaterialType::Paper,
+        &1500,
+    );
+
+    assert_eq!(
+        test_env
+            .waste_transaction
+            .get_transaction(&before)
+            .total_amount,
+        4_000_000
+    );
+    assert_eq!(
+        test_env
+            .waste_transaction
+            .get_transaction(&after)
+            .total_amount,
+        9_000_000
+    );
+}
+
+#[test]
+#[should_panic(expected = "MaterialPricing contract not configured")]
+fn test_price_lookup_requires_a_pricing_contract() {
+    let test_env = WasteFiTestEnv::new();
+    let collector = Address::generate(&test_env.env);
+    let point_owner = Address::generate(&test_env.env);
+
+    test_env.waste_transaction.record_with_price_lookup(
+        &collector,
+        &point_owner,
+        &MaterialType::Plastic,
+        &1000,
+    );
+}
+
+// The price lookup path used to skip the duplicate and rate limit checks that
+// record_collection applies.
+#[test]
+#[should_panic(expected = "Duplicate transaction detected")]
+fn test_price_lookup_applies_duplicate_detection() {
+    let test_env = WasteFiTestEnv::new();
+    wire_pricing(&test_env);
+
+    let collector = Address::generate(&test_env.env);
+    let point_owner = Address::generate(&test_env.env);
+
+    for _ in 0..2 {
+        test_env.waste_transaction.record_with_price_lookup(
+            &collector,
+            &point_owner,
+            &MaterialType::Plastic,
+            &1000,
+        );
+    }
+}

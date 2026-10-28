@@ -1,5 +1,5 @@
 #![no_std]
-use soroban_sdk::{contract, contractimpl, Address, Env, IntoVal, Vec};
+use soroban_sdk::{contract, contractimpl, Address, Env, IntoVal, Symbol, Vec};
 
 mod storage;
 use common::types::*;
@@ -14,6 +14,121 @@ const COLLECTOR_REGISTRY_CONTRACT: &str = "CollectorRegistryContract";
 
 #[contract]
 pub struct WasteTransaction;
+
+impl WasteTransaction {
+    /// Checks and stores a collection. Both record entry points go through here, so
+    /// they apply the same authorization, fraud checks and validation.
+    fn record(
+        env: &Env,
+        collector: Address,
+        collection_point: Address,
+        material_type: MaterialType,
+        weight: u64,
+        price_per_kg: i128,
+    ) -> u64 {
+        common::Initializable::require_initialized(env).expect("Not initialized");
+        common::Pausable::require_not_paused(env).expect("Contract paused");
+
+        // The collector must authorize their own submission. Without this anyone could
+        // record collections in another collector's name, and the fraud score and rate
+        // limits would then be applied to that collector.
+        collector.require_auth();
+
+        // Validate collector status before proceeding
+        if let Some(registry_contract) = env
+            .storage()
+            .instance()
+            .get::<_, Address>(&COLLECTOR_REGISTRY_CONTRACT)
+        {
+            // Cross-contract call to check if collector is active
+            let is_active: bool = env.invoke_contract(
+                &registry_contract,
+                &soroban_sdk::symbol_short!("is_active"),
+                soroban_sdk::vec![env, collector.clone().into_val(env)],
+            );
+
+            if !is_active {
+                panic!("Collector is not active");
+            }
+        }
+
+        // Fraud detection checks
+        // 1. Check if collector is flagged for critical risk
+        common::FraudDetection::require_not_critical(env, &collector)
+            .expect("Collector flagged for fraud");
+
+        // 2. Check rate limit: max 20 transactions per hour
+        common::RateLimit::check_per_hour(
+            env,
+            soroban_sdk::String::from_str(env, "record_collection"),
+            &collector,
+            20,
+        )
+        .expect("Rate limit exceeded");
+
+        // 3. Check for duplicate transaction (within 5 minutes)
+        common::DuplicateDetection::require_not_duplicate(
+            env,
+            &collector,
+            weight,
+            material_type.clone() as u32,
+            300, // 5 minutes tolerance
+        )
+        .expect("Duplicate transaction detected");
+
+        // Validate inputs
+        common::validation::validate_weight_bounds(weight).expect("Invalid weight");
+        common::validation::validate_price(price_per_kg).expect("Invalid price");
+
+        // Record for fraud detection
+        common::RateLimit::record(
+            env,
+            soroban_sdk::String::from_str(env, "record_collection"),
+            &collector,
+        );
+        common::DuplicateDetection::record_transaction(
+            env,
+            &collector,
+            weight,
+            material_type.clone() as u32,
+        );
+        common::FraudDetection::record_transaction(env, &collector);
+        common::FraudDetection::record_weight(env, &collector, weight);
+
+        let total_amount = common::calculate_total_amount(weight, price_per_kg);
+
+        // Get next transaction ID
+        let transaction_id = increment_transaction_count(env);
+
+        // Create transaction record
+        let record = WasteRecord {
+            id: transaction_id,
+            collector: collector.clone(),
+            collection_point,
+            material_type: material_type.clone(),
+            weight,
+            price_per_kg,
+            total_amount,
+            status: TransactionStatus::Pending,
+            timestamp: env.ledger().timestamp(),
+            verified: false,
+        };
+
+        // Store transaction
+        write_transaction(env, transaction_id, &record);
+
+        // Index by collector
+        add_collector_transaction(env, &collector, transaction_id);
+
+        // Emit event
+        common::TransactionEvents::recorded(env, transaction_id, collector, material_type, weight);
+
+        // Bump storage
+        common::bump_instance(env);
+
+        transaction_id
+    }
+}
 
 #[contractimpl]
 impl WasteTransaction {
@@ -119,114 +234,21 @@ impl WasteTransaction {
         weight: u64,
         price_per_kg: i128,
     ) -> u64 {
-        common::Initializable::require_initialized(&env).expect("Not initialized");
-        common::Pausable::require_not_paused(&env).expect("Contract paused");
-
-        // The collector must authorize their own submission. Without this anyone could
-        // record collections in another collector's name, and the fraud score and rate
-        // limits would then be applied to that collector.
-        collector.require_auth();
-
-        // Validate collector status before proceeding
-        if let Some(registry_contract) = env
-            .storage()
-            .instance()
-            .get::<_, Address>(&COLLECTOR_REGISTRY_CONTRACT)
-        {
-            // Cross-contract call to check if collector is active
-            let is_active: bool = env.invoke_contract(
-                &registry_contract,
-                &soroban_sdk::symbol_short!("is_active"),
-                soroban_sdk::vec![&env, collector.clone().into_val(&env)],
-            );
-
-            if !is_active {
-                panic!("Collector is not active");
-            }
-        }
-
-        // Fraud detection checks
-        // 1. Check if collector is flagged for critical risk
-        common::FraudDetection::require_not_critical(&env, &collector)
-            .expect("Collector flagged for fraud");
-
-        // 2. Check rate limit: max 20 transactions per hour
-        common::RateLimit::check_per_hour(
+        Self::record(
             &env,
-            soroban_sdk::String::from_str(&env, "record_collection"),
-            &collector,
-            20,
-        )
-        .expect("Rate limit exceeded");
-
-        // 3. Check for duplicate transaction (within 5 minutes)
-        common::DuplicateDetection::require_not_duplicate(
-            &env,
-            &collector,
-            weight,
-            material_type.clone() as u32,
-            300, // 5 minutes tolerance
-        )
-        .expect("Duplicate transaction detected");
-
-        // Validate inputs
-        common::validation::validate_weight_bounds(weight).expect("Invalid weight");
-        common::validation::validate_price(price_per_kg).expect("Invalid price");
-
-        // Record for fraud detection
-        common::RateLimit::record(
-            &env,
-            soroban_sdk::String::from_str(&env, "record_collection"),
-            &collector,
-        );
-        common::DuplicateDetection::record_transaction(
-            &env,
-            &collector,
-            weight,
-            material_type.clone() as u32,
-        );
-        common::FraudDetection::record_transaction(&env, &collector);
-        common::FraudDetection::record_weight(&env, &collector, weight);
-
-        let total_amount = common::calculate_total_amount(weight, price_per_kg);
-
-        // Get next transaction ID
-        let transaction_id = increment_transaction_count(&env);
-
-        // Create transaction record
-        let record = WasteRecord {
-            id: transaction_id,
-            collector: collector.clone(),
-            collection_point: collection_point.clone(),
-            material_type: material_type.clone(),
+            collector,
+            collection_point,
+            material_type,
             weight,
             price_per_kg,
-            total_amount,
-            status: TransactionStatus::Pending,
-            timestamp: env.ledger().timestamp(),
-            verified: false,
-        };
-
-        // Store transaction
-        write_transaction(&env, transaction_id, &record);
-
-        // Index by collector
-        add_collector_transaction(&env, &collector, transaction_id);
-
-        // Emit event
-        common::TransactionEvents::recorded(&env, transaction_id, collector, material_type, weight);
-
-        // Bump storage
-        common::bump_instance(&env);
-
-        transaction_id
+        )
     }
 
     /// Record collection with automatic price lookup
     ///
     /// # Arguments
     /// * `collector` - Address of the collector
-    /// * `collection_point` - Collection point ID (u64)
+    /// * `collection_point` - Address of the collection point
     /// * `material_type` - Type of material collected
     /// * `weight` - Weight in grams
     ///
@@ -234,88 +256,41 @@ impl WasteTransaction {
     /// Transaction ID
     ///
     /// # Note
-    /// This method automatically fetches current price from MaterialPricing contract
+    /// The price comes from the configured MaterialPricing contract, so the caller
+    /// cannot choose what the collection is worth.
     pub fn record_with_price_lookup(
         env: Env,
         collector: Address,
-        _collection_point: u64,
+        collection_point: Address,
         material_type: MaterialType,
         weight: u64,
     ) -> u64 {
         common::Initializable::require_initialized(&env).expect("Not initialized");
-        common::Pausable::require_not_paused(&env).expect("Contract paused");
 
-        // The collector must authorize their own submission. Without this anyone could
-        // record collections in another collector's name, and the fraud score and rate
-        // limits would then be applied to that collector.
-        collector.require_auth();
-
-        // Validate collector status before proceeding
-        if let Some(registry_contract) = env
-            .storage()
-            .instance()
-            .get::<_, Address>(&COLLECTOR_REGISTRY_CONTRACT)
-        {
-            // Cross-contract call to check if collector is active
-            let is_active: bool = env.invoke_contract(
-                &registry_contract,
-                &soroban_sdk::symbol_short!("is_active"),
-                soroban_sdk::vec![&env, collector.clone().into_val(&env)],
-            );
-
-            if !is_active {
-                panic!("Collector is not active");
-            }
-        }
-
-        // Validate weight
-        common::validation::validate_weight_bounds(weight).expect("Invalid weight");
-
-        // Get MaterialPricing contract address
-        let _pricing_contract: Address = env
+        let pricing_contract: Address = env
             .storage()
             .instance()
             .get(&MATERIAL_PRICING_CONTRACT)
             .expect("MaterialPricing contract not configured");
 
-        // TODO: Call pricing_contract.get_price(material_type)
-        // For now, we'll use a default price until full cross-contract call implementation
-        let price_per_kg = 5_000_000i128; // 0.5 XLM/kg default
+        let price_per_kg = env
+            .try_invoke_contract::<i128, soroban_sdk::Error>(
+                &pricing_contract,
+                &Symbol::new(&env, "get_price"),
+                soroban_sdk::vec![&env, material_type.clone().into_val(&env)],
+            )
+            .ok()
+            .and_then(|price| price.ok())
+            .expect("No price set for this material");
 
-        let total_amount = common::calculate_total_amount(weight, price_per_kg);
-
-        // Get next transaction ID
-        let transaction_id = increment_transaction_count(&env);
-
-        // Use collector address as placeholder for collection point
-        let collection_point_address = collector.clone();
-
-        let record = WasteRecord {
-            id: transaction_id,
-            collector: collector.clone(),
-            collection_point: collection_point_address,
-            material_type: material_type.clone(),
+        Self::record(
+            &env,
+            collector,
+            collection_point,
+            material_type,
             weight,
             price_per_kg,
-            total_amount,
-            status: TransactionStatus::Pending,
-            timestamp: env.ledger().timestamp(),
-            verified: false,
-        };
-
-        // Store transaction
-        write_transaction(&env, transaction_id, &record);
-
-        // Index by collector
-        add_collector_transaction(&env, &collector, transaction_id);
-
-        // Emit event
-        common::TransactionEvents::recorded(&env, transaction_id, collector, material_type, weight);
-
-        // Bump storage
-        common::bump_instance(&env);
-
-        transaction_id
+        )
     }
 
     /// Get transaction details
