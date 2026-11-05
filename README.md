@@ -15,6 +15,16 @@ what is actually wired up today.
 For the HTTP API and indexer that sit in front of these contracts, see
 [wastefi-backend](https://github.com/WASTEFI-AFRICA/wastefi-backend).
 
+## Try it
+
+The contracts are live on Stellar testnet (addresses under
+[Deployment](#deployment)), and the WasteFi app uses them for every approved
+collection. Sign in with a demo account on
+[the frontend](https://wastefi-frontend.vercel.app/login), approve a collection,
+and follow the record, verify and payment transactions it links to on
+stellar.expert. To exercise them directly, `scripts/smoke-test.sh` drives one
+delivery through all seven contracts from the command line.
+
 ## Contracts
 
 | Crate | Responsibility |
@@ -24,7 +34,7 @@ For the HTTP API and indexer that sit in front of these contracts, see
 | `collection_point` | Registry of collection points; identity only, not yet the authority that verifies |
 | `waste_transaction` | Records a delivery and moves it through pending, verified, and completed |
 | `material_pricing` | Per-material price oracle, written by an operator role |
-| `payment_distribution` | Records a payout against a transaction id; the amount is supplied by the caller |
+| `payment_distribution` | Records one payout per transaction and mints it in WASTE when completed; the amount is supplied by the caller |
 | `reputation` | Integer reputation scoring derived from verified delivery history |
 | `waste_token` | The reward token: capped mint, burn, transfer, and approve/transfer_from allowances |
 
