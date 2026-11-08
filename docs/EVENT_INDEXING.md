@@ -59,7 +59,8 @@ WasteFi smart contracts emit events for all significant state changes. This guid
 | Event | Symbol | Data | Emitted When |
 |-------|--------|------|--------------|
 | Recorded | `tx_rec` | (tx_id: u64, collector: Address, material: MaterialType, weight: u64) | New waste collection recorded |
-| Verified | `tx_ver` | (tx_id: u64) | Transaction verified by admin |
+| Verified | `tx_ver` | tx_id: u64 | Individual verification or legacy admin batch verification |
+| Verification actor (source update, deployment pending) | `(verify_by, tx_id)` topics | verifier: Address | Individual point verification or explicit admin override; legacy batch is unchanged |
 | StatusChanged | `tx_stat` | (tx_id: u64, status: TransactionStatus) | Transaction status updated |
 
 **Use Cases**:

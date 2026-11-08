@@ -73,6 +73,7 @@ echo "Wiring waste_transaction to the contracts it calls"
 invoke "$TRANSACTION" set_material_pricing_contract --contract_address "$PRICING"
 invoke "$TRANSACTION" set_reputation_contract --contract_address "$REPUTATION"
 invoke "$TRANSACTION" set_collector_registry_contract --contract_address "$REGISTRY"
+invoke "$TRANSACTION" set_collection_point_contract --contract_address "$POINTS"
 
 echo "Letting waste_transaction update reputation"
 invoke "$REPUTATION" add_operator --operator "$TRANSACTION"

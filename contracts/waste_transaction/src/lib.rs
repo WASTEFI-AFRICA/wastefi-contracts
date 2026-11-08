@@ -11,6 +11,7 @@ mod test;
 const MATERIAL_PRICING_CONTRACT: &str = "MaterialPricingContract";
 const REPUTATION_CONTRACT: &str = "ReputationContract";
 const COLLECTOR_REGISTRY_CONTRACT: &str = "CollectorRegistryContract";
+const COLLECTION_POINT_CONTRACT: &str = "CollectionPointContract";
 
 #[contract]
 pub struct WasteTransaction;
@@ -128,6 +129,107 @@ impl WasteTransaction {
 
         transaction_id
     }
+
+    /// Shared verification effects; point authorization never falls back to admin.
+    fn verify(env: Env, transaction_id: u64, by_point: bool) {
+        common::Initializable::require_initialized(&env).expect("Not initialized");
+
+        let mut record = read_transaction(&env, transaction_id).expect("Transaction not found");
+
+        let verifier = if by_point {
+            common::Pausable::require_not_paused(&env).expect("Contract paused");
+            record.collection_point.require_auth();
+
+            let registry: Address = env
+                .storage()
+                .instance()
+                .get(&COLLECTION_POINT_CONTRACT)
+                .expect("CollectionPoint contract not configured");
+            let paused: bool = env.invoke_contract(
+                &registry,
+                &Symbol::new(&env, "is_paused"),
+                soroban_sdk::vec![&env],
+            );
+            assert!(!paused, "CollectionPoint contract paused");
+
+            let point_id: u64 = env.invoke_contract(
+                &registry,
+                &Symbol::new(&env, "get_point_by_owner"),
+                soroban_sdk::vec![&env, record.collection_point.clone().into_val(&env)],
+            );
+            let point: common::CollectionPoint = env.invoke_contract(
+                &registry,
+                &Symbol::new(&env, "get_point"),
+                soroban_sdk::vec![&env, point_id.into_val(&env)],
+            );
+            assert!(
+                point.owner == record.collection_point,
+                "Point owner mismatch"
+            );
+            assert!(
+                point.verification_status == VerificationStatus::Verified,
+                "Collection point not verified"
+            );
+            assert!(
+                point.accepted_materials.contains(&record.material_type),
+                "Material not accepted by collection point"
+            );
+            assert!(
+                record.status == TransactionStatus::Pending,
+                "Transaction is not pending"
+            );
+            record.collection_point.clone()
+        } else {
+            let admin = common::AccessControl::get_admin(&env).expect("Admin not found");
+            common::AccessControl::require_admin(&env, &admin).expect("Not admin");
+            admin
+        };
+
+        // Verifying twice would count the collection twice in the collector's reputation
+        if record.verified {
+            panic!("Transaction already verified");
+        }
+
+        // Record acceptance for fraud detection
+        common::FraudDetection::record_rejection(&env, &record.collector, false);
+
+        // Update verification status
+        record.verified = true;
+        record.status = TransactionStatus::Completed;
+
+        // Save updated record
+        write_transaction(&env, transaction_id, &record);
+
+        // Update risk score after verification
+        common::FraudDetection::update_risk_score(&env, &record.collector);
+
+        // Update the collector's reputation if a reputation contract is configured.
+        // This contract calls as itself, so the reputation admin must have added it
+        // as an operator there.
+        if let Some(reputation_contract) = env
+            .storage()
+            .instance()
+            .get::<_, Address>(&REPUTATION_CONTRACT)
+        {
+            env.invoke_contract::<()>(
+                &reputation_contract,
+                &Symbol::new(&env, "record_transaction"),
+                soroban_sdk::vec![
+                    &env,
+                    env.current_contract_address().into_val(&env),
+                    record.collector.clone().into_val(&env),
+                    TransactionStatus::Completed.into_val(&env),
+                ],
+            );
+        }
+
+        // Emit event
+        common::TransactionEvents::verified(&env, transaction_id);
+        common::TransactionEvents::verified_by(&env, transaction_id, verifier);
+
+        // Bump storage
+        common::bump_instance(&env);
+    }
 }
 
 #[contractimpl]
@@ -198,6 +300,22 @@ impl WasteTransaction {
             .instance()
             .set(&COLLECTOR_REGISTRY_CONTRACT, &contract_address);
         common::bump_instance(&env);
+    }
+
+    /// Set the registry used to authorize point verification (admin only).
+    pub fn set_collection_point_contract(env: Env, contract_address: Address) {
+        common::Initializable::require_initialized(&env).expect("Not initialized");
+        let admin = common::AccessControl::get_admin(&env).expect("Admin not found");
+        common::AccessControl::require_admin(&env, &admin).expect("Not admin");
+        env.storage()
+            .instance()
+            .set(&COLLECTION_POINT_CONTRACT, &contract_address);
+        common::bump_instance(&env);
+    }
+
+    /// Get the registry configured for point verification.
+    pub fn get_collection_point_contract(env: Env) -> Option<Address> {
+        env.storage().instance().get(&COLLECTION_POINT_CONTRACT)
     }
 
     /// Get material pricing contract address
@@ -313,58 +431,13 @@ impl WasteTransaction {
     /// This also updates the collector's reputation if the Reputation contract is
     /// configured. A transaction can only be verified once.
     pub fn verify_transaction(env: Env, transaction_id: u64) {
-        common::Initializable::require_initialized(&env).expect("Not initialized");
+        Self::verify(env, transaction_id, false);
+    }
 
-        // Get admin and verify
-        let admin = common::AccessControl::get_admin(&env).expect("Admin not found");
-        common::AccessControl::require_admin(&env, &admin).expect("Not admin");
-
-        // Get transaction
-        let mut record = read_transaction(&env, transaction_id).expect("Transaction not found");
-
-        // Verifying twice would count the collection twice in the collector's reputation
-        if record.verified {
-            panic!("Transaction already verified");
-        }
-
-        // Record acceptance for fraud detection
-        common::FraudDetection::record_rejection(&env, &record.collector, false);
-
-        // Update verification status
-        record.verified = true;
-        record.status = TransactionStatus::Completed;
-
-        // Save updated record
-        write_transaction(&env, transaction_id, &record);
-
-        // Update risk score after verification
-        common::FraudDetection::update_risk_score(&env, &record.collector);
-
-        // Update the collector's reputation if a reputation contract is configured.
-        // This contract calls as itself, so the reputation admin must have added it
-        // as an operator there.
-        if let Some(reputation_contract) = env
-            .storage()
-            .instance()
-            .get::<_, Address>(&REPUTATION_CONTRACT)
-        {
-            env.invoke_contract::<()>(
-                &reputation_contract,
-                &Symbol::new(&env, "record_transaction"),
-                soroban_sdk::vec![
-                    &env,
-                    env.current_contract_address().into_val(&env),
-                    record.collector.clone().into_val(&env),
-                    TransactionStatus::Completed.into_val(&env),
-                ],
-            );
-        }
-
-        // Emit event
-        common::TransactionEvents::verified(&env, transaction_id);
-
-        // Bump storage
-        common::bump_instance(&env);
+    /// Verify a pending delivery with its registered, verified point owner's signature.
+    /// The configured point registry must be unpaused and accept the material.
+    pub fn verify_transaction_by_point(env: Env, transaction_id: u64) {
+        Self::verify(env, transaction_id, true);
     }
 
     /// Update transaction status (admin only)

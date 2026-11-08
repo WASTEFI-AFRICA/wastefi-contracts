@@ -83,6 +83,12 @@ impl TransactionEvents {
             .publish((symbol_short!("tx_ver"),), transaction_id);
     }
 
+    /// Individual verification actor; keep the existing tx_ver event for indexers.
+    pub fn verified_by(env: &Env, transaction_id: u64, verifier: Address) {
+        env.events()
+            .publish((symbol_short!("verify_by"), transaction_id), verifier);
+    }
+
     pub fn status_changed(env: &Env, transaction_id: u64, status: TransactionStatus) {
         env.events()
             .publish((symbol_short!("tx_stat"),), (transaction_id, status));

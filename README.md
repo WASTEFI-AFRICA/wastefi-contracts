@@ -31,7 +31,7 @@ delivery through all seven contracts from the command line.
 | --- | --- |
 | `common` | Shared types, errors, events, access control, and validation used by every other crate |
 | `collector_registry` | Collector identity, registration status, and profile data |
-| `collection_point` | Registry of collection points; identity only, not yet the authority that verifies |
+| `collection_point` | Registry of collection point owners, verification status and accepted materials; the source point-verification path checks it |
 | `waste_transaction` | Records a delivery and moves it through pending, verified, and completed |
 | `material_pricing` | Per-material price oracle, written by an operator role |
 | `payment_distribution` | Records one payout per transaction and mints it in WASTE when completed; the amount is supplied by the caller |
@@ -68,6 +68,35 @@ The practical consequence is that the admin key is trusted for verification and
 payout amounts. Reducing that trust (deriving amounts on-chain, authorizing
 verification from `collection_point`, and splitting the admin into a multisig) is
 the main item in [docs/SECURITY_ROADMAP.md](docs/SECURITY_ROADMAP.md).
+
+## Point verification in source
+
+The source now provides `waste_transaction::verify_transaction_by_point`.
+It requires the signature of the `collection_point` address stored in the
+transaction, looks up that owner in the configured `collection_point` registry,
+and requires a verified point that accepts the recorded material. The delivery
+must still be pending, and both contracts must be unpaused. Missing registry
+configuration or a failed check rejects the call without changing the delivery
+or reputation. The deploy script wires the registry through the admin-only
+`set_collection_point_contract` method.
+
+This path uses the same reputation update as individual admin verification.
+Both individual methods keep the existing `tx_ver` event and add an actor event:
+topics `(verify_by, transaction_id)`, data `verifier: Address`. The legacy batch
+method is unchanged and does not emit the actor event.
+
+`verify_transaction` remains an explicit admin override, including while paused
+and for old records whose point key was never retained. The new point method
+never falls back to that override. This preserves the admin trust boundary;
+it does not make verification independent of the platform admin.
+
+This source change has not been deployed or connected to the API. The deployed
+addresses and live admin flow above still apply. Backend work must retain
+collection point signing keys encrypted, register each point, and use its key
+for new deliveries. A rollout must also preserve each existing collection's
+contract addresses. A fresh transaction contract restarts IDs, so replacing it
+alone can collide with the old payment contract's transaction-to-payment map.
+Do not change the live addresses until that rollout is prepared and tested.
 
 ## Release profile
 
@@ -115,7 +144,7 @@ refuses to deploy the result. And `Cargo.toml` lists both `lib` (so the
 integration tests can import the contracts) and `cdylib`, which makes a default
 build noticeably larger; the script passes `--crate-type cdylib` per contract, as
 the Stellar CLI does. The workspace root is itself a package, so a bare build at
-the root emits no contract wasm at all. Current sizes are 18 to 39 KB per contract.
+the root emits no contract wasm at all. The build script reports the size of each artifact.
 
 ## Testing
 
@@ -125,14 +154,16 @@ cargo test -p payment_distribution     # one crate
 cargo test --test integration_test     # cross-contract scenarios
 ```
 
-194 tests, all passing: 166 unit tests across the crates and 28 integration
-tests in [`tests/integration_test.rs`](tests/integration_test.rs) that deploy all
-seven contracts into one test environment and drive them through registration,
-collection, pricing, payment, reputation, pausing, and collector-status gating.
+Cross-contract scenarios in [`tests/integration_test.rs`](tests/integration_test.rs)
+exercise registration, collection, pricing, payments and reputation.
+[`tests/point_verification.rs`](tests/point_verification.rs) adds owner-only
+verification, foreign and missing signatures, unregistered and unverified points,
+registry configuration, pauses, invalid delivery states, material restrictions,
+reputation rollback, duplicate verification, admin recovery and WASTE payment.
+These tests use real contract implementations inside the Soroban host test
+environment. They do not demonstrate deployment or backend key custody.
 
-Coverage is uneven. `waste_transaction`, the most logic-heavy contract, has no
-unit tests of its own and is exercised only through the integration tests. There
-is no coverage measurement, so no coverage figure is claimed.
+Coverage is uneven, and no coverage figure is claimed.
 
 CI ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) runs
 `cargo fmt --check`, `cargo clippy -D warnings`, `cargo check`, `cargo test
@@ -197,9 +228,9 @@ Known gaps that must close before a mainnet deployment are tracked in
 [docs/SECURITY_ROADMAP.md](docs/SECURITY_ROADMAP.md). The token supply cap is
 now enforced in `mint` and a completed or failed payment can no longer be
 modified. Still open: a single admin key where a multisig belongs, payout
-amounts supplied by the caller, verification gated on the admin rather than
-the collection point, incomplete collector-status validation, and weak rate
-limiting.
+amounts supplied by the caller, rollout of the point-verification source change
+(the live API still verifies as admin), incomplete collector-status validation,
+and weak rate limiting.
 
 - [docs/THREAT_MODEL.md](docs/THREAT_MODEL.md) — who these contracts defend against and what the admin can do
 - [docs/SECURITY_CONSIDERATIONS.md](docs/SECURITY_CONSIDERATIONS.md) — per-contract analysis

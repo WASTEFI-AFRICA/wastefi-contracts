@@ -11,6 +11,37 @@ This document provides a comprehensive threat analysis for the WasteFi smart con
 
 ---
 
+## Point verification source update
+
+This section describes the current source authorization boundary. The sections
+below are an older threat inventory and design notes, not an independent audit
+or evidence that every listed mitigation is deployed. The README describes the
+live contracts and the source changes awaiting rollout.
+
+`WasteTransaction.verify_transaction_by_point` requires authorization from the
+point address stored on the delivery. It checks the configured point registry,
+its owner mapping, verified status, accepted material and pause state. The
+transaction contract must also be unpaused and the record pending and unverified.
+These checks fail closed, including when the registry is unset. A failure in the
+reputation update rolls back verification.
+
+The admin controls registry configuration and point verification. The separate
+`verify_transaction` override remains admin-only and available while paused,
+including for legacy records without a retained point key. The point method
+never retries as admin. Both individual methods emit `tx_ver` plus `verify_by`
+with the verifier address; the legacy admin batch path is unchanged and emits
+no actor event. The platform admin therefore remains trusted. A stolen admin
+key can still bypass point verification through the explicit override.
+
+Backend custody of point keys is not implemented by this contract patch. The
+API must encrypt those keys, authorize operators against current assignments,
+and use the matching point signer for new records. The live addresses have not
+changed. Rollout must retain old contract references for existing collections
+and isolate the new transaction IDs from the old payment mapping. Payment
+amounts are still supplied by the admin caller until the payout roadmap item.
+
+---
+
 ## 1. Executive Summary
 
 The WasteFi platform manages valuable digital assets (tokens, payments) and critical reputation data for waste collectors and collection points. The threat landscape includes malicious users attempting fraud, compromised administrators, external attackers, and system design vulnerabilities.
@@ -500,8 +531,8 @@ The WasteFi platform manages valuable digital assets (tokens, payments) and crit
 3. Attempts to receive payment without admin review
 
 **Mitigations**:
-- Admin-only verification
-- Authorization check: `AccessControl::require_admin()`
+- Owner authorization and verified registry checks on the source point path
+- Separate admin-only override; live API still uses this path
 - Transaction ID validation
 
 **Residual Risk**: **LOW** - Authorization enforced
@@ -761,7 +792,8 @@ The WasteFi platform manages valuable digital assets (tokens, payments) and crit
 **Effectiveness**: **HIGH**
 
 **Coverage**:
-- Admin-only: Upgrades, emergencies, verifications, role transfers
+- Admin-only: Upgrades, emergencies, verification overrides, role transfers
+- Point owner: Individual verification through the new source path (rollout pending)
 - Operator-only: Price updates, point management
 - Owner-only: Profile updates
 - Function-level authorization checks
