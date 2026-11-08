@@ -6,20 +6,21 @@ emerging markets for verified recyclable material drop-offs on Stellar.
 A collector registers once and delivers sorted material to a collection point.
 The delivery is recorded on-chain, verified, and then paid out in reward tokens,
 with the collector's reputation score tracking their verified history. The
-contracts are at an early stage: the intended trust model puts verification in
-the hands of collection points, but as deployed it is the platform admin that
-verifies deliveries and sets payout amounts. See
-[how a collection becomes a payment](#how-a-collection-becomes-a-payment) for
-what is actually wired up today.
+contracts are at an early stage. New work can be verified by the collection
+point's key through a checked registry. The API holds custodial signing keys,
+the platform controls registry trust and payments, and an explicit admin
+verification override remains. See
+[how a collection becomes a payment](#how-a-collection-becomes-a-payment).
 
 For the HTTP API and indexer that sit in front of these contracts, see
 [wastefi-backend](https://github.com/WASTEFI-AFRICA/wastefi-backend).
 
 ## Try it
 
-The contracts are live on Stellar testnet (addresses under
-[Deployment](#deployment)), and the WasteFi app uses them for every approved
-collection. Sign in with a demo account on
+The bundle under [Deployment](#deployment) supports point-signed verification on
+Stellar testnet. The app's public `/stats` page reports the API's configured
+verification mode for new work; older collections retain their saved contracts
+and flow. Sign in with a demo account on
 [the frontend](https://wastefi-frontend.vercel.app/login), approve a collection,
 and follow the record, verify and payment transactions it links to on
 stellar.expert. To exercise them directly, `scripts/smoke-test.sh` drives one
@@ -31,7 +32,7 @@ delivery through all seven contracts from the command line.
 | --- | --- |
 | `common` | Shared types, errors, events, access control, and validation used by every other crate |
 | `collector_registry` | Collector identity, registration status, and profile data |
-| `collection_point` | Registry of collection point owners, verification status and accepted materials; the source point-verification path checks it |
+| `collection_point` | Registry of collection point owners, verification status and accepted materials; the point-verification path checks it |
 | `waste_transaction` | Records a delivery and moves it through pending, verified, and completed |
 | `material_pricing` | Per-material price oracle, written by an operator role |
 | `payment_distribution` | Records one payout per transaction and mints it in WASTE when completed; the amount is supplied by the caller |
@@ -43,35 +44,32 @@ build to their own wasm.
 
 ## How a collection becomes a payment
 
-The contracts are split by concern, but the current wiring routes almost every
-state change through the platform admin rather than through the collection point
-that physically received the material:
+With `point_owner_v1` selected in the API, new approvals follow this flow:
 
-1. `collector_registry::register` records a collector.
-2. `waste_transaction::record_with_price_lookup` records a delivery as pending,
-   priced from `material_pricing`. `record_collection` does the same with a
-   caller-supplied price. Both require the collector's signature and reject
-   collectors that `collector_registry::is_active` reports as inactive.
-3. `waste_transaction::verify_transaction` marks the delivery verified and
-   completed, and records it in the collector's `reputation` score. **This call
-   requires the contract admin**, not the collection point. Collection-point
-   identity is registered in `collection_point` but is not yet what authorizes a
-   verification.
-4. `payment_distribution::process_payment` records what is owed, once per
-   transaction. It requires admin and takes `amount` as an argument; it does not
-   yet read the amount from the verified transaction.
-5. `payment_distribution::update_payment_status(Completed)` mints that amount of
-   WASTE to the collector through `waste_token::mint_from`. The deploy script
-   approves `payment_distribution` as the token's only minter.
+1. `collector_registry::register` records a collector. The admin activates it.
+2. The API keeps an encrypted point wallet, registers it in `collection_point`
+   with pseudonymous metadata, and has the registry admin verify it after checking
+   the database point's activation, verification and accepted materials.
+3. `waste_transaction::record_with_price_lookup` records a pending delivery at
+   the price from `material_pricing`. The collector signs and must be active.
+4. `waste_transaction::verify_transaction_by_point` requires the recorded point
+   owner's signature, a verified registry entry accepting the material, and both
+   contracts unpaused. It marks the record completed and updates reputation.
+5. `payment_distribution::process_payment` records one payment per transaction.
+   It still requires admin and a caller-supplied recipient and amount; on-chain
+   payment derivation remains separate work.
+6. `payment_distribution::update_payment_status(Completed)` mints the payment
+   through `waste_token::mint_from`. The payment contract has a minter role.
 
-The practical consequence is that the admin key is trusted for verification and
-payout amounts. Reducing that trust (deriving amounts on-chain, authorizing
-verification from `collection_point`, and splitting the admin into a multisig) is
-the main item in [docs/SECURITY_ROADMAP.md](docs/SECURITY_ROADMAP.md).
+Saved `admin_v1` collections retain their original contracts and admin
+verification. New point-authorization failures never fall back to admin.
+The platform still holds signing keys and controls payment amounts. The explicit
+admin verification override remains, including while paused and for old records
+whose point key was never retained. This is not independent point custody.
 
-## Point verification in source
+## Point verification
 
-The source now provides `waste_transaction::verify_transaction_by_point`.
+The updated transaction contract provides `waste_transaction::verify_transaction_by_point`.
 It requires the signature of the `collection_point` address stored in the
 transaction, looks up that owner in the configured `collection_point` registry,
 and requires a verified point that accepts the recorded material. The delivery
@@ -90,16 +88,16 @@ and for old records whose point key was never retained. The new point method
 never falls back to that override. This preserves the admin trust boundary;
 it does not make verification independent of the platform admin.
 
-This source change has not been deployed or connected to the API. The deployed
-addresses and live admin flow above still apply. Backend rollout must retain collection point signing keys encrypted, register
-each point, and use its key for new deliveries. The registry source also exposes
-`find_point_by_owner`, returning `Option<u64>`, so provisioning can distinguish a
-missing registration from an RPC failure. This lookup is public and read-only;
-it neither registers nor verifies a point. Deploy the updated registry before
-using tooling that requires this method. A rollout must also preserve each existing collection's
-contract addresses. A fresh transaction contract restarts IDs, so replacing it
-alone can collide with the old payment contract's transaction-to-payment map.
-Do not change the live addresses until that rollout is prepared and tested.
+The updated registry exposes `find_point_by_owner -> Option<u64>` so the API
+can distinguish an absent registration from a failed RPC read. It is public and
+read-only. The new bundle reuses the original token, collector registry, pricing
+and reputation contracts. Its registry, transaction contract and payment map are
+new. Older role grants stay in place so pinned collections remain resumable.
+
+Use the [point-verification rollout guide](docs/POINT_VERIFICATION_ROLLOUT.md) to
+prepare the three replacement contracts while keeping the current token,
+balances and legacy roles. Its restartable script writes a candidate manifest;
+it leaves the active address file and hosted application unchanged.
 
 ## Release profile
 
@@ -182,26 +180,28 @@ the audit status below.
 | --- | --- |
 | `waste_token` | [`CDOK6OEYIINSA2KP23UU72BSNST7PFNVD67DI2PDELCZIQYUV7XK7SH6`](https://stellar.expert/explorer/testnet/contract/CDOK6OEYIINSA2KP23UU72BSNST7PFNVD67DI2PDELCZIQYUV7XK7SH6) |
 | `collector_registry` | [`CCP4QOY57OKA6DNRU2XG5AD5B2YSVNSUG7BRVWR5XJRDMGY62VQ7JHII`](https://stellar.expert/explorer/testnet/contract/CCP4QOY57OKA6DNRU2XG5AD5B2YSVNSUG7BRVWR5XJRDMGY62VQ7JHII) |
-| `collection_point` | [`CDDY7OUFFZ32K2FCISKMKN2B7BPPFW7PS7OE4GHFXX5WR4547C4MOA34`](https://stellar.expert/explorer/testnet/contract/CDDY7OUFFZ32K2FCISKMKN2B7BPPFW7PS7OE4GHFXX5WR4547C4MOA34) |
+| `collection_point` | [`CADEZ64CHYORQLRKD3JLV6QLW7IHJAUWEAAOPS6K2DNMQSXZCSPLGMHW`](https://stellar.expert/explorer/testnet/contract/CADEZ64CHYORQLRKD3JLV6QLW7IHJAUWEAAOPS6K2DNMQSXZCSPLGMHW) |
 | `material_pricing` | [`CA6BP7PC7OPZPT4MFHIJAPXB237BVP72GVNVPI67GPH3QYYBCJDN2Z5G`](https://stellar.expert/explorer/testnet/contract/CA6BP7PC7OPZPT4MFHIJAPXB237BVP72GVNVPI67GPH3QYYBCJDN2Z5G) |
 | `reputation` | [`CCXDYT3RIM2D356CYUZJ7SVD5PRFUVNJDZDAKSI5WITMMW5QMXZHIB5A`](https://stellar.expert/explorer/testnet/contract/CCXDYT3RIM2D356CYUZJ7SVD5PRFUVNJDZDAKSI5WITMMW5QMXZHIB5A) |
-| `waste_transaction` | [`CAFC4QX3LOQKTPZLWJ52XXE7H5NO7PGVBG4IVGA4BN3E6YT6TIDDL7UP`](https://stellar.expert/explorer/testnet/contract/CAFC4QX3LOQKTPZLWJ52XXE7H5NO7PGVBG4IVGA4BN3E6YT6TIDDL7UP) |
-| `payment_distribution` | [`CARON3S57TTYVHG7C3DMOGIQH5GSYTAOOH325AOX5KQJRYGSFD3RT2JO`](https://stellar.expert/explorer/testnet/contract/CARON3S57TTYVHG7C3DMOGIQH5GSYTAOOH325AOX5KQJRYGSFD3RT2JO) |
+| `waste_transaction` | [`CB77D77P7RLXHPXNCZG4PJE6OVAXWYWAY2KBDX2SO76FMSBL7XOTYDIT`](https://stellar.expert/explorer/testnet/contract/CB77D77P7RLXHPXNCZG4PJE6OVAXWYWAY2KBDX2SO76FMSBL7XOTYDIT) |
+| `payment_distribution` | [`CA5BJ6WCZEVLV7YNZY7XXERXSDHSYMW5XKCQOU3BTXWNG2DQRR74PB2W`](https://stellar.expert/explorer/testnet/contract/CA5BJ6WCZEVLV7YNZY7XXERXSDHSYMW5XKCQOU3BTXWNG2DQRR74PB2W) |
 
-Deployed 2026-10-28 from `9e1b30d` by
+Bundle updated 2026-11-08 with registry, transaction and payment code from
+`edbbec3`. The token, collector registry, pricing and reputation retain their
+2026-10-28 deployment. Prepared by
 [`GBPLV2ID...3Y4L`](https://stellar.expert/explorer/testnet/account/GBPLV2IDOG7E2UQEDHTN2ZZA3OGUECFHM5F54S3F65QEUR5EATJA3Y4L),
 which is also the admin of every contract. The addresses are recorded in
 [`deployed_addresses_testnet.json`](deployed_addresses_testnet.json). Testnet is
 reset periodically, so these will stop resolving eventually; redeploy with the
 script below.
 
-### Deploy it yourself
+### Fresh deployment
 
 Requires the [Stellar CLI](https://developers.stellar.org/docs/tools/cli) (`make install`
 installs it).
 
 ```sh
-make deploy-testnet     # build, deploy, initialize and wire all seven contracts
+make deploy-testnet     # new token and seven new contracts; not an app migration
 make smoke-test         # drive a delivery through the deployed contracts
 ```
 
@@ -231,8 +231,8 @@ Known gaps that must close before a mainnet deployment are tracked in
 [docs/SECURITY_ROADMAP.md](docs/SECURITY_ROADMAP.md). The token supply cap is
 now enforced in `mint` and a completed or failed payment can no longer be
 modified. Still open: a single admin key where a multisig belongs, payout
-amounts supplied by the caller, rollout of the point-verification source change
-(the live API still verifies as admin), incomplete collector-status validation,
+amounts supplied by the caller, custodial point keys and the explicit admin
+verification override, incomplete collector-status validation,
 and weak rate limiting.
 
 - [docs/THREAT_MODEL.md](docs/THREAT_MODEL.md) — who these contracts defend against and what the admin can do

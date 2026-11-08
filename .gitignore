@@ -30,3 +30,6 @@ coverage/
 
 # Soroban test environment snapshots, regenerated on every test run
 test_snapshots/
+
+# Python deployment tooling
+__pycache__/
