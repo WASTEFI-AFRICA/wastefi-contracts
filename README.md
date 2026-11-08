@@ -91,9 +91,12 @@ never falls back to that override. This preserves the admin trust boundary;
 it does not make verification independent of the platform admin.
 
 This source change has not been deployed or connected to the API. The deployed
-addresses and live admin flow above still apply. Backend work must retain
-collection point signing keys encrypted, register each point, and use its key
-for new deliveries. A rollout must also preserve each existing collection's
+addresses and live admin flow above still apply. Backend rollout must retain collection point signing keys encrypted, register
+each point, and use its key for new deliveries. The registry source also exposes
+`find_point_by_owner`, returning `Option<u64>`, so provisioning can distinguish a
+missing registration from an RPC failure. This lookup is public and read-only;
+it neither registers nor verifies a point. Deploy the updated registry before
+using tooling that requires this method. A rollout must also preserve each existing collection's
 contract addresses. A fresh transaction contract restarts IDs, so replacing it
 alone can collide with the old payment contract's transaction-to-payment map.
 Do not change the live addresses until that rollout is prepared and tested.

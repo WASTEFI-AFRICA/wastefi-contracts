@@ -727,6 +727,19 @@ pub fn verify_collection(
 
 ---
 
+#### `find_point_by_owner` (source update, deployment pending)
+
+```rust
+pub fn find_point_by_owner(env: Env, owner: Address) -> Option<u64>
+```
+
+Public, read-only lookup. Returns the registered point ID or `None` when the
+owner has no entry. The existing `get_point_by_owner` still traps when absent.
+A transport or simulation failure must not be treated as `None` by provisioning
+tools. This method is available only after deploying the updated registry.
+
+---
+
 ## 5. WasteTransaction Contract
 
 **Purpose**: Records and manages waste collection transactions

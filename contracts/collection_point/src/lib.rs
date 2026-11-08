@@ -121,6 +121,11 @@ impl CollectionPoint {
         read_point_by_owner(&env, &owner).expect("No collection point found for owner")
     }
 
+    /// Look up an owner without trapping when no point has been registered.
+    pub fn find_point_by_owner(env: Env, owner: Address) -> Option<u64> {
+        read_point_by_owner(&env, &owner)
+    }
+
     /// Verify a collection point (admin only)
     ///
     /// # Arguments
