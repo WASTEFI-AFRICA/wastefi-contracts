@@ -713,3 +713,308 @@ fn test_batch_rejects_a_transaction_repeated_within_the_batch() {
     batch.push_back((5u64, recipient.clone(), 1_000i128));
     client.batch_process(&batch);
 }
+
+// ---------------------------------------------------------------------------
+// Payouts derived from the verified transaction
+// ---------------------------------------------------------------------------
+
+use common::MaterialType;
+use waste_transaction::{WasteTransaction, WasteTransactionClient};
+
+struct Derived {
+    env: Env,
+    collector: Address,
+    payments_id: Address,
+    transactions_id: Address,
+    token_id: Address,
+}
+
+impl Derived {
+    /// A payment contract bound to a real transaction contract, with minting approved.
+    fn new() -> Self {
+        let env = Env::default();
+        env.mock_all_auths();
+        env.ledger().with_mut(|li| li.timestamp = 1_000);
+
+        let admin = Address::generate(&env);
+        let collector = Address::generate(&env);
+
+        let transactions_id = env.register_contract(None, WasteTransaction);
+        WasteTransactionClient::new(&env, &transactions_id).initialize(&admin);
+
+        let (payments_id, payments) = create_contract(&env);
+        let token = create_token(&env, &admin, &payments_id);
+        payments.initialize(&admin, &token.address);
+        payments.set_transaction_contract(&transactions_id);
+
+        Self {
+            collector,
+            payments_id,
+            transactions_id,
+            token_id: token.address,
+            env,
+        }
+    }
+
+    fn payments(&self) -> PaymentDistributionClient<'_> {
+        PaymentDistributionClient::new(&self.env, &self.payments_id)
+    }
+
+    fn transactions(&self) -> WasteTransactionClient<'_> {
+        WasteTransactionClient::new(&self.env, &self.transactions_id)
+    }
+
+    fn token(&self) -> waste_token::WasteTokenClient<'_> {
+        waste_token::WasteTokenClient::new(&self.env, &self.token_id)
+    }
+
+    /// Record a delivery; `weight` is in grams.
+    fn record(&self, weight: u64, price_per_kg: i128) -> u64 {
+        let point = Address::generate(&self.env);
+        self.transactions().record_collection(
+            &self.collector,
+            &point,
+            &MaterialType::Plastic,
+            &weight,
+            &price_per_kg,
+        )
+    }
+
+    fn verified(&self, weight: u64, price_per_kg: i128) -> u64 {
+        let id = self.record(weight, price_per_kg);
+        self.transactions().verify_transaction(&id);
+        id
+    }
+}
+
+#[test]
+fn test_payment_is_derived_from_the_verified_transaction() {
+    let f = Derived::new();
+    let tx_id = f.verified(2_500, 8_000_000); // 2.5 kg at 0.8 per kg
+
+    let payment_id = f.payments().process_verified_payment(&tx_id);
+    let payment = f.payments().get_payment(&payment_id);
+    assert_eq!(payment.recipient, f.collector);
+    assert_eq!(payment.amount, 20_000_000);
+    assert_eq!(payment.transaction_id, tx_id);
+    assert_eq!(payment.status, PaymentStatus::Pending);
+    assert_eq!(
+        f.payments().get_payment_for_transaction(&tx_id),
+        Some(payment_id)
+    );
+
+    f.payments()
+        .update_payment_status(&payment_id, &PaymentStatus::Completed);
+    assert_eq!(f.token().balance(&f.collector), 20_000_000);
+}
+
+#[test]
+fn test_derived_payment_follows_the_price_on_the_record() {
+    let f = Derived::new();
+    // Different weights: the transaction contract rejects an identical repeat.
+    let cheap = f.verified(1_000, 4_000_000);
+    let dear = f.verified(2_000, 25_000_000);
+
+    let a = f.payments().process_verified_payment(&cheap);
+    let b = f.payments().process_verified_payment(&dear);
+
+    assert_eq!(f.payments().get_payment(&a).amount, 4_000_000);
+    assert_eq!(f.payments().get_payment(&b).amount, 50_000_000);
+}
+
+#[test]
+#[should_panic(expected = "Transaction is not verified")]
+fn test_unverified_transaction_cannot_be_paid() {
+    let f = Derived::new();
+    let tx_id = f.record(2_000, 8_000_000);
+    f.payments().process_verified_payment(&tx_id);
+}
+
+#[test]
+#[should_panic(expected = "Transaction is not verified")]
+fn test_disputed_transaction_cannot_be_paid() {
+    let f = Derived::new();
+    let tx_id = f.verified(2_000, 8_000_000);
+    f.transactions()
+        .update_status(&tx_id, &common::TransactionStatus::Disputed);
+    f.payments().process_verified_payment(&tx_id);
+}
+
+#[test]
+#[should_panic]
+fn test_unknown_transaction_cannot_be_paid() {
+    let f = Derived::new();
+    f.payments().process_verified_payment(&999);
+}
+
+#[test]
+#[should_panic(expected = "Payment already exists for this transaction")]
+fn test_derived_payment_is_made_once() {
+    let f = Derived::new();
+    let tx_id = f.verified(2_000, 8_000_000);
+    f.payments().process_verified_payment(&tx_id);
+    f.payments().process_verified_payment(&tx_id);
+}
+
+#[test]
+#[should_panic(expected = "Payment already exists for this transaction")]
+fn test_override_cannot_pay_a_transaction_that_was_already_paid() {
+    let f = Derived::new();
+    let tx_id = f.verified(2_000, 8_000_000);
+    f.payments().process_verified_payment(&tx_id);
+    f.payments().process_payment(&tx_id, &f.collector, &1_000);
+}
+
+#[test]
+#[should_panic(expected = "Transaction contract not set")]
+fn test_derived_payment_needs_a_bound_transaction_contract() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let admin = Address::generate(&env);
+    let token = Address::generate(&env);
+    let (_, client) = create_contract(&env);
+    client.initialize(&admin, &token);
+
+    client.process_verified_payment(&1);
+}
+
+#[test]
+fn test_transaction_contract_is_set_once() {
+    let f = Derived::new();
+    assert_eq!(
+        f.payments().get_transaction_contract(),
+        Some(f.transactions_id.clone())
+    );
+    let other = Address::generate(&f.env);
+    assert!(f.payments().try_set_transaction_contract(&other).is_err());
+    assert_eq!(
+        f.payments().get_transaction_contract(),
+        Some(f.transactions_id.clone())
+    );
+}
+
+#[test]
+fn test_only_the_admin_binds_the_transaction_contract() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let admin = Address::generate(&env);
+    let token = Address::generate(&env);
+    let (_, client) = create_contract(&env);
+    client.initialize(&admin, &token);
+
+    env.set_auths(&[]);
+    let result = client.try_set_transaction_contract(&Address::generate(&env));
+    assert!(result.is_err());
+    assert_eq!(client.get_transaction_contract(), None);
+}
+
+#[test]
+fn test_only_the_admin_can_trigger_a_derived_payment() {
+    let f = Derived::new();
+    let tx_id = f.verified(2_000, 8_000_000);
+
+    f.env.set_auths(&[]);
+    assert!(f.payments().try_process_verified_payment(&tx_id).is_err());
+    assert!(f
+        .payments()
+        .try_batch_process_verified(&soroban_sdk::vec![&f.env, tx_id])
+        .is_err());
+    assert_eq!(f.payments().get_payment_for_transaction(&tx_id), None);
+}
+
+#[test]
+#[should_panic(expected = "Contract paused")]
+fn test_paused_contract_makes_no_derived_payment() {
+    let f = Derived::new();
+    let tx_id = f.verified(2_000, 8_000_000);
+    f.payments().pause();
+    f.payments().process_verified_payment(&tx_id);
+}
+
+#[test]
+fn test_batch_derives_every_payment() {
+    let f = Derived::new();
+    let first = f.verified(1_000, 8_000_000);
+    let second = f.verified(2_000, 8_000_000);
+
+    let ids = f
+        .payments()
+        .batch_process_verified(&soroban_sdk::vec![&f.env, first, second]);
+
+    assert_eq!(ids.len(), 2);
+    assert_eq!(
+        f.payments().get_payment(&ids.get(0).unwrap()).amount,
+        8_000_000
+    );
+    assert_eq!(
+        f.payments().get_payment(&ids.get(1).unwrap()).amount,
+        16_000_000
+    );
+    assert_eq!(f.payments().get_payment_count(), 2);
+}
+
+#[test]
+fn test_batch_with_one_unverified_transaction_pays_nothing() {
+    let f = Derived::new();
+    let good = f.verified(1_000, 8_000_000);
+    let pending = f.record(2_000, 8_000_000);
+
+    let result = f
+        .payments()
+        .try_batch_process_verified(&soroban_sdk::vec![&f.env, good, pending]);
+
+    assert!(result.is_err());
+    assert_eq!(f.payments().get_payment_for_transaction(&good), None);
+    assert_eq!(f.payments().get_payment_count(), 0);
+}
+
+#[test]
+fn test_batch_rejects_a_transaction_listed_twice() {
+    let f = Derived::new();
+    let tx_id = f.verified(1_000, 8_000_000);
+
+    let result = f
+        .payments()
+        .try_batch_process_verified(&soroban_sdk::vec![&f.env, tx_id, tx_id]);
+
+    assert!(result.is_err());
+    assert_eq!(f.payments().get_payment_count(), 0);
+}
+
+#[test]
+fn test_overrides_are_logged_and_derived_payments_are_not() {
+    use soroban_sdk::testutils::Events;
+
+    let f = Derived::new();
+    let derived = f.verified(1_000, 8_000_000);
+    let corrected = f.record(1_100, 8_000_000);
+    let first_batched = f.record(1_200, 8_000_000);
+    let second_batched = f.record(1_300, 8_000_000);
+
+    // The test host reports the events of the latest invocation, so check each call.
+    let override_events = |f: &Derived| {
+        let topic = soroban_sdk::symbol_short!("pay_ovr");
+        f.env
+            .events()
+            .all()
+            .iter()
+            .filter(|(contract, topics, _)| {
+                *contract == f.payments_id
+                    && topics == &soroban_sdk::vec![&f.env, topic.into_val(&f.env)]
+            })
+            .count()
+    };
+
+    f.payments().process_verified_payment(&derived);
+    assert_eq!(override_events(&f), 0, "derived payments are not overrides");
+
+    f.payments().process_payment(&corrected, &f.collector, &123);
+    assert_eq!(override_events(&f), 1);
+
+    f.payments().batch_process(&soroban_sdk::vec![
+        &f.env,
+        (first_batched, f.collector.clone(), 456i128),
+        (second_batched, f.collector.clone(), 789i128),
+    ]);
+    assert_eq!(override_events(&f), 2, "one event per overridden payment");
+}

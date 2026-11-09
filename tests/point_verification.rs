@@ -340,14 +340,9 @@ fn admin_override_remains_explicit_and_requires_admin() {
     assert_eq!(f.rep().get_statistics(&f.collector), (505, 1, 1, 0));
 }
 
-#[test]
-fn point_verified_delivery_can_still_be_paid_in_waste() {
-    let f = Fixture::new(true, Some(VerificationStatus::Verified));
-    f.sign_as(&f.owner, "verify_transaction_by_point");
-    f.tx().verify_transaction_by_point(&f.transaction_id);
-    let record = f.tx().get_transaction(&f.transaction_id);
-    assert!(record.verified);
-    assert_eq!(record.total_amount, 16_000_000);
+/// A token and a payment contract bound to the fixture's transaction contract, with the
+/// payment contract approved to mint.
+fn payments_for<'a>(f: &'a Fixture) -> (PaymentDistributionClient<'a>, WasteTokenClient<'a>) {
     f.env.mock_all_auths();
     let token_id = f.env.register(WasteToken, ());
     let token = WasteTokenClient::new(&f.env, &token_id);
@@ -360,8 +355,55 @@ fn point_verified_delivery_can_still_be_paid_in_waste() {
     let payment_id = f.env.register(PaymentDistribution, ());
     let payments = PaymentDistributionClient::new(&f.env, &payment_id);
     payments.initialize(&f.admin, &token_id);
+    payments.set_transaction_contract(&f.transactions);
     token.add_minter(&payment_id);
-    // Payout derivation is the next roadmap item; the current ABI still takes an amount.
+    (payments, token)
+}
+
+#[test]
+fn point_verified_delivery_is_paid_from_the_record_alone() {
+    let f = Fixture::new(true, Some(VerificationStatus::Verified));
+    f.sign_as(&f.owner, "verify_transaction_by_point");
+    f.tx().verify_transaction_by_point(&f.transaction_id);
+    let record = f.tx().get_transaction(&f.transaction_id);
+    assert_eq!(record.total_amount, 16_000_000);
+
+    let (payments, token) = payments_for(&f);
+    // The only input is the transaction id. The collector and amount come from the record.
+    let payout = payments.process_verified_payment(&f.transaction_id);
+    let payment = payments.get_payment(&payout);
+    assert_eq!(payment.recipient, f.collector);
+    assert_eq!(payment.amount, record.total_amount);
+
+    payments.update_payment_status(&payout, &PaymentStatus::Completed);
+    assert_eq!(token.balance(&f.collector), 16_000_000);
+}
+
+#[test]
+fn delivery_waiting_for_its_point_cannot_be_paid() {
+    let f = Fixture::new(true, Some(VerificationStatus::Verified));
+    let (payments, token) = payments_for(&f);
+
+    let result = payments.try_process_verified_payment(&f.transaction_id);
+
+    assert!(result.is_err());
+    assert_eq!(
+        payments.get_payment_for_transaction(&f.transaction_id),
+        None
+    );
+    assert_eq!(token.balance(&f.collector), 0);
+    f.assert_unverified();
+}
+
+#[test]
+fn point_verified_delivery_can_still_be_paid_by_the_admin_override() {
+    let f = Fixture::new(true, Some(VerificationStatus::Verified));
+    f.sign_as(&f.owner, "verify_transaction_by_point");
+    f.tx().verify_transaction_by_point(&f.transaction_id);
+    let record = f.tx().get_transaction(&f.transaction_id);
+
+    let (payments, token) = payments_for(&f);
+    // Deliveries paid before derivation existed still use the explicit override.
     let payout = payments.process_payment(&f.transaction_id, &f.collector, &record.total_amount);
     payments.update_payment_status(&payout, &PaymentStatus::Completed);
     assert_eq!(token.balance(&f.collector), record.total_amount);

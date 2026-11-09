@@ -9,6 +9,7 @@ mod test;
 const TOKEN_CONTRACT: &str = "TokenContract";
 const PAYMENT_COUNT: &str = "PaymentCount";
 const PAYMENT_FOR_TRANSACTION: &str = "PaymentForTx";
+const TRANSACTION_CONTRACT: &str = "TransactionContract";
 
 #[contract]
 pub struct PaymentDistribution;
@@ -23,6 +24,79 @@ impl PaymentDistribution {
         }
         env.storage().persistent().set(&key, &payment_id);
         common::bump_persistent(env, &key);
+    }
+
+    /// Stores a new pending payment and indexes it by recipient. The caller has
+    /// already checked authorization and chosen `payment_id`.
+    fn store_payment(
+        env: &Env,
+        payment_id: u64,
+        transaction_id: u64,
+        recipient: Address,
+        amount: i128,
+        created_at: u64,
+    ) {
+        Self::claim_transaction(env, transaction_id, payment_id);
+
+        let payment = Payment {
+            id: payment_id,
+            recipient: recipient.clone(),
+            amount,
+            status: PaymentStatus::Pending,
+            transaction_id,
+            created_at,
+            processed_at: 0,
+        };
+        let key = common::StorageKey::Payment(payment_id);
+        env.storage().persistent().set(&key, &payment);
+        common::bump_persistent(env, &key);
+
+        let recipient_key = ("PaymentsByRecipient", recipient.clone());
+        let mut recipient_payments: Vec<u64> = env
+            .storage()
+            .persistent()
+            .get(&recipient_key)
+            .unwrap_or(Vec::new(env));
+        recipient_payments.push_back(payment_id);
+        env.storage()
+            .persistent()
+            .set(&recipient_key, &recipient_payments);
+
+        common::PaymentEvents::created(env, payment_id, recipient, amount);
+    }
+
+    /// Who is owed what for a transaction, read from the transaction contract that was
+    /// bound at setup. The caller supplies nothing but the id, so a payment can never
+    /// differ from the verified record.
+    fn verified_payout(env: &Env, transaction_id: u64) -> (Address, i128) {
+        let contract: Address = env
+            .storage()
+            .instance()
+            .get(&TRANSACTION_CONTRACT)
+            .expect("Transaction contract not set");
+        // A missing transaction makes the callee panic, which fails this call too.
+        let record: WasteRecord = env.invoke_contract(
+            &contract,
+            &Symbol::new(env, "get_transaction"),
+            soroban_sdk::vec![env, transaction_id.into_val(env)],
+        );
+        if record.id != transaction_id {
+            panic!("Transaction record does not match the requested id");
+        }
+        if !record.verified || record.status != TransactionStatus::Completed {
+            panic!("Transaction is not verified");
+        }
+        if record.total_amount <= 0 {
+            panic!("Amount must be positive");
+        }
+        (record.collector, record.total_amount)
+    }
+
+    fn require_admin_and_running(env: &Env) {
+        common::Initializable::require_initialized(env).expect("Not initialized");
+        common::Pausable::require_not_paused(env).expect("Contract paused");
+        let admin = common::AccessControl::get_admin(env).expect("Admin not found");
+        common::AccessControl::require_admin(env, &admin).expect("Not admin");
     }
 
     /// Mints the payment amount to the recipient through the token contract. This
@@ -74,7 +148,104 @@ impl PaymentDistribution {
         common::bump_instance(&env);
     }
 
-    /// Process payment for a completed transaction
+    /// Bind the transaction contract that payments are derived from (admin only, once)
+    ///
+    /// # Arguments
+    /// * `contract_address` - WasteTransaction contract whose verified records are paid
+    ///
+    /// # Note
+    /// It can be set only once, so an admin cannot later point payments at a different
+    /// transaction contract and pay for records that were never verified here.
+    pub fn set_transaction_contract(env: Env, contract_address: Address) {
+        common::Initializable::require_initialized(&env).expect("Not initialized");
+        let admin = common::AccessControl::get_admin(&env).expect("Admin not found");
+        common::AccessControl::require_admin(&env, &admin).expect("Not admin");
+
+        if env.storage().instance().has(&TRANSACTION_CONTRACT) {
+            panic!("Transaction contract already set");
+        }
+        env.storage()
+            .instance()
+            .set(&TRANSACTION_CONTRACT, &contract_address);
+        common::bump_instance(&env);
+    }
+
+    /// The transaction contract payments are derived from, if one has been bound
+    pub fn get_transaction_contract(env: Env) -> Option<Address> {
+        env.storage().instance().get(&TRANSACTION_CONTRACT)
+    }
+
+    /// Record the payment owed for a verified transaction (admin only)
+    ///
+    /// # Arguments
+    /// * `transaction_id` - Transaction ID from the bound WasteTransaction contract
+    ///
+    /// # Returns
+    /// Payment ID
+    ///
+    /// # Note
+    /// The recipient is the collector on the transaction record and the amount is its
+    /// `total_amount`. Both are read on-chain; the caller cannot choose them. The
+    /// transaction must be verified, and each transaction can be paid once.
+    pub fn process_verified_payment(env: Env, transaction_id: u64) -> u64 {
+        Self::require_admin_and_running(&env);
+
+        let (recipient, amount) = Self::verified_payout(&env, transaction_id);
+
+        let payment_count: u64 = env.storage().instance().get(&PAYMENT_COUNT).unwrap_or(0);
+        let payment_id = payment_count + 1;
+        env.storage().instance().set(&PAYMENT_COUNT, &payment_id);
+        Self::store_payment(
+            &env,
+            payment_id,
+            transaction_id,
+            recipient,
+            amount,
+            env.ledger().timestamp(),
+        );
+
+        common::bump_instance(&env);
+        payment_id
+    }
+
+    /// Record the payments owed for several verified transactions (admin only)
+    ///
+    /// # Arguments
+    /// * `transaction_ids` - Transaction IDs from the bound WasteTransaction contract
+    ///
+    /// # Returns
+    /// The new payment IDs, in order
+    ///
+    /// # Note
+    /// Every payment is derived as in `process_verified_payment`. One transaction that
+    /// is unverified, unknown, already paid, or repeated in the list aborts the batch.
+    pub fn batch_process_verified(env: Env, transaction_ids: Vec<u64>) -> Vec<u64> {
+        Self::require_admin_and_running(&env);
+
+        let timestamp = env.ledger().timestamp();
+        let mut payment_count: u64 = env.storage().instance().get(&PAYMENT_COUNT).unwrap_or(0);
+        let mut payment_ids = Vec::new(&env);
+
+        for transaction_id in transaction_ids.iter() {
+            let (recipient, amount) = Self::verified_payout(&env, transaction_id);
+            payment_count += 1;
+            Self::store_payment(
+                &env,
+                payment_count,
+                transaction_id,
+                recipient,
+                amount,
+                timestamp,
+            );
+            payment_ids.push_back(payment_count);
+        }
+
+        env.storage().instance().set(&PAYMENT_COUNT, &payment_count);
+        common::bump_instance(&env);
+        payment_ids
+    }
+
+    /// Admin override: record a payment with a recipient and amount the admin supplies
     ///
     /// # Arguments
     /// * `transaction_id` - Transaction ID from WasteTransaction contract
@@ -85,61 +256,31 @@ impl PaymentDistribution {
     /// Payment ID
     ///
     /// # Note
-    /// This is a simplified version. Full implementation would call WasteTransaction
-    /// contract to fetch transaction details and validate completion status.
+    /// This does not read or check the transaction, so it can pay any amount. It exists
+    /// for corrections and for payments created before payouts were derived on-chain,
+    /// and every use emits a `pay_ovr` event. Prefer `process_verified_payment`.
     pub fn process_payment(env: Env, transaction_id: u64, recipient: Address, amount: i128) -> u64 {
-        common::Initializable::require_initialized(&env).expect("Not initialized");
-        common::Pausable::require_not_paused(&env).expect("Contract paused");
-
-        // Get admin and verify
-        let admin = common::AccessControl::get_admin(&env).expect("Admin not found");
-        common::AccessControl::require_admin(&env, &admin).expect("Not admin");
+        Self::require_admin_and_running(&env);
 
         // Validate amount is positive
         if amount <= 0 {
             panic!("Amount must be positive");
         }
 
-        // Get next payment ID
         let payment_count: u64 = env.storage().instance().get(&PAYMENT_COUNT).unwrap_or(0);
         let payment_id = payment_count + 1;
-        Self::claim_transaction(&env, transaction_id, payment_id);
         env.storage().instance().set(&PAYMENT_COUNT, &payment_id);
-
-        // Create payment record
-        let payment = Payment {
-            id: payment_id,
-            recipient: recipient.clone(),
-            amount,
-            status: PaymentStatus::Pending,
+        Self::store_payment(
+            &env,
+            payment_id,
             transaction_id,
-            created_at: env.ledger().timestamp(),
-            processed_at: 0,
-        };
+            recipient,
+            amount,
+            env.ledger().timestamp(),
+        );
+        common::PaymentEvents::overridden(&env, payment_id, transaction_id, amount);
 
-        // Store payment
-        let key = common::StorageKey::Payment(payment_id);
-        env.storage().persistent().set(&key, &payment);
-        common::bump_persistent(&env, &key);
-
-        // Index by recipient
-        let recipient_key = ("PaymentsByRecipient", recipient.clone());
-        let mut recipient_payments: Vec<u64> = env
-            .storage()
-            .persistent()
-            .get(&recipient_key)
-            .unwrap_or(Vec::new(&env));
-        recipient_payments.push_back(payment_id);
-        env.storage()
-            .persistent()
-            .set(&recipient_key, &recipient_payments);
-
-        // Emit event
-        common::PaymentEvents::created(&env, payment_id, recipient, amount);
-
-        // Bump storage
         common::bump_instance(&env);
-
         payment_id
     }
 
@@ -197,7 +338,7 @@ impl PaymentDistribution {
         payments
     }
 
-    /// Batch process payments for multiple transactions
+    /// Admin override: record several payments with supplied recipients and amounts
     ///
     /// # Arguments
     /// * `payments` - Vector of (transaction_id, recipient, amount) tuples
@@ -205,81 +346,29 @@ impl PaymentDistribution {
     /// # Returns
     /// Vector of payment IDs
     ///
-    /// # Optimizations
-    /// - Single admin and initialization check for the batch
-    /// - Batch storage operations to minimize redundant reads/writes
-    /// - Single payment counter update for all payments
+    /// # Note
+    /// Like `process_payment`, this does not read the transactions and emits a
+    /// `pay_ovr` event for each payment. A transaction that already has a payment, or
+    /// appears twice in the batch, aborts the whole batch.
     pub fn batch_process(env: Env, payments: Vec<(u64, Address, i128)>) -> Vec<u64> {
-        common::Initializable::require_initialized(&env).expect("Not initialized");
-        common::Pausable::require_not_paused(&env).expect("Contract paused");
+        Self::require_admin_and_running(&env);
 
-        // Single admin check for entire batch (optimization)
-        let admin = common::AccessControl::get_admin(&env).expect("Admin not found");
-        common::AccessControl::require_admin(&env, &admin).expect("Not admin");
-
-        // Get current ledger timestamp once
         let timestamp = env.ledger().timestamp();
-
-        // Get starting payment count once (optimization)
         let mut payment_count: u64 = env.storage().instance().get(&PAYMENT_COUNT).unwrap_or(0);
-
         let mut payment_ids = Vec::new(&env);
 
-        // Process all payments with batched storage operations
-        for i in 0..payments.len() {
-            if let Some((tx_id, recipient, amount)) = payments.get(i) {
-                // Validate amount
-                if amount <= 0 {
-                    panic!("Amount must be positive");
-                }
-
-                // Generate next payment ID. A transaction that already has a payment,
-                // including one earlier in this batch, aborts the whole batch.
-                payment_count += 1;
-                let payment_id = payment_count;
-                Self::claim_transaction(&env, tx_id, payment_id);
-
-                // Create payment record
-                let payment = Payment {
-                    id: payment_id,
-                    recipient: recipient.clone(),
-                    amount,
-                    status: PaymentStatus::Pending,
-                    transaction_id: tx_id,
-                    created_at: timestamp,
-                    processed_at: 0,
-                };
-
-                // Store payment
-                let key = common::StorageKey::Payment(payment_id);
-                env.storage().persistent().set(&key, &payment);
-                common::bump_persistent(&env, &key);
-
-                // Index by recipient
-                let recipient_key = ("PaymentsByRecipient", recipient.clone());
-                let mut recipient_payments: Vec<u64> = env
-                    .storage()
-                    .persistent()
-                    .get(&recipient_key)
-                    .unwrap_or(Vec::new(&env));
-                recipient_payments.push_back(payment_id);
-                env.storage()
-                    .persistent()
-                    .set(&recipient_key, &recipient_payments);
-
-                // Emit event
-                common::PaymentEvents::created(&env, payment_id, recipient, amount);
-
-                payment_ids.push_back(payment_id);
+        for (tx_id, recipient, amount) in payments.iter() {
+            if amount <= 0 {
+                panic!("Amount must be positive");
             }
+            payment_count += 1;
+            Self::store_payment(&env, payment_count, tx_id, recipient, amount, timestamp);
+            common::PaymentEvents::overridden(&env, payment_count, tx_id, amount);
+            payment_ids.push_back(payment_count);
         }
 
-        // Single update of payment counter (optimization)
         env.storage().instance().set(&PAYMENT_COUNT, &payment_count);
-
-        // Single storage bump at the end (optimization)
         common::bump_instance(&env);
-
         payment_ids
     }
 

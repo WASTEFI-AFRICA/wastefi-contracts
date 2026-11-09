@@ -113,6 +113,15 @@ impl PaymentEvents {
         env.events()
             .publish((symbol_short!("pay_fail"),), payment_id);
     }
+
+    /// An administrator supplied the recipient and amount instead of deriving them
+    /// from the verified transaction.
+    pub fn overridden(env: &Env, payment_id: u64, transaction_id: u64, amount: i128) {
+        env.events().publish(
+            (symbol_short!("pay_ovr"),),
+            (payment_id, transaction_id, amount),
+        );
+    }
 }
 
 /// Reputation events

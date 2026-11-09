@@ -87,14 +87,27 @@ pub trait PaymentDistributionTrait {
     /// Initialize the contract
     fn initialize(env: Env, admin: Address, token_contract: Address);
 
-    /// Process payment for a transaction
-    fn process_payment(env: Env, transaction_id: u64) -> u64;
+    /// Bind the transaction contract that payments are derived from (once)
+    fn set_transaction_contract(env: Env, contract_address: Address);
+
+    /// Record the payment owed for a verified transaction. The recipient and amount are
+    /// read from the transaction record.
+    fn process_verified_payment(env: Env, transaction_id: u64) -> u64;
+
+    /// Record the payments owed for several verified transactions
+    fn batch_process_verified(env: Env, transaction_ids: Vec<u64>) -> Vec<u64>;
+
+    /// Admin override: record a payment with a supplied recipient and amount
+    fn process_payment(env: Env, transaction_id: u64, recipient: Address, amount: i128) -> u64;
+
+    /// Admin override for several payments
+    fn batch_process(env: Env, payments: Vec<(u64, Address, i128)>) -> Vec<u64>;
+
+    /// Complete a payment, which mints it to the recipient
+    fn update_payment_status(env: Env, payment_id: u64, status: PaymentStatus);
 
     /// Get payment details
     fn get_payment(env: Env, payment_id: u64) -> Payment;
-
-    /// Batch process payments
-    fn batch_process(env: Env, transaction_ids: Vec<u64>) -> Vec<u64>;
 }
 
 /// Reputation interface
