@@ -727,7 +727,7 @@ pub fn verify_collection(
 
 ---
 
-#### `find_point_by_owner` (source update, deployment pending)
+#### `find_point_by_owner`
 
 ```rust
 pub fn find_point_by_owner(env: Env, owner: Address) -> Option<u64>
@@ -954,10 +954,10 @@ point signing key was never retained. It rejects an already verified record.
 **Effects**: Sets `verified = true` and `status = Completed`. Records successful
 history in the configured reputation contract; that contract must grant
 `WasteTransaction` the operator role, or verification rolls back. Emits the
-existing `tx_ver` event and, in the updated source, the actor event described below.
+existing `tx_ver` event and, the actor event described below.
 It neither creates a payment nor derives its amount.
 
-#### `verify_transaction_by_point` (source update, deployment pending)
+#### `verify_transaction_by_point`
 
 ```rust
 pub fn verify_transaction_by_point(env: Env, transaction_id: u64)
@@ -975,14 +975,14 @@ falls back to admin verification.
 **Effects**: The same delivery and reputation changes as individual admin
 verification. On failure, no partial delivery or reputation update is retained.
 
-**Events from individual verification in updated source**:
+**Events from individual verification**:
 
 - Existing event: topics `(tx_ver,)`, data `transaction_id: u64`.
 - New actor event: topics `(verify_by, transaction_id)`, data `verifier: Address`.
 
 The legacy batch-verification method remains unchanged and emits only `tx_ver`.
 
-#### Point registry configuration (source update, deployment pending)
+#### Point registry configuration
 
 ```rust
 pub fn set_collection_point_contract(env: Env, contract_address: Address)

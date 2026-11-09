@@ -11,12 +11,12 @@ This document provides a comprehensive threat analysis for the WasteFi smart con
 
 ---
 
-## Point verification source update
+## Point verification
 
 This section describes the current source authorization boundary. The sections
 below are an older threat inventory and design notes, not an independent audit
-or evidence that every listed mitigation is deployed. The README describes the
-live contracts and the source changes awaiting rollout.
+or evidence that every listed mitigation is deployed. The README lists the
+contracts currently deployed on testnet, which include this verification path.
 
 `WasteTransaction.verify_transaction_by_point` requires authorization from the
 point address stored on the delivery. It checks the configured point registry,
@@ -33,11 +33,11 @@ with the verifier address; the legacy admin batch path is unchanged and emits
 no actor event. The platform admin therefore remains trusted. A stolen admin
 key can still bypass point verification through the explicit override.
 
-Backend custody of point keys is not implemented by this contract patch. The
-API must encrypt those keys, authorize operators against current assignments,
-and use the matching point signer for new records. The live addresses have not
-changed. Rollout must retain old contract references for existing collections
-and isolate the new transaction IDs from the old payment mapping. Payouts are now
+The contracts do not hold point keys. The backend keeps each point's key encrypted,
+authorizes operators against current assignments, and signs with the matching point
+wallet. The testnet bundle deployed on 2026-11-08 includes this verification path.
+Rollouts retain old contract references for existing collections and isolate the new
+transaction IDs from the old payment mapping. Payouts are now
 derived on-chain: `process_verified_payment` reads the collector and amount from the
 verified transaction, and the payment contract's transaction binding can be set only
 once. The admin override `process_payment` (supplied amounts, logged by a `pay_ovr`
@@ -797,7 +797,7 @@ The WasteFi platform manages valuable digital assets (tokens, payments) and crit
 
 **Coverage**:
 - Admin-only: Upgrades, emergencies, verification overrides, role transfers
-- Point owner: Individual verification through the new source path (rollout pending)
+- Point owner: Individual verification through `verify_transaction_by_point`
 - Operator-only: Price updates, point management
 - Owner-only: Profile updates
 - Function-level authorization checks
