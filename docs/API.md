@@ -1130,22 +1130,101 @@ pub fn flag_for_review(env: Env, collector: Address, reason: String)
 
 ## 6. PaymentDistribution Contract
 
-**Purpose**: Records what is owed for a transaction and mints WASTE to the recipient
-when the payment completes
+**Purpose**: Records what is owed for a verified transaction and mints WASTE to the
+collector when the payment completes
 
 **Contract ID**: `<PAYMENT_DISTRIBUTION_CONTRACT_ID>`
 
 The token contract is set at `initialize(admin, token_contract)`. This contract mints
 through `WasteToken::mint_from`, so the token admin must approve it with
-`add_minter`. The deploy script does this.
+`add_minter`. The transaction contract is bound once with
+`set_transaction_contract`. The deploy script does both.
+
+Payouts are **derived on-chain**: `process_verified_payment` reads the transaction from
+the bound transaction contract and pays the collector on the record the amount on the
+record. Collections paid by the previous payment contract, which only had the admin
+override below, keep that contract.
 
 ---
 
 ### 6.1 Payment Processing
 
-#### `process_payment`
+#### `set_transaction_contract`
 
-Record a pending payment for a transaction.
+Bind the WasteTransaction contract that payments are derived from. It can be called
+**once**; a second call fails, so the binding cannot be moved to records that were
+never verified for this contract.
+
+**Signature**:
+```rust
+pub fn set_transaction_contract(env: Env, contract_address: Address)
+pub fn get_transaction_contract(env: Env) -> Option<Address>
+```
+
+**Authorization**: Admin only (`get_transaction_contract` is public)
+
+---
+
+#### `process_verified_payment`
+
+Record the payment owed for a verified transaction.
+
+**Signature**:
+```rust
+pub fn process_verified_payment(env: Env, transaction_id: u64) -> u64
+```
+
+**Returns**: `u64` - Payment ID
+
+**Behavior**: reads `get_transaction(transaction_id)` from the bound contract. The
+recipient is the record's `collector` and the amount is its `total_amount`; the caller
+chooses neither. The transaction must be `verified` and `Completed`, and each
+transaction can be paid once.
+
+**Limit**: the one-payment rule is per payment contract. A transaction paid by the
+previous payment contract is not in this contract's map, so an admin could pay it
+again by calling this function for that id. The backend never does.
+
+**Errors**: panics with `Transaction contract not set` before binding, `Transaction is
+not verified` for a pending, disputed or cancelled record, `Payment already exists for
+this transaction` for a repeat, and fails if the transaction does not exist
+
+**Authorization**: Admin only
+
+**Example**:
+```bash
+stellar contract invoke \
+  --id $PAYMENT_DISTRIBUTION \
+  --source-account wastefi-deployer \
+  --network testnet \
+  -- \
+  process_verified_payment \
+  --transaction_id 1
+```
+
+---
+
+#### `batch_process_verified`
+
+Record the payments owed for several verified transactions.
+
+**Signature**:
+```rust
+pub fn batch_process_verified(env: Env, transaction_ids: Vec<u64>) -> Vec<u64>
+```
+
+**Returns**: the new payment IDs, in order
+
+**Errors**: one unverified, unknown or already paid transaction, or one listed twice,
+aborts the whole batch and records nothing
+
+**Authorization**: Admin only
+
+---
+
+#### `process_payment` (admin override)
+
+Record a pending payment for a recipient and amount the admin supplies.
 
 **Signature**:
 ```rust
@@ -1159,29 +1238,22 @@ pub fn process_payment(
 
 **Returns**: `u64` - Payment ID
 
+**Behavior**: does **not** read or check the transaction, so it can pay any amount. It
+exists for corrections and for payments created before payouts were derived. Every use
+emits a `pay_ovr` event `(payment_id, transaction_id, amount)`. Prefer
+`process_verified_payment`. The WASTE token's own admin `mint` is separate and
+unchanged, so the admin key remains trusted.
+
 **Errors**: panics if `amount` is not positive, or with `Payment already exists for
 this transaction` if the transaction already has a payment
 
 **Authorization**: Admin only
 
-**Example**:
-```bash
-stellar contract invoke \
-  --id $PAYMENT_DISTRIBUTION \
-  --source-account wastefi-deployer \
-  --network testnet \
-  -- \
-  process_payment \
-  --transaction_id 1 \
-  --recipient GCOL...123 \
-  --amount 37500000
-```
-
 ---
 
-#### `batch_process`
+#### `batch_process` (admin override)
 
-Record several pending payments in one call.
+Record several pending payments with supplied recipients and amounts.
 
 **Signature**:
 ```rust
@@ -1191,7 +1263,7 @@ pub fn batch_process(env: Env, payments: Vec<(u64, Address, i128)>) -> Vec<u64>
 **Returns**: the new payment IDs, in order
 
 **Errors**: a transaction that already has a payment, or appears twice in the batch,
-aborts the whole batch
+aborts the whole batch. Each payment emits a `pay_ovr` event.
 
 **Authorization**: Admin only
 

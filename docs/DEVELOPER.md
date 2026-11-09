@@ -136,10 +136,11 @@ This guide provides developers with comprehensive information about the WasteFi 
    → Updates Reputation scores
 
 4. Payment processed
-   PaymentDistribution.process_payment()
-   → Calculates amount with reputation bonus
-   → Mints tokens via WasteToken.mint()
-   → Status: Paid
+   PaymentDistribution.process_verified_payment()
+   → Reads the collector and amount from the verified transaction
+   → Records one pending payment per transaction
+   PaymentDistribution.update_payment_status(Completed)
+   → Mints tokens via WasteToken.mint_from()
 
 5. User receives tokens
    WasteToken.balance()
@@ -663,8 +664,9 @@ fn test_complete_workflow() {
     // 3. Verify transaction
     transaction.verify_transaction(&tx_id);
 
-    // 4. Process payment
-    payment.process_payment(&tx_id);
+    // 4. Process payment: the collector and amount are read from the verified record
+    let payment_id = payment.process_verified_payment(&tx_id);
+    payment.update_payment_status(&payment_id, &PaymentStatus::Completed);
 
     // 5. Verify token balance
     let balance = token.balance(&collector);

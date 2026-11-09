@@ -78,6 +78,7 @@ WasteFi smart contracts emit events for all significant state changes. This guid
 | Created | `pay_new` | (payment_id: u64, recipient: Address, amount: i128) | New payment created |
 | Processed | `pay_proc` | (payment_id: u64) | Payment processed successfully |
 | Failed | `pay_fail` | (payment_id: u64) | Payment failed |
+| Overridden | `pay_ovr` | (payment_id: u64, transaction_id: u64, amount: i128) | An admin supplied the recipient and amount instead of deriving them; emitted in addition to `pay_new` |
 
 **Use Cases**:
 - Payment flow monitoring

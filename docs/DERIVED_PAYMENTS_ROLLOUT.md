@@ -23,6 +23,12 @@ stay in place.
   visible on-chain. The WASTE token's own admin `mint` is separate and unchanged.
   Deriving the normal path removes mistakes and makes it verifiable, but the admin
   key is still trusted.
+- **Known limit:** one payment per transaction is enforced per payment contract.
+  Transactions the previous payment contract already paid are not in the new
+  contract's map, so an admin calling `process_verified_payment` for one of those ids
+  by hand would pay it a second time. The backend only pays collections that start
+  after the switch and never does this, but the contracts do not enforce the rule
+  across the two payment contracts.
 
 Collections that were already pinned to the previous payment contract keep using it
 with its caller-supplied amounts. Only collections approved after the application

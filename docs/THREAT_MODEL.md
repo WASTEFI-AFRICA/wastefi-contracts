@@ -37,8 +37,12 @@ Backend custody of point keys is not implemented by this contract patch. The
 API must encrypt those keys, authorize operators against current assignments,
 and use the matching point signer for new records. The live addresses have not
 changed. Rollout must retain old contract references for existing collections
-and isolate the new transaction IDs from the old payment mapping. Payment
-amounts are still supplied by the admin caller until the payout roadmap item.
+and isolate the new transaction IDs from the old payment mapping. Payouts are now
+derived on-chain: `process_verified_payment` reads the collector and amount from the
+verified transaction, and the payment contract's transaction binding can be set only
+once. The admin override `process_payment` (supplied amounts, logged by a `pay_ovr`
+event) and the token's admin `mint` remain, so a stolen admin key can still pay or
+mint arbitrary amounts.
 
 ---
 

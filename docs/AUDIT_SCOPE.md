@@ -90,7 +90,9 @@ This document defines the scope, priorities, and expectations for the security a
 **Priority**: **CRITICAL**
 
 **Key Functions to Review**:
-- **!** `process_payment(transaction_id, recipient, amount)` - **CRITICAL**
+- **!** `process_verified_payment(transaction_id)` - **CRITICAL**: derives the collector and amount from the bound transaction contract
+- **!** `set_transaction_contract(contract_address)` - **CRITICAL**: set once; review that it cannot be re-bound
+- **!** `process_payment(transaction_id, recipient, amount)` - **CRITICAL**: admin override, emits `pay_ovr`
 - **!** `distribute_rewards(payment_id)` - **CRITICAL**
 - **+** `get_payment(payment_id)` - Query
 - **+** `get_recipient_payments(recipient, limit)` - Query

@@ -76,7 +76,8 @@ Only after the backfill and candidate checks pass:
 3. Update public docs and `/stats` to describe the actual point-signed flow. Keys
    remain custodial, registry trust is administered by the platform and the
    explicit contract admin override remains available. Payment amounts are still
-   supplied by the backend until the separate on-chain payout change ships.
+   supplied by the backend until the derived payments rollout (see
+   [DERIVED_PAYMENTS_ROLLOUT.md](DERIVED_PAYMENTS_ROLLOUT.md)).
 4. Deploy and verify the demo collector/operator flow. Follow the record,
    point-verification and payment transactions on testnet. Confirm older pinned
    collections still use their original contracts and flow.

@@ -35,7 +35,7 @@ delivery through all seven contracts from the command line.
 | `collection_point` | Registry of collection point owners, verification status and accepted materials; the point-verification path checks it |
 | `waste_transaction` | Records a delivery and moves it through pending, verified, and completed |
 | `material_pricing` | Per-material price oracle, written by an operator role |
-| `payment_distribution` | Records one payout per transaction and mints it in WASTE when completed; the amount is supplied by the caller |
+| `payment_distribution` | Records one payout per transaction and mints it in WASTE when completed; the collector and amount are read from the verified transaction, with a logged admin override |
 | `reputation` | Integer reputation scoring derived from verified delivery history |
 | `waste_token` | The reward token: capped mint, burn, transfer, and approve/transfer_from allowances |
 
@@ -55,9 +55,11 @@ With `point_owner_v1` selected in the API, new approvals follow this flow:
 4. `waste_transaction::verify_transaction_by_point` requires the recorded point
    owner's signature, a verified registry entry accepting the material, and both
    contracts unpaused. It marks the record completed and updates reputation.
-5. `payment_distribution::process_payment` records one payment per transaction.
-   It still requires admin and a caller-supplied recipient and amount; on-chain
-   payment derivation remains separate work.
+5. `payment_distribution::process_verified_payment` records one payment per
+   transaction. It requires admin to trigger it, but the collector and amount are
+   read on-chain from the verified transaction record, which the contract checks
+   is verified. The admin override `process_payment` can still pay a recipient and
+   amount the admin chooses, and emits a `pay_ovr` event each time.
 6. `payment_distribution::update_payment_status(Completed)` mints the payment
    through `waste_token::mint_from`. The payment contract has a minter role.
 
@@ -235,7 +237,7 @@ Known gaps that must close before a mainnet deployment are tracked in
 [docs/SECURITY_ROADMAP.md](docs/SECURITY_ROADMAP.md). The token supply cap is
 now enforced in `mint` and a completed or failed payment can no longer be
 modified. Still open: a single admin key where a multisig belongs, payout
-amounts supplied by the caller, custodial point keys and the explicit admin
+the explicit admin payment override and token `mint`, custodial point keys and the explicit admin
 verification override, incomplete collector-status validation,
 and weak rate limiting.
 

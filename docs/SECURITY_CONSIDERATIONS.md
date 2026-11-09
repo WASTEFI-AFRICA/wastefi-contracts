@@ -374,22 +374,37 @@ Processes payments for verified transactions, distributes rewards to collectors,
 
 ### 3.2 Critical Functions
 
-#### `process_payment(env, transaction_id, recipient, amount)`
-**Purpose**: Process payment for verified transaction  
+#### `process_verified_payment(env, transaction_id)`
+**Purpose**: Record the payment owed for a verified transaction  
+**Authorization**: Admin only  
+**Security Level**: **CRITICAL**
+
+**Security Controls**:
+- The collector and amount are read from the bound transaction contract's record; the caller supplies neither
+- The record must be verified and Completed, and its id must match the request
+- The transaction contract is bound once by `set_transaction_contract` and cannot be re-bound
+- One payment per transaction (a persistent map, checked before anything is stored)
+- Paused contracts refuse it; every payment emits `pay_new`
+
+**Remaining risks**:
+- **Admin Key Compromise**: the admin can still call `process_payment` (override) or the token's `mint`
+- **Transaction Contract Trust**: the payment is only as sound as the bound transaction contract's verification
+- **Paid-once across contracts**: the payment map belongs to this contract. Transactions the previous payment contract paid are not in it, so an admin could pay one a second time by hand. The backend only pays new collections and never does
+- **Arithmetic**: `total_amount` is computed by the transaction contract with a saturating multiply
+
+#### `process_payment(env, transaction_id, recipient, amount)` (admin override)
+**Purpose**: Record a payment for a recipient and amount the admin supplies  
 **Authorization**: Admin only  
 **Security Level**: **CRITICAL**
 
 **Security Controls**:
 - Admin-only authorization
 - Amount validation (must be positive)
-- Payment record creation
-- Idempotency tracking (one payment per transaction)
-- Event logging
+- One payment per transaction, shared with the derived path
+- A `pay_ovr` event for every use, so overrides can be audited
 
 **Vulnerabilities**:
-- **Double Payment**: No explicit check for existing payment (relies on external tracking)
-- **Arithmetic Overflow**: Uses saturating_mul (silent overflow)
-- **No Transaction Validation**: Doesn't verify transaction is Completed
+- **No Transaction Validation**: does not read or verify the transaction, so it can pay any amount
 - **Admin Key Compromise**: Attacker can drain funds
 
 **Code Reference**:
