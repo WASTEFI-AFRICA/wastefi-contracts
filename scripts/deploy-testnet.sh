@@ -81,6 +81,9 @@ invoke "$REPUTATION" add_operator --operator "$TRANSACTION"
 echo "Letting payment_distribution mint WASTE"
 invoke "$TOKEN" add_minter --minter "$PAYMENT"
 
+echo "Binding payment_distribution to waste_transaction so payouts are derived on-chain"
+invoke "$PAYMENT" set_transaction_contract --contract_address "$TRANSACTION"
+
 # Record exactly what was deployed. A working tree with uncommitted changes is
 # flagged, because the commit hash alone would not describe the deployed code.
 SOURCE_COMMIT=$(git rev-parse --short HEAD)

@@ -114,10 +114,24 @@ STORED=$(call "$DEPLOYER" "$TRANSACTION" get_transaction --transaction_id "$TX_I
 echo "$STORED" | grep -qE "total_amount:$AMOUNT[,}]" || { echo "stored amount is not $AMOUNT: $STORED" >&2; exit 1; }
 ok "stored payout is exactly ${AMOUNT} (fractional kilograms are paid)"
 
-PAYMENT_ID=$(call "$DEPLOYER" "$PAYMENT" process_payment --transaction_id "$TX_ID" --recipient "$COLLECTOR" --amount "$AMOUNT")
-ok "payment recorded (id $PAYMENT_ID)"
+# A delivery that was recorded but never verified must not be payable.
+UNVERIFIED_ID=$(call "$COLLECTOR_KEY" "$TRANSACTION" record_with_price_lookup --collector "$COLLECTOR" --collection_point "$POINT" --material_type '"Plastic"' --weight "$((WEIGHT + 1234))")
+if stellar contract invoke --id "$PAYMENT" --source-account "$DEPLOYER" --network "$NETWORK" -- process_verified_payment --transaction_id "$UNVERIFIED_ID" >/dev/null 2>&1; then
+  echo "FAILED: a delivery that was never verified was paid" >&2
+  exit 1
+fi
+ok "a delivery that is not verified cannot be paid"
 
-if stellar contract invoke --id "$PAYMENT" --source-account "$DEPLOYER" --network "$NETWORK" -- process_payment --transaction_id "$TX_ID" --recipient "$COLLECTOR" --amount "$AMOUNT" >/dev/null 2>&1; then
+# The only input is the transaction id: the collector and amount come from the record.
+PAYMENT_ID=$(call "$DEPLOYER" "$PAYMENT" process_verified_payment --transaction_id "$TX_ID")
+ok "payment recorded from the verified transaction (id $PAYMENT_ID)"
+
+DERIVED=$(call "$DEPLOYER" "$PAYMENT" get_payment --payment_id "$PAYMENT_ID")
+echo "$DERIVED" | grep -qE "amount:$AMOUNT[,}]" || { echo "derived amount is not $AMOUNT: $DERIVED" >&2; exit 1; }
+echo "$DERIVED" | grep -q "recipient:$COLLECTOR" || { echo "derived recipient is not the collector: $DERIVED" >&2; exit 1; }
+ok "the payment's collector and amount equal the verified record"
+
+if stellar contract invoke --id "$PAYMENT" --source-account "$DEPLOYER" --network "$NETWORK" -- process_verified_payment --transaction_id "$TX_ID" >/dev/null 2>&1; then
   echo "FAILED: a second payment was recorded for the same transaction" >&2
   exit 1
 fi

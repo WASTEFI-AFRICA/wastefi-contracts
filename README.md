@@ -184,11 +184,15 @@ the audit status below.
 | `material_pricing` | [`CA6BP7PC7OPZPT4MFHIJAPXB237BVP72GVNVPI67GPH3QYYBCJDN2Z5G`](https://stellar.expert/explorer/testnet/contract/CA6BP7PC7OPZPT4MFHIJAPXB237BVP72GVNVPI67GPH3QYYBCJDN2Z5G) |
 | `reputation` | [`CCXDYT3RIM2D356CYUZJ7SVD5PRFUVNJDZDAKSI5WITMMW5QMXZHIB5A`](https://stellar.expert/explorer/testnet/contract/CCXDYT3RIM2D356CYUZJ7SVD5PRFUVNJDZDAKSI5WITMMW5QMXZHIB5A) |
 | `waste_transaction` | [`CB77D77P7RLXHPXNCZG4PJE6OVAXWYWAY2KBDX2SO76FMSBL7XOTYDIT`](https://stellar.expert/explorer/testnet/contract/CB77D77P7RLXHPXNCZG4PJE6OVAXWYWAY2KBDX2SO76FMSBL7XOTYDIT) |
-| `payment_distribution` | [`CA5BJ6WCZEVLV7YNZY7XXERXSDHSYMW5XKCQOU3BTXWNG2DQRR74PB2W`](https://stellar.expert/explorer/testnet/contract/CA5BJ6WCZEVLV7YNZY7XXERXSDHSYMW5XKCQOU3BTXWNG2DQRR74PB2W) |
+| `payment_distribution` | [`CBUDOQMESUCX3NRTLCS6TRAHPKRZTVBPUTNUBLYRGFPQ76LTQ7N5RLFG`](https://stellar.expert/explorer/testnet/contract/CBUDOQMESUCX3NRTLCS6TRAHPKRZTVBPUTNUBLYRGFPQ76LTQ7N5RLFG) |
 
-Bundle updated 2026-11-08 with registry, transaction and payment code from
-`edbbec3`. The token, collector registry, pricing and reputation retain their
-2026-10-28 deployment. Prepared by
+Payment code updated 2026-11-09 from `3ca9b1d`, bound once to the existing
+transaction contract so payouts are derived on-chain. The previous payment contract
+keeps its minter role so collections already in progress can finish; it is archived
+with the rest of the previous bundle in
+[`deployments/testnet-2026-11-08.json`](deployments/testnet-2026-11-08.json). The
+registry and transaction code date from 2026-11-08 (`edbbec3`), and the token,
+collector registry, pricing and reputation retain their 2026-10-28 deployment. Prepared by
 [`GBPLV2ID...3Y4L`](https://stellar.expert/explorer/testnet/account/GBPLV2IDOG7E2UQEDHTN2ZZA3OGUECFHM5F54S3F65QEUR5EATJA3Y4L),
 which is also the admin of every contract. The addresses are recorded in
 [`deployed_addresses_testnet.json`](deployed_addresses_testnet.json). Testnet is
